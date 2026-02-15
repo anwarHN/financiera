@@ -1,0 +1,32 @@
+[functions.send-invitation]
+verify_jwt = false
+
+[functions.list-account-users]
+verify_jwt = false
+
+[functions.export-report]
+verify_jwt = false
+
+[functions.create-billing-checkout]
+verify_jwt = false
+
+[functions.create-billing-portal]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.sync-billing-seats]
+verify_jwt = false
+
+[functions.list-billing-payment-methods]
+verify_jwt = false
+
+[functions.create-billing-setup-session]
+verify_jwt = false
+
+[functions.set-default-billing-payment-method]
+verify_jwt = false
+
+[functions.deactivate-account-user]
+verify_jwt = false
