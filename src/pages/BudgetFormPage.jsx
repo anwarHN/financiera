@@ -101,7 +101,16 @@ function BudgetFormPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!account?.accountId || !user?.id) return;
+    setError("");
+    if (!event.currentTarget.checkValidity()) {
+      event.currentTarget.reportValidity();
+      setError(t("common.requiredFields"));
+      return;
+    }
+    if (!account?.accountId || !user?.id) {
+      setError(t("common.requiredFields"));
+      return;
+    }
 
     const payload = {
       accountId: account.accountId,
@@ -117,6 +126,10 @@ function BudgetFormPage() {
     const normalizedLines = lines
       .filter((line) => line.conceptId)
       .map((line) => ({ conceptId: Number(line.conceptId), amount: Number(line.amount || 0) }));
+    if (normalizedLines.length === 0) {
+      setError(t("common.requiredFields"));
+      return;
+    }
 
     try {
       setIsSaving(true);

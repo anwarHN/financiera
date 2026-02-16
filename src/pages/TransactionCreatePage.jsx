@@ -336,7 +336,20 @@ function TransactionCreatePage({ moduleType }) {
 
   const handleSubmitSimple = async (event) => {
     event.preventDefault();
-    if (!account?.accountId || !user?.id || !simpleForm.conceptId || !simpleForm.currencyId) return;
+    setError("");
+    if (!event.currentTarget.checkValidity()) {
+      event.currentTarget.reportValidity();
+      setError(t("common.requiredFields"));
+      return;
+    }
+    if (!account?.accountId || !user?.id || !simpleForm.conceptId || !simpleForm.currencyId) {
+      setError(t("common.requiredFields"));
+      return;
+    }
+    if (moduleType === "purchase" && !simpleForm.personId) {
+      setError(t("transactions.providerRequired"));
+      return;
+    }
 
     const purchaseCash = moduleType === "purchase" && simpleForm.paymentMode === "cash";
     const needsPaymentMethod = moduleType === "income" || moduleType === "expense" || purchaseCash;
@@ -352,6 +365,10 @@ function TransactionCreatePage({ moduleType }) {
     const baseAmountRaw = Number(simpleForm.amount) || 0;
     const additionalChargesRaw = Number(simpleForm.additionalCharges) || 0;
     const isExpenseFlow = moduleType === "expense";
+    if (Math.abs(baseAmountRaw) <= 0) {
+      setError(t("transactions.invalidTransactionAmount"));
+      return;
+    }
     const baseAmount = isExpenseFlow ? -Math.abs(baseAmountRaw) : baseAmountRaw;
     const additionalCharges = isExpenseFlow ? -Math.abs(additionalChargesRaw) : additionalChargesRaw;
     const totalAmount = baseAmount + additionalCharges;
@@ -401,6 +418,12 @@ function TransactionCreatePage({ moduleType }) {
 
   const handleSubmitSale = async (event) => {
     event.preventDefault();
+    setError("");
+    if (!event.currentTarget.checkValidity()) {
+      event.currentTarget.reportValidity();
+      setError(t("common.requiredFields"));
+      return;
+    }
     if (!account?.accountId || !user?.id || !selectedClient || saleLines.length === 0 || !saleHeader.currencyId) {
       setError(t("transactions.saleValidationError"));
       return;
@@ -495,8 +518,12 @@ function TransactionCreatePage({ moduleType }) {
               </label>
               <label className="field-block">
                 <span>{t("transactions.person")}</span>
-                <select name="personId" value={simpleForm.personId} onChange={handleSimpleChange}>
-                  <option value="">{`-- ${t("transactions.optionalPerson")} --`}</option>
+                <select name="personId" value={simpleForm.personId} onChange={handleSimpleChange} required={moduleType === "purchase"}>
+                  <option value="">
+                    {moduleType === "purchase"
+                      ? `-- ${t("transactions.selectProvider")} --`
+                      : `-- ${t("transactions.optionalPerson")} --`}
+                  </option>
                   {personOptions.map((person) => (
                     <option key={person.id} value={person.id}>
                       {person.name}

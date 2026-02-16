@@ -31,6 +31,28 @@ export async function listTransactions({ accountId, type, excludeInternalObligat
   return data ?? [];
 }
 
+export async function listPrimaryConceptsByTransactionIds(transactionIds = []) {
+  const ids = (transactionIds || []).map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0);
+  if (ids.length === 0) return {};
+
+  const { data, error } = await supabase
+    .from("transactionDetails")
+    .select("id, transactionId, concepts(name)")
+    .in("transactionId", ids)
+    .order("id", { ascending: true });
+
+  if (error) throw error;
+
+  const conceptByTransactionId = {};
+  for (const row of data ?? []) {
+    const txId = Number(row.transactionId);
+    if (!txId || conceptByTransactionId[txId]) continue;
+    conceptByTransactionId[txId] = row.concepts?.name ?? null;
+  }
+
+  return conceptByTransactionId;
+}
+
 export async function listTransactionsByProject({ accountId, projectId, dateFrom, dateTo }) {
   let query = supabase
     .from("transactions")

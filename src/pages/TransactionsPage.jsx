@@ -5,7 +5,12 @@ import PaymentRegisterModal from "../components/PaymentRegisterModal";
 import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
-import { deactivateTransaction, listTransactions, TRANSACTION_TYPES } from "../services/transactionsService";
+import {
+  deactivateTransaction,
+  listPrimaryConceptsByTransactionIds,
+  listTransactions,
+  TRANSACTION_TYPES
+} from "../services/transactionsService";
 import { formatNumber } from "../utils/numberFormat";
 
 const moduleConfig = {
@@ -99,7 +104,17 @@ function TransactionsPage({ moduleType }) {
         type: config.type,
         excludeInternalObligations: moduleType === "purchase"
       });
-      setItems(data);
+      if (moduleType === "income" || moduleType === "expense") {
+        const conceptByTxId = await listPrimaryConceptsByTransactionIds(data.map((row) => row.id));
+        setItems(
+          data.map((row) => ({
+            ...row,
+            conceptName: conceptByTxId[Number(row.id)] ?? "-"
+          }))
+        );
+      } else {
+        setItems(data);
+      }
       setError("");
       setPage(1);
     } catch {
@@ -207,6 +222,7 @@ function TransactionsPage({ moduleType }) {
                 <th>ID</th>
                 <th>{t("transactions.date")}</th>
                 <th>{t("common.name")}</th>
+                {(moduleType === "income" || moduleType === "expense") && <th>{t("transactions.concept")}</th>}
                 <th>{t("transactions.person")}</th>
                 <th>{t("projects.project")}</th>
                 <th>{t("transactions.total")}</th>
@@ -228,6 +244,7 @@ function TransactionsPage({ moduleType }) {
                   </td>
                   <td>{item.date}</td>
                   <td>{item.name ?? "-"}</td>
+                  {(moduleType === "income" || moduleType === "expense") && <td>{item.conceptName ?? "-"}</td>}
                   <td>{item.persons?.name ?? "-"}</td>
                   <td>{item.projects?.name ?? "-"}</td>
                   <td>{formatNumber(item.total)}</td>

@@ -1427,6 +1427,64 @@ button:disabled,
   max-width: 100%;
 }
 
+.search-results-panel {
+  max-height: min(75vh, 640px);
+}
+
+.search-results-content {
+  margin-top: 0.65rem;
+  max-height: min(60vh, 500px);
+  overflow: auto;
+  display: grid;
+  gap: 0.55rem;
+  padding-right: 0.15rem;
+}
+
+.search-empty-state {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.search-result-group h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-soft);
+}
+
+.search-result-list {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.search-result-item {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  color: var(--text-strong);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  display: grid;
+  gap: 0.12rem;
+  cursor: pointer;
+}
+
+.search-result-item:hover {
+  background: var(--menu-hover);
+}
+
+.search-result-title {
+  font-weight: 600;
+}
+
+.search-result-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-soft);
+}
+
 @media (max-width: 470px) {
   .workspace-body {
     padding: 0.35rem;

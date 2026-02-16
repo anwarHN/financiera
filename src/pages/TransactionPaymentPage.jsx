@@ -83,6 +83,12 @@ function TransactionPaymentPage({ direction }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setError("");
+    if (!event.currentTarget.checkValidity()) {
+      event.currentTarget.reportValidity();
+      setError(t("common.requiredFields"));
+      return;
+    }
     if (!account?.accountId || !user?.id || !paidTransaction) return;
     if (!form.paymentMethodId) {
       setError(t("transactions.paymentMethodRequired"));

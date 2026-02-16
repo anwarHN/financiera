@@ -61,7 +61,16 @@ function AccountSettingsPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!account?.accountId || !isSystemAdmin) return;
+    setError("");
+    if (!event.currentTarget.checkValidity()) {
+      event.currentTarget.reportValidity();
+      setError(t("common.requiredFields"));
+      return;
+    }
+    if (!account?.accountId || !isSystemAdmin) {
+      setError(t("common.requiredFields"));
+      return;
+    }
 
     try {
       await updateAccount(account.accountId, {

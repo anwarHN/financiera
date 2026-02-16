@@ -60,7 +60,14 @@ function EmployeeFormPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setError("");
+    if (!event.currentTarget.checkValidity()) {
+      event.currentTarget.reportValidity();
+      setError(t("common.requiredFields"));
+      return;
+    }
     if (!account?.accountId || !user?.id) {
+      setError(t("common.requiredFields"));
       return;
     }
 

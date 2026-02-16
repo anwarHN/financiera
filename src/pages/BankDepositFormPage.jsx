@@ -66,10 +66,19 @@ function BankDepositFormPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!account?.accountId || !user?.id || !form.currencyId) return;
+    setError("");
+    if (!event.currentTarget.checkValidity()) {
+      event.currentTarget.reportValidity();
+      setError(t("common.requiredFields"));
+      return;
+    }
+    if (!account?.accountId || !user?.id || !form.currencyId) {
+      setError(t("common.requiredFields"));
+      return;
+    }
     const amount = Math.abs(Number(form.amount || 0));
     if (!amount || !form.fromCashFormId || !form.toBankFormId) {
-      setError(t("common.genericSaveError"));
+      setError(t("common.requiredFields"));
       return;
     }
 

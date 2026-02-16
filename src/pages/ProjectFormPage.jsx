@@ -52,7 +52,16 @@ function ProjectFormPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!account?.accountId || !user?.id) return;
+    setError("");
+    if (!event.currentTarget.checkValidity()) {
+      event.currentTarget.reportValidity();
+      setError(t("common.requiredFields"));
+      return;
+    }
+    if (!account?.accountId || !user?.id) {
+      setError(t("common.requiredFields"));
+      return;
+    }
 
     const payload = {
       accountId: account.accountId,

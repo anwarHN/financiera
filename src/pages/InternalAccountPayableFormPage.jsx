@@ -87,9 +87,22 @@ function InternalAccountPayableFormPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!account?.accountId || !user?.id || !form.currencyId) return;
+    setError("");
+    if (!event.currentTarget.checkValidity()) {
+      event.currentTarget.reportValidity();
+      setError(t("common.requiredFields"));
+      return;
+    }
+    if (!account?.accountId || !user?.id || !form.currencyId) {
+      setError(t("common.requiredFields"));
+      return;
+    }
 
     const total = Number(form.total || 0);
+    if (total <= 0) {
+      setError(t("transactions.invalidTransactionAmount"));
+      return;
+    }
     if (total < existingPayments) {
       setError(t("internalObligations.totalLowerThanPayments"));
       return;

@@ -69,7 +69,16 @@ function AdminPage() {
 
   const handleInvite = async (event) => {
     event.preventDefault();
-    if (!inviteForm.email || !inviteForm.profileId || !account?.accountId || !user?.id) return;
+    setError("");
+    if (!event.currentTarget.checkValidity()) {
+      event.currentTarget.reportValidity();
+      setError(t("common.requiredFields"));
+      return;
+    }
+    if (!inviteForm.email || !inviteForm.profileId || !account?.accountId || !user?.id) {
+      setError(t("common.requiredFields"));
+      return;
+    }
 
     try {
       const normalizedEmail = inviteForm.email.trim().toLowerCase();

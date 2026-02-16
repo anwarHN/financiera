@@ -27,6 +27,7 @@ import {
 } from "react-icons/fi";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import { searchGlobalByAccount } from "../services/globalSearchService";
 import { listPendingInvitationsForCurrentUser } from "../services/invitationsService";
 import ModuleOnboarding from "./ModuleOnboarding";
 
@@ -112,6 +113,16 @@ function resolveGroupByPath(pathname) {
   return null;
 }
 
+function resolveTransactionSearchTarget(row) {
+  if (row.type === 1) return `/sales/${row.id}`;
+  if (row.type === 4) return `/purchases/${row.id}`;
+  if (row.type === 2) return "/expenses";
+  if (row.type === 3) return "/incomes";
+  if (row.type === 5) return "/purchases";
+  if (row.type === 6) return "/sales";
+  return "/";
+}
+
 function Layout() {
   const { logout, user, account, accounts, switchAccount } = useAuth();
   const { t, language, setLanguage } = useI18n();
@@ -128,7 +139,18 @@ function Layout() {
   const [accountPanelStyle, setAccountPanelStyle] = useState({});
   const [notificationsPanelStyle, setNotificationsPanelStyle] = useState({});
   const [userPanelStyle, setUserPanelStyle] = useState({});
+  const [searchPanelStyle, setSearchPanelStyle] = useState({});
   const [pendingInvitations, setPendingInvitations] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState({
+    transactions: [],
+    clients: [],
+    providers: [],
+    products: [],
+    concepts: [],
+    deposits: []
+  });
+  const [isSearching, setIsSearching] = useState(false);
   const [isMobile980, setIsMobile980] = useState(window.matchMedia("(max-width: 980px)").matches);
   const [isMobile620, setIsMobile620] = useState(window.matchMedia("(max-width: 620px)").matches);
   const [isAppMenuCompact, setIsAppMenuCompact] = useState(false);
@@ -140,6 +162,8 @@ function Layout() {
   const sidebarMobileBtnRef = useRef(null);
   const appMenuOverflowBtnRef = useRef(null);
   const actionsOverflowBtnRef = useRef(null);
+  const desktopSearchWrapRef = useRef(null);
+  const mobileSearchBtnRef = useRef(null);
   const accountSwitchBtnRef = useRef(null);
   const notificationsBtnRef = useRef(null);
   const userMenuBtnRef = useRef(null);
@@ -183,6 +207,60 @@ function Layout() {
       isMounted = false;
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const normalized = searchTerm.trim();
+
+    if (!account?.accountId || normalized.length < 2) {
+      setIsSearching(false);
+      setSearchResults({
+        transactions: [],
+        clients: [],
+        providers: [],
+        products: [],
+        concepts: [],
+        deposits: []
+      });
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    const timerId = window.setTimeout(async () => {
+      try {
+        setIsSearching(true);
+        const data = await searchGlobalByAccount({
+          accountId: account.accountId,
+          term: normalized,
+          limit: 8
+        });
+        if (isMounted) {
+          setSearchResults(data);
+        }
+      } catch {
+        if (isMounted) {
+          setSearchResults({
+            transactions: [],
+            clients: [],
+            providers: [],
+            products: [],
+            concepts: [],
+            deposits: []
+          });
+        }
+      } finally {
+        if (isMounted) {
+          setIsSearching(false);
+        }
+      }
+    }, 280);
+
+    return () => {
+      isMounted = false;
+      window.clearTimeout(timerId);
+    };
+  }, [account?.accountId, searchTerm]);
 
   const selectedGroup = navGroups.find((group) => group.id === selectedGroupId) ?? null;
   const isAccountRoute = pathname.startsWith("/account");
@@ -255,6 +333,76 @@ function Layout() {
   const actionOverflowItems = useMemo(() => actionItems.filter((item) => item.overflowable), [actionItems]);
 
   const shouldShowAppMenu = !isAccountRoute && Boolean(selectedGroup);
+  const hasSearchTerm = searchTerm.trim().length >= 2;
+  const searchGroups = useMemo(
+    () => [
+      {
+        key: "transactions",
+        title: t("sidebar.transactions"),
+        rows: (searchResults.transactions ?? []).map((row) => ({
+          id: `tx-${row.id}`,
+          title: row.name || `${t("sidebar.transactions")} #${row.id}`,
+          subtitle: `${row.date || "-"} · ${row.referenceNumber || "-"}`,
+          to: resolveTransactionSearchTarget(row)
+        }))
+      },
+      {
+        key: "clients",
+        title: t("nav.clients"),
+        rows: (searchResults.clients ?? []).map((row) => ({
+          id: `client-${row.id}`,
+          title: row.name || `#${row.id}`,
+          subtitle: row.phone || row.address || "-",
+          to: "/clients"
+        }))
+      },
+      {
+        key: "providers",
+        title: t("nav.providers"),
+        rows: (searchResults.providers ?? []).map((row) => ({
+          id: `provider-${row.id}`,
+          title: row.name || `#${row.id}`,
+          subtitle: row.phone || row.address || "-",
+          to: "/providers"
+        }))
+      },
+      {
+        key: "products",
+        title: t("nav.products"),
+        rows: (searchResults.products ?? []).map((row) => ({
+          id: `product-${row.id}`,
+          title: row.name || `#${row.id}`,
+          subtitle: `ID ${row.id}`,
+          to: "/products"
+        }))
+      },
+      {
+        key: "concepts",
+        title: t("sidebar.concepts"),
+        rows: (searchResults.concepts ?? []).map((row) => ({
+          id: `concept-${row.id}`,
+          title: row.name || `#${row.id}`,
+          subtitle: `ID ${row.id}`,
+          to: "/concept-groups"
+        }))
+      },
+      {
+        key: "deposits",
+        title: t("nav.bankDeposits"),
+        rows: (searchResults.deposits ?? []).map((row) => ({
+          id: `deposit-${row.id}`,
+          title: row.name || `${t("nav.bankDeposits")} #${row.id}`,
+          subtitle: `${row.date || "-"} · ${row.referenceNumber || "-"}`,
+          to: "/bank-deposits"
+        }))
+      }
+    ],
+    [searchResults, t]
+  );
+  const totalSearchRows = useMemo(
+    () => searchGroups.reduce((sum, group) => sum + group.rows.length, 0),
+    [searchGroups]
+  );
 
   const positionPanelUnderButton = (buttonEl) => {
     if (!buttonEl) return {};
@@ -327,6 +475,10 @@ function Layout() {
       if (openPanel === "notifications") {
         setNotificationsPanelStyle(positionPanelUnderButton(notificationsBtnRef.current));
       }
+      if (openPanel === "search") {
+        const searchAnchor = isMobile980 ? mobileSearchBtnRef.current : desktopSearchWrapRef.current;
+        setSearchPanelStyle(positionPanelUnderButton(searchAnchor));
+      }
       if (openPanel === "user") {
         setUserPanelStyle(positionPanelUnderButton(userMenuBtnRef.current));
       }
@@ -339,7 +491,7 @@ function Layout() {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onResize, true);
     };
-  }, [openToolbarPanel, openPanel, selectedGroup]);
+  }, [openToolbarPanel, openPanel, selectedGroup, isMobile980]);
 
   useEffect(() => {
     const routeGroupId = resolveGroupByPath(pathname);
@@ -378,6 +530,10 @@ function Layout() {
     if (panelName === "notifications") {
       setNotificationsPanelStyle(positionPanelUnderButton(notificationsBtnRef.current));
     }
+    if (panelName === "search") {
+      const searchAnchor = isMobile980 ? mobileSearchBtnRef.current : desktopSearchWrapRef.current;
+      setSearchPanelStyle(positionPanelUnderButton(searchAnchor));
+    }
     if (panelName === "user") {
       setUserPanelStyle(positionPanelUnderButton(userMenuBtnRef.current));
     }
@@ -394,16 +550,41 @@ function Layout() {
           </Link>
         </div>
 
-        <label className="search-wrap" htmlFor="global-search">
+        <label
+          className="search-wrap"
+          htmlFor="global-search"
+          ref={desktopSearchWrapRef}
+          onClick={(event) => {
+            event.stopPropagation();
+            const searchAnchor = isMobile980 ? mobileSearchBtnRef.current : desktopSearchWrapRef.current;
+            setSearchPanelStyle(positionPanelUnderButton(searchAnchor));
+            setOpenPanel("search");
+            setOpenToolbarPanel(null);
+          }}
+        >
           <span className="search-icon">
             <FiSearch />
           </span>
-          <input id="global-search" type="text" placeholder={t("common.searchPlaceholder")} />
+          <input
+            id="global-search"
+            type="text"
+            placeholder={t("common.searchPlaceholder")}
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            onFocus={(event) => {
+              event.stopPropagation();
+              const searchAnchor = isMobile980 ? mobileSearchBtnRef.current : desktopSearchWrapRef.current;
+              setSearchPanelStyle(positionPanelUnderButton(searchAnchor));
+              setOpenPanel("search");
+              setOpenToolbarPanel(null);
+            }}
+          />
         </label>
 
         <div className="topbar-right">
           <button
             className="icon-btn mobile-search-btn"
+            ref={mobileSearchBtnRef}
             onClick={(event) => togglePanel("search", event)}
             aria-label={t("common.searchPlaceholder")}
           >
@@ -446,7 +627,8 @@ function Layout() {
       </header>
 
       <div
-        className={`floating-panel panel-right ${openPanel === "search" ? "open" : ""}`}
+        className={`floating-panel panel-right panel-anchor search-results-panel ${openPanel === "search" ? "open" : ""}`}
+        style={searchPanelStyle}
         onClick={(event) => event.stopPropagation()}
       >
         <h3>{t("common.searchPlaceholder")}</h3>
@@ -454,8 +636,47 @@ function Layout() {
           <span className="search-icon">
             <FiSearch />
           </span>
-          <input id="global-search-mobile" type="text" placeholder={t("common.searchPlaceholder")} />
+          <input
+            id="global-search-mobile"
+            type="text"
+            placeholder={t("common.searchPlaceholder")}
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+          />
         </label>
+        <div className="search-results-content">
+          {!hasSearchTerm ? (
+            <p className="search-empty-state">{t("common.searchTypeToStart")}</p>
+          ) : isSearching ? (
+            <p className="search-empty-state">{t("common.searching")}</p>
+          ) : totalSearchRows === 0 ? (
+            <p className="search-empty-state">{t("common.searchNoResults")}</p>
+          ) : (
+            searchGroups.map((group) =>
+              group.rows.length > 0 ? (
+                <section key={group.key} className="search-result-group">
+                  <h4>{group.title}</h4>
+                  <div className="search-result-list">
+                    {group.rows.map((row) => (
+                      <button
+                        key={row.id}
+                        type="button"
+                        className="search-result-item"
+                        onClick={() => {
+                          navigate(row.to);
+                          setOpenPanel(null);
+                        }}
+                      >
+                        <span className="search-result-title">{row.title}</span>
+                        <span className="search-result-subtitle">{row.subtitle}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ) : null
+            )
+          )}
+        </div>
       </div>
 
       <div
