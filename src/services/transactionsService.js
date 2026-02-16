@@ -213,6 +213,11 @@ export async function reconcileTransaction(id, reconciledAt) {
   if (error) throw error;
 }
 
+export async function unreconcileTransaction(id) {
+  const { error } = await supabase.from("transactions").update({ isReconciled: false, reconciledAt: null }).eq("id", id);
+  if (error) throw error;
+}
+
 export async function listInternalObligations(accountId) {
   const { data, error } = await supabase
     .from("transactions")

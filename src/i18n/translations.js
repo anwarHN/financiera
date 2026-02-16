@@ -362,11 +362,14 @@ export const translations = {
       bankAccount: "Cuenta bancaria",
       reportDate: "Fecha de corte",
       reconcileDate: "Fecha de conciliación",
+      reconcileDateHelp: "Se usará como la fecha para marcar el movimiento como conciliado.",
       currentBalance: "Saldo actual",
       previousBalance: "Saldo anterior (conciliado antes del rango)",
-      reconciledBalanceAsOfDate: "Saldo conciliado a fecha",
+      periodMovementsSum: "Suma de los movimientos en el período seleccionado",
       reconcile: "Conciliar",
-      reconciled: "Conciliada"
+      reconciled: "Conciliada",
+      changeReconcileDate: "Cambiar fecha conciliación",
+      unreconcile: "Desmarcar como conciliado"
     },
     transactions: {
       salesTitle: "Registro de ventas",
@@ -803,11 +806,14 @@ export const translations = {
       bankAccount: "Bank account",
       reportDate: "As-of date",
       reconcileDate: "Reconciliation date",
+      reconcileDateHelp: "This date will be used when marking the movement as reconciled.",
       currentBalance: "Current balance",
       previousBalance: "Previous balance (reconciled before range)",
-      reconciledBalanceAsOfDate: "Reconciled balance as of date",
+      periodMovementsSum: "Sum of movements in the selected period",
       reconcile: "Reconcile",
-      reconciled: "Reconciled"
+      reconciled: "Reconciled",
+      changeReconcileDate: "Change reconciliation date",
+      unreconcile: "Unmark as reconciled"
     },
     transactions: {
       salesTitle: "Sales entries",

@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { listAccountPaymentForms } from "../services/accountPaymentFormsService";
-import { listTransactionsByAccountPaymentForm, reconcileTransaction } from "../services/transactionsService";
+import {
+  listTransactionsByAccountPaymentForm,
+  reconcileTransaction,
+  unreconcileTransaction
+} from "../services/transactionsService";
 import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
 import { formatNumber } from "../utils/numberFormat";
 
@@ -58,7 +62,16 @@ function BankReconciliationPage() {
     }
   };
 
-  const currentBalance = useMemo(() => transactions.reduce((acc, row) => acc + transactionAmount(row), 0), [transactions]);
+  const periodMovementsSum = useMemo(() => {
+    const from = new Date(`${dateFrom}T00:00:00.000Z`);
+    const until = new Date(`${dateTo}T23:59:59.999Z`);
+    return transactions
+      .filter((row) => {
+        const txDate = new Date(`${row.date}T00:00:00.000Z`);
+        return txDate >= from && txDate <= until;
+      })
+      .reduce((acc, row) => acc + transactionAmount(row), 0);
+  }, [transactions, dateFrom, dateTo]);
 
   const previousBalance = useMemo(() => {
     const from = new Date(`${dateFrom}T00:00:00.000Z`);
@@ -67,19 +80,10 @@ function BankReconciliationPage() {
       .reduce((acc, row) => acc + transactionAmount(row), 0);
   }, [transactions, dateFrom]);
 
-  const reconciledBalanceAsOfDate = useMemo(() => {
-    const from = new Date(`${dateFrom}T00:00:00.000Z`);
-    const until = new Date(`${dateTo}T23:59:59.999Z`);
-    return transactions
-      .filter(
-        (row) =>
-          row.isReconciled &&
-          row.reconciledAt &&
-          new Date(row.reconciledAt) >= from &&
-          new Date(row.reconciledAt) <= until
-      )
-      .reduce((acc, row) => acc + transactionAmount(row), 0);
-  }, [transactions, dateFrom, dateTo]);
+  const currentBalance = useMemo(
+    () => previousBalance + periodMovementsSum,
+    [previousBalance, periodMovementsSum]
+  );
 
   const transactionsInRange = useMemo(() => {
     const from = new Date(`${dateFrom}T00:00:00.000Z`);
@@ -99,6 +103,15 @@ function BankReconciliationPage() {
     }
   };
 
+  const handleUnreconcile = async (transactionId) => {
+    try {
+      await unreconcileTransaction(transactionId);
+      await loadTransactions();
+    } catch {
+      setError(t("common.genericSaveError"));
+    }
+  };
+
   return (
     <div className="module-page">
       <h1>{t("reconciliation.title")}</h1>
@@ -106,7 +119,7 @@ function BankReconciliationPage() {
 
       <section className="generic-panel">
         <div className="form-grid-2">
-          <label className="field-block">
+          <label className="field-block form-span-2">
             <span>{t("reconciliation.bankAccount")}</span>
             <select value={selectedFormId} onChange={(event) => setSelectedFormId(event.target.value)}>
               <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
@@ -125,20 +138,21 @@ function BankReconciliationPage() {
             <span>{t("reports.dateTo")}</span>
             <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
           </label>
-          <label className="field-block">
+          <label className="field-block form-span-2">
             <span>{t("reconciliation.reconcileDate")}</span>
             <input type="date" value={reconcileDate} onChange={(event) => setReconcileDate(event.target.value)} />
+            <small>{t("reconciliation.reconcileDateHelp")}</small>
           </label>
         </div>
 
         <p>
-          {t("reconciliation.currentBalance")}: <strong>{formatNumber(currentBalance)}</strong>
-        </p>
-        <p>
           {t("reconciliation.previousBalance")}: <strong>{formatNumber(previousBalance)}</strong>
         </p>
         <p>
-          {t("reconciliation.reconciledBalanceAsOfDate")}: <strong>{formatNumber(reconciledBalanceAsOfDate)}</strong>
+          {t("reconciliation.currentBalance")}: <strong>{formatNumber(currentBalance)}</strong>
+        </p>
+        <p>
+          {t("reconciliation.periodMovementsSum")}: <strong>{formatNumber(periodMovementsSum)}</strong>
         </p>
       </section>
 
@@ -167,12 +181,19 @@ function BankReconciliationPage() {
                 <td>{formatNumber(row.total)}</td>
                 <td>{row.isReconciled ? new Date(row.reconciledAt).toLocaleDateString() : "-"}</td>
                 <td>
-                  {row.isReconciled ? (
-                    "-"
-                  ) : (
+                  {!row.isReconciled ? (
                     <button type="button" className="button-secondary" onClick={() => handleReconcile(row.id)}>
                       {t("reconciliation.reconcile")}
                     </button>
+                  ) : (
+                    <div className="table-actions-inline">
+                      <button type="button" className="button-secondary" onClick={() => handleReconcile(row.id)}>
+                        {t("reconciliation.changeReconcileDate")}
+                      </button>
+                      <button type="button" className="button-danger" onClick={() => handleUnreconcile(row.id)}>
+                        {t("reconciliation.unreconcile")}
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>

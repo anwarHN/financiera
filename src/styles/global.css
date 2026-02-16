@@ -1087,6 +1087,12 @@ button:disabled,
   overflow: visible;
 }
 
+.table-actions-inline {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
 .row-actions-wrap {
   position: relative;
 }
