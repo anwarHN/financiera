@@ -1,4 +1,4 @@
 /assets/* /assets/:splat 200
 /favicon.ico /favicon.ico 200
 /robots.txt /robots.txt 200
-/* /index.html 200
+/* / 200
