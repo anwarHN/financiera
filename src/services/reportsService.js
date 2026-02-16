@@ -4,7 +4,7 @@ export async function getTransactionsForReports(accountId, { dateFrom, dateTo } 
   let query = supabase
     .from("transactions")
     .select(
-      'id, date, type, total, balance, payments, isActive, isAccountPayable, isAccountReceivable, isIncomingPayment, isOutcomingPayment, "accountPaymentFormId", "projectId", currencyId, account_payment_forms(name), projects(name)'
+      'id, date, type, total, balance, payments, additionalCharges, isActive, isAccountPayable, isAccountReceivable, isIncomingPayment, isOutcomingPayment, "accountPaymentFormId", "projectId", currencyId, account_payment_forms(name), projects(name)'
     )
     .eq("accountId", accountId)
     .eq("isActive", true);

@@ -6,6 +6,7 @@ import { listCurrencies } from "../services/currenciesService";
 import { listProjects } from "../services/projectsService";
 import { exportReportXlsx, getTransactionsForReports } from "../services/reportsService";
 import { listInternalObligationsForReport } from "../services/transactionsService";
+import { formatNumber } from "../utils/numberFormat";
 
 const reportCatalog = [
   { id: "sales", titleKey: "reports.sales", filters: ["dateRange", "currency"] },
@@ -192,6 +193,10 @@ function ReportsPage() {
 
   const total = useMemo(() => results.reduce((acc, item) => acc + Number(item.total || 0), 0), [results]);
   const balance = useMemo(() => results.reduce((acc, item) => acc + Number(item.balance || 0), 0), [results]);
+  const salesAdditionalChargesTotal = useMemo(() => {
+    if (selectedReport !== "sales") return 0;
+    return results.reduce((acc, item) => acc + Number(item.additionalCharges || 0), 0);
+  }, [results, selectedReport]);
 
   const handleExport = async () => {
     if (!account?.accountId || !selectedReport || isExporting) return;
@@ -335,19 +340,24 @@ function ReportsPage() {
 
           {budgetExecutionTotals ? (
             <p>
-              {t("budgets.totalBudget")}: {budgetExecutionTotals.budgeted.toFixed(2)} | {t("reports.executed")}: {budgetExecutionTotals.executed.toFixed(2)} | {t("reports.variance")}: {budgetExecutionTotals.variance.toFixed(2)}
+              {t("budgets.totalBudget")}: {formatNumber(budgetExecutionTotals.budgeted)} | {t("reports.executed")}: {formatNumber(budgetExecutionTotals.executed)} | {t("reports.variance")}: {formatNumber(budgetExecutionTotals.variance)}
             </p>
           ) : (
             <>
               <p>
-                {t("transactions.total")}: {total.toFixed(2)}
+                {t("transactions.total")}: {formatNumber(total)}
               </p>
+              {selectedReport === "sales" ? (
+                <p>
+                  {t("transactions.additionalCharges")}: {formatNumber(salesAdditionalChargesTotal)}
+                </p>
+              ) : null}
               {(selectedReport === "receivable" ||
                 selectedReport === "payable" ||
                 selectedReport === "internal_obligations" ||
                 selectedReport === "cashflow") && (
                 <p>
-                  {t("transactions.balance")}: {balance.toFixed(2)}
+                  {t("transactions.balance")}: {formatNumber(balance)}
                 </p>
               )}
             </>
@@ -381,9 +391,9 @@ function ReportsPage() {
                 rowsWithTypeLabel.map((tx) => (
                   <tr key={`${selectedReport}-${tx.id}`}>
                     <td>{tx.typeLabel}</td>
-                    <td>{Number(tx.budgeted || 0).toFixed(2)}</td>
-                    <td>{Number(tx.executed || 0).toFixed(2)}</td>
-                    <td>{Number(tx.variance || 0).toFixed(2)}</td>
+                    <td>{formatNumber(tx.budgeted || 0)}</td>
+                    <td>{formatNumber(tx.executed || 0)}</td>
+                    <td>{formatNumber(tx.variance || 0)}</td>
                   </tr>
                 ))
               ) : (
@@ -392,8 +402,8 @@ function ReportsPage() {
                     <td>{tx.id}</td>
                     <td>{tx.date}</td>
                     <td>{tx.typeLabel}</td>
-                    <td>{Number(tx.total || 0).toFixed(2)}</td>
-                    <td>{Number(tx.balance || 0).toFixed(2)}</td>
+                    <td>{formatNumber(tx.total || 0)}</td>
+                    <td>{formatNumber(tx.balance || 0)}</td>
                   </tr>
                 ))
               )}

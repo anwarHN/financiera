@@ -805,7 +805,12 @@ function TransactionCreatePage({ moduleType }) {
                         />
                       </td>
                       <td>
-                        <input type="number" value={line.additionalCharges} readOnly />
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={line.additionalCharges}
+                          onChange={(event) => updateSaleLine(line.rowId, "additionalCharges", event.target.value)}
+                        />
                       </td>
                       <td>{lineAmounts.total.toFixed(2)}</td>
                       <td>
