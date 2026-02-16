@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
 import { FiCreditCard, FiMail, FiSettings, FiShield, FiUserPlus } from "react-icons/fi";
 import { useI18n } from "../contexts/I18nContext";
+import { useAuth } from "../contexts/AuthContext";
 
 const accountTabs = [
   { path: "/account/billing", key: "accountManage.billing", icon: FiCreditCard },
@@ -13,6 +14,7 @@ const accountTabs = [
 
 function AccountManagePage() {
   const { t } = useI18n();
+  const { account } = useAuth();
   const { pathname } = useLocation();
   const [isCompactMenu, setIsCompactMenu] = useState(window.matchMedia("(max-width: 980px)").matches);
   const [isOverflowOpen, setIsOverflowOpen] = useState(false);
@@ -46,6 +48,10 @@ function AccountManagePage() {
     window.addEventListener("click", closeOverflow);
     return () => window.removeEventListener("click", closeOverflow);
   }, []);
+
+  if (account && !account.isOriginalAccount) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="account-manage-shell">

@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 export async function listUserAccounts(userId) {
   const { data, error } = await supabase
     .from("usersToAccounts")
-    .select('accountId, accounts(id, name, "billingStatus", "trialEndsAt", "subscriptionCurrentPeriodEnd")')
+    .select('accountId, accounts(id, name, "createdById", "billingStatus", "trialEndsAt", "subscriptionCurrentPeriodEnd")')
     .eq("userId", userId)
     .order("accountId", { ascending: true });
 
@@ -14,6 +14,7 @@ export async function listUserAccounts(userId) {
   return (data ?? []).map((row) => ({
     accountId: row.accountId,
     accountName: row.accounts?.name ?? "",
+    isOriginalAccount: row.accounts?.createdById === userId,
     billingStatus: row.accounts?.billingStatus ?? "trialing",
     trialEndsAt: row.accounts?.trialEndsAt ?? null,
     subscriptionCurrentPeriodEnd: row.accounts?.subscriptionCurrentPeriodEnd ?? null

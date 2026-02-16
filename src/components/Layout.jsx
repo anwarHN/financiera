@@ -15,6 +15,7 @@ import {
   FiList,
   FiMoon,
   FiPackage,
+  FiShare2,
   FiUser,
   FiSearch,
   FiSun,
@@ -449,9 +450,23 @@ function Layout() {
         <h3>{t("topbar.notifications")}</h3>
         <ul className="panel-list">
           {pendingInvitations.length > 0 ? (
-            <li>
-              {t("topbar.pendingInvitations")} ({pendingInvitations.length})
-            </li>
+            <>
+              <li>
+                {t("topbar.pendingInvitations")} ({pendingInvitations.length})
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="panel-action"
+                  onClick={() => {
+                    navigate("/account/invitations");
+                    setOpenPanel(null);
+                  }}
+                >
+                  <FiList /> {t("topbar.goToInvitations")}
+                </button>
+              </li>
+            </>
           ) : (
             <li>{t("topbar.noNotifications")}</li>
           )}
@@ -476,8 +491,10 @@ function Layout() {
                 onClick={() => {
                   switchAccount(row.accountId);
                   setOpenPanel(null);
+                  window.location.assign("/");
                 }}
               >
+                {!row.isOriginalAccount ? <FiShare2 /> : null}
                 {row.accountName || `${t("topbar.currentAccount")} #${row.accountId}`}
               </button>
             ))
@@ -493,18 +510,20 @@ function Layout() {
         <h3>{t("topbar.account")}</h3>
         <ul className="panel-list">
           <li>{user?.email}</li>
-          <li className="panel-section-separator">
-            <button
-              type="button"
-              className="panel-action"
-              onClick={() => {
-                navigate("/account");
-                setOpenPanel(null);
-              }}
-            >
-              <FiList /> {t("topbar.manageAccount")}
-            </button>
-          </li>
+          {account?.isOriginalAccount ? (
+            <li className="panel-section-separator">
+              <button
+                type="button"
+                className="panel-action"
+                onClick={() => {
+                  navigate("/account");
+                  setOpenPanel(null);
+                }}
+              >
+                <FiList /> {t("topbar.manageAccount")}
+              </button>
+            </li>
+          ) : null}
           <li>
             <button
               type="button"
