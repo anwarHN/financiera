@@ -4,6 +4,7 @@ import {
   FiBell,
   FiBarChart2,
   FiBox,
+  FiChevronDown,
   FiChevronRight,
   FiCreditCard,
   FiDollarSign,
@@ -14,6 +15,7 @@ import {
   FiList,
   FiMoon,
   FiPackage,
+  FiUser,
   FiSearch,
   FiSun,
   FiTrendingDown,
@@ -23,6 +25,7 @@ import {
 } from "react-icons/fi";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import { listPendingInvitationsForCurrentUser } from "../services/invitationsService";
 
 const navGroups = [
   {
@@ -110,6 +113,10 @@ function Layout() {
   const [openPanel, setOpenPanel] = useState(null);
   const [openToolbarPanel, setOpenToolbarPanel] = useState(null);
   const [toolbarPanelStyle, setToolbarPanelStyle] = useState({});
+  const [accountPanelStyle, setAccountPanelStyle] = useState({});
+  const [notificationsPanelStyle, setNotificationsPanelStyle] = useState({});
+  const [userPanelStyle, setUserPanelStyle] = useState({});
+  const [pendingInvitations, setPendingInvitations] = useState([]);
   const [isMobile980, setIsMobile980] = useState(window.matchMedia("(max-width: 980px)").matches);
   const [isMobile620, setIsMobile620] = useState(window.matchMedia("(max-width: 620px)").matches);
   const [isAppMenuCompact, setIsAppMenuCompact] = useState(false);
@@ -120,6 +127,9 @@ function Layout() {
   const sidebarMobileBtnRef = useRef(null);
   const appMenuOverflowBtnRef = useRef(null);
   const actionsOverflowBtnRef = useRef(null);
+  const accountSwitchBtnRef = useRef(null);
+  const notificationsBtnRef = useRef(null);
+  const userMenuBtnRef = useRef(null);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", isDarkTheme ? "dark" : "light");
@@ -135,6 +145,31 @@ function Layout() {
     document.documentElement.setAttribute("data-density", density);
     localStorage.setItem("density", density);
   }, [density]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadPendingInvitations = async () => {
+      if (!user?.id) {
+        setPendingInvitations([]);
+        return;
+      }
+      try {
+        const data = await listPendingInvitationsForCurrentUser();
+        if (isMounted) {
+          setPendingInvitations(data);
+        }
+      } catch {
+        if (isMounted) {
+          setPendingInvitations([]);
+        }
+      }
+    };
+
+    loadPendingInvitations();
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id]);
 
   const selectedGroup = navGroups.find((group) => group.id === selectedGroupId) ?? null;
   const isAccountRoute = pathname.startsWith("/account");
@@ -271,6 +306,15 @@ function Layout() {
       if (openToolbarPanel === "actions-overflow") {
         setToolbarPanelStyle(positionPanelUnderButton(actionsOverflowBtnRef.current));
       }
+      if (openPanel === "account-switch") {
+        setAccountPanelStyle(positionPanelUnderButton(accountSwitchBtnRef.current));
+      }
+      if (openPanel === "notifications") {
+        setNotificationsPanelStyle(positionPanelUnderButton(notificationsBtnRef.current));
+      }
+      if (openPanel === "user") {
+        setUserPanelStyle(positionPanelUnderButton(userMenuBtnRef.current));
+      }
     };
 
     onResize();
@@ -280,7 +324,7 @@ function Layout() {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onResize, true);
     };
-  }, [openToolbarPanel, selectedGroup]);
+  }, [openToolbarPanel, openPanel, selectedGroup]);
 
   useEffect(() => {
     const routeGroupId = resolveGroupByPath(pathname);
@@ -307,14 +351,21 @@ function Layout() {
     };
   }, []);
 
-  const userInitials = (user?.email || "U").slice(0, 2).toUpperCase();
-
   const handleLogout = async () => {
     await logout();
   };
 
   const togglePanel = (panelName, event) => {
     event.stopPropagation();
+    if (panelName === "account-switch") {
+      setAccountPanelStyle(positionPanelUnderButton(accountSwitchBtnRef.current));
+    }
+    if (panelName === "notifications") {
+      setNotificationsPanelStyle(positionPanelUnderButton(notificationsBtnRef.current));
+    }
+    if (panelName === "user") {
+      setUserPanelStyle(positionPanelUnderButton(userMenuBtnRef.current));
+    }
     setOpenPanel((prev) => (prev === panelName ? null : panelName));
     setOpenToolbarPanel(null);
   };
@@ -336,55 +387,80 @@ function Layout() {
         </label>
 
         <div className="topbar-right">
+          <button
+            className="icon-btn mobile-search-btn"
+            onClick={(event) => togglePanel("search", event)}
+            aria-label={t("common.searchPlaceholder")}
+          >
+            <FiSearch />
+          </button>
           <button className="icon-btn" onClick={() => navigate("/")} aria-label={t("nav.dashboard")}>
             <FiHome />
           </button>
           <button
             className="account-switch-btn"
+            ref={accountSwitchBtnRef}
             onClick={(event) => togglePanel("account-switch", event)}
             aria-label={t("topbar.currentAccount")}
             title={t("topbar.currentAccount")}
           >
             {account?.accountName || t("topbar.currentAccount")}
           </button>
-          <button className="icon-btn" onClick={() => setIsDarkTheme((prev) => !prev)} aria-label={t("topbar.theme")}>
-            {isDarkTheme ? <FiSun /> : <FiMoon />}
-          </button>
           <button
             className="icon-btn"
+            ref={notificationsBtnRef}
             onClick={(event) => togglePanel("notifications", event)}
             aria-label={t("topbar.notifications")}
           >
             <FiBell />
+            {pendingInvitations.length > 0 ? <span className="notification-dot" /> : null}
           </button>
-          <select id="language-select" value={language} onChange={(event) => setLanguage(event.target.value)}>
-            <option value="es">ES</option>
-            <option value="en">EN</option>
-          </select>
           <div className="user-menu-wrap">
             <button
               className="avatar-btn"
+              ref={userMenuBtnRef}
               onClick={(event) => togglePanel("user", event)}
               aria-label={t("topbar.userMenu")}
             >
-              {userInitials}
+              <FiUser />
             </button>
           </div>
         </div>
       </header>
 
       <div
-        className={`floating-panel panel-right ${openPanel === "notifications" ? "open" : ""}`}
+        className={`floating-panel panel-right ${openPanel === "search" ? "open" : ""}`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h3>{t("common.searchPlaceholder")}</h3>
+        <label className="search-wrap search-wrap-panel" htmlFor="global-search-mobile">
+          <span className="search-icon">
+            <FiSearch />
+          </span>
+          <input id="global-search-mobile" type="text" placeholder={t("common.searchPlaceholder")} />
+        </label>
+      </div>
+
+      <div
+        className={`floating-panel panel-right panel-anchor ${openPanel === "notifications" ? "open" : ""}`}
+        style={notificationsPanelStyle}
         onClick={(event) => event.stopPropagation()}
       >
         <h3>{t("topbar.notifications")}</h3>
         <ul className="panel-list">
-          <li>{t("topbar.noNotifications")}</li>
+          {pendingInvitations.length > 0 ? (
+            <li>
+              {t("topbar.pendingInvitations")} ({pendingInvitations.length})
+            </li>
+          ) : (
+            <li>{t("topbar.noNotifications")}</li>
+          )}
         </ul>
       </div>
 
       <div
-        className={`floating-panel panel-right ${openPanel === "account-switch" ? "open" : ""}`}
+        className={`floating-panel panel-right panel-anchor ${openPanel === "account-switch" ? "open" : ""}`}
+        style={accountPanelStyle}
         onClick={(event) => event.stopPropagation()}
       >
         <h3>{t("topbar.currentAccount")}</h3>
@@ -410,12 +486,32 @@ function Layout() {
       </div>
 
       <div
-        className={`floating-panel panel-right ${openPanel === "user" ? "open" : ""}`}
+        className={`floating-panel panel-right panel-anchor ${openPanel === "user" ? "open" : ""}`}
+        style={userPanelStyle}
         onClick={(event) => event.stopPropagation()}
       >
         <h3>{t("topbar.account")}</h3>
         <ul className="panel-list">
           <li>{user?.email}</li>
+          <li>
+            <button
+              type="button"
+              className="panel-action"
+              onClick={() => setIsDarkTheme((prev) => !prev)}
+              aria-label={t("topbar.theme")}
+            >
+              {isDarkTheme ? <FiSun /> : <FiMoon />} {t("topbar.theme")}
+            </button>
+          </li>
+          <li>
+            <label className="field-block">
+              <span>{t("common.language")}</span>
+              <select id="language-select" value={language} onChange={(event) => setLanguage(event.target.value)}>
+                <option value="es">ES</option>
+                <option value="en">EN</option>
+              </select>
+            </label>
+          </li>
           <li>
             <button
               type="button"
@@ -488,18 +584,20 @@ function Layout() {
         <section className={`workspace ${isAccountRoute ? "account-mode" : ""}`}>
           {shouldShowAppMenu && (
             <div className="app-menu">
-              <button
-                type="button"
-                className="action-btn icon-only mobile-only"
-                ref={sidebarMobileBtnRef}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  openToolbarAnchorPanel("sidebar-mobile", sidebarMobileBtnRef.current);
-                }}
-                aria-label="Módulos"
-              >
-                ☰
-              </button>
+              {isMobile980 ? (
+                <button
+                  type="button"
+                  className="action-btn icon-only mobile-only"
+                  ref={sidebarMobileBtnRef}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openToolbarAnchorPanel("sidebar-mobile", sidebarMobileBtnRef.current);
+                  }}
+                  aria-label="Módulos"
+                >
+                  ☰
+                </button>
+              ) : null}
 
               <div className="app-menu-primary" ref={appMenuPrimaryRef}>
                 {selectedGroup?.items.map((item, index) => {
@@ -525,7 +623,7 @@ function Layout() {
 
               <button
                 type="button"
-                className="action-btn icon-only"
+                className="action-btn overflow-trigger-btn"
                 ref={appMenuOverflowBtnRef}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -533,28 +631,15 @@ function Layout() {
                 }}
                 aria-label="Más opciones de menú"
                 style={{ display: isAppMenuCompact && appMenuOverflowItems.length > 0 ? "inline-flex" : "none" }}
+                
               >
-                ⋯
+                <span className="overflow-more-btn">{t("common.more")} <FiChevronDown /></span>
               </button>
             </div>
           )}
 
           {!isAccountRoute && (
             <div className="actions-menu">
-              <button
-                type="button"
-                className="action-btn icon-only"
-                ref={actionsOverflowBtnRef}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  openToolbarAnchorPanel("actions-overflow", actionsOverflowBtnRef.current);
-                }}
-                aria-label="Más acciones"
-                style={{ display: isActionsCompact && actionOverflowItems.length > 0 ? "inline-flex" : "none" }}
-              >
-                ⋯
-              </button>
-
               <div className="actions-primary" ref={actionsPrimaryRef}>
                 {actionItems.map((item) => {
                   const hideInCompact = isActionsCompact && item.overflowable;
@@ -575,6 +660,19 @@ function Layout() {
                   );
                 })}
               </div>
+              <button
+                type="button"
+                className="action-btn overflow-trigger-btn"
+                ref={actionsOverflowBtnRef}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openToolbarAnchorPanel("actions-overflow", actionsOverflowBtnRef.current);
+                }}
+                aria-label="Más acciones"
+                style={{ display: isActionsCompact && actionOverflowItems.length > 0 ? "inline-flex" : "none" }}
+              >
+                <span className="overflow-more-btn">{t("common.more")} <FiChevronDown /></span>
+              </button>
             </div>
           )}
 

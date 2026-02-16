@@ -27,6 +27,7 @@ export const translations = {
       next: "Siguiente",
       page: "Página",
       of: "de",
+      more: "Más",
       genericLoadError: "No fue posible cargar los datos",
       genericSaveError: "No fue posible guardar los cambios"
     },
@@ -36,6 +37,7 @@ export const translations = {
       notifications: "Notificaciones",
       userMenu: "Menú de usuario",
       noNotifications: "Sin notificaciones",
+      pendingInvitations: "Tienes invitaciones pendientes de aceptar",
       account: "Cuenta",
       currentAccount: "Cuenta actual",
       manageAccount: "Gestionar cuenta",
@@ -387,6 +389,7 @@ export const translations = {
       next: "Next",
       page: "Page",
       of: "of",
+      more: "More",
       genericLoadError: "Could not load data",
       genericSaveError: "Could not save changes"
     },
@@ -396,6 +399,7 @@ export const translations = {
       notifications: "Notifications",
       userMenu: "User menu",
       noNotifications: "No notifications",
+      pendingInvitations: "You have pending invitations to accept",
       account: "Account",
       currentAccount: "Current account",
       manageAccount: "Manage account",

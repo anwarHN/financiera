@@ -164,6 +164,10 @@ button {
   gap: 0.55rem;
 }
 
+.topbar-right {
+  justify-self: end;
+}
+
 .product-name {
   color: inherit;
   font-weight: 700;
@@ -181,6 +185,11 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+}
+
+.mobile-search-btn {
+  display: none;
 }
 
 .account-switch-btn {
@@ -227,6 +236,17 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 999px;
   font-weight: 600;
+}
+
+.notification-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #ef4444;
+  border: 1px solid rgba(255, 255, 255, 0.85);
 }
 
 .search-wrap {
@@ -405,7 +425,7 @@ button {
   align-items: flex-end;
   justify-content: space-between;
   gap: 0.2rem;
-  background: var(--bg-app-menu, var(--bg-muted));
+  background: transparent;
   padding: 0 calc(0.65rem * var(--density-scale));
   border-radius: 8px;
 }
@@ -781,6 +801,32 @@ button,
   filter: brightness(0.95);
 }
 
+.overflow-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.15rem;
+}
+
+.overflow-more-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.overflow-trigger-btn {
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  color: var(--text-strong);
+}
+
+.actions-menu .overflow-trigger-btn {
+  margin-left: auto;
+}
+
+.overflow-trigger-btn:hover {
+  background: var(--menu-hover);
+}
+
 .button-link-secondary,
 .button-secondary {
   background: var(--bg-muted);
@@ -1116,11 +1162,32 @@ button:disabled,
 
 @media (max-width: 620px) {
   .topbar {
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto 1fr auto;
   }
 
   .topbar-right {
+    display: flex;
+    gap: 0.35rem;
+    margin-left: auto;
+  }
+
+  .search-wrap {
     display: none;
+  }
+
+  .mobile-search-btn {
+    display: inline-flex;
+  }
+
+  .topbar-left .product-name {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .account-switch-btn {
+    max-width: 120px;
   }
 
   .workspace {
@@ -1141,4 +1208,9 @@ button:disabled,
   .floating-panel.panel-anchor {
     width: min(320px, calc(100vw - 16px));
   }
+}
+
+.search-wrap.search-wrap-panel {
+  display: flex;
+  max-width: 100%;
 }
