@@ -72,6 +72,16 @@
   border-color: var(--line);
 }
 
+[data-theme="dark"] .account-switch-btn {
+  border-color: var(--line);
+  background: var(--bg-panel);
+  color: var(--text);
+}
+
+[data-theme="dark"] .account-switch-btn:hover {
+  background: var(--menu-hover);
+}
+
 [data-text-size="sm"] {
   --font-scale: 0.92;
 }
@@ -173,9 +183,27 @@ button {
   justify-content: center;
 }
 
+.account-switch-btn {
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.15);
+  color: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+  min-height: 34px;
+  padding: 0.35rem 0.55rem;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .icon-btn:hover,
 .avatar-btn:hover {
   background: rgba(255, 255, 255, 0.15);
+}
+
+.account-switch-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .nine-dots {
@@ -556,6 +584,11 @@ button {
   background: var(--menu-hover);
 }
 
+.panel-action.disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .mobile-only {
   display: none;
 }
@@ -590,6 +623,21 @@ button {
 
 .success-text {
   color: #15803d;
+}
+
+.app-toast {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 140;
+  max-width: min(360px, calc(100vw - 2rem));
+  background: var(--bg-panel);
+  color: var(--text-strong);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--brand);
+  border-radius: 10px;
+  box-shadow: var(--shadow-float);
+  padding: 0.65rem 0.85rem;
 }
 
 .module-page {

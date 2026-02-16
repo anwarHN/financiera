@@ -98,7 +98,7 @@ function resolveGroupByPath(pathname) {
 }
 
 function Layout() {
-  const { logout, user } = useAuth();
+  const { logout, user, account, accounts, switchAccount } = useAuth();
   const { t, language, setLanguage } = useI18n();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -339,6 +339,14 @@ function Layout() {
           <button className="icon-btn" onClick={() => navigate("/")} aria-label={t("nav.dashboard")}>
             <FiHome />
           </button>
+          <button
+            className="account-switch-btn"
+            onClick={(event) => togglePanel("account-switch", event)}
+            aria-label={t("topbar.currentAccount")}
+            title={t("topbar.currentAccount")}
+          >
+            {account?.accountName || t("topbar.currentAccount")}
+          </button>
           <button className="icon-btn" onClick={() => setIsDarkTheme((prev) => !prev)} aria-label={t("topbar.theme")}>
             {isDarkTheme ? <FiSun /> : <FiMoon />}
           </button>
@@ -373,6 +381,32 @@ function Layout() {
         <ul className="panel-list">
           <li>{t("topbar.noNotifications")}</li>
         </ul>
+      </div>
+
+      <div
+        className={`floating-panel panel-right ${openPanel === "account-switch" ? "open" : ""}`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h3>{t("topbar.currentAccount")}</h3>
+        <div className="panel-list">
+          {accounts.length === 0 ? (
+            <span className="panel-action disabled">{t("common.empty")}</span>
+          ) : (
+            accounts.map((row) => (
+              <button
+                key={row.accountId}
+                type="button"
+                className={`panel-action ${account?.accountId === row.accountId ? "active" : ""}`}
+                onClick={() => {
+                  switchAccount(row.accountId);
+                  setOpenPanel(null);
+                }}
+              >
+                {row.accountName || `${t("topbar.currentAccount")} #${row.accountId}`}
+              </button>
+            ))
+          )}
+        </div>
       </div>
 
       <div

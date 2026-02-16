@@ -35,7 +35,7 @@ export async function listAccountUsers(accountId) {
 export async function listInvitations(accountId) {
   const { data, error } = await supabase
     .from("account_user_invitations")
-    .select('id, email, status, "profileId", account_profiles(name)')
+    .select('id, email, status, "profileId", "created_at", "expiresAt", account_profiles(name)')
     .eq("accountId", accountId)
     .order("id", { ascending: false });
 
@@ -70,6 +70,38 @@ export async function sendInvitation(payload) {
 
   if (data?.success === false) {
     throw new Error(`Invitation failed: ${data.error ?? "unknown function error"}`);
+  }
+
+  return data;
+}
+
+export async function resendInvitation(payload) {
+  let {
+    data: { session }
+  } = await supabase.auth.getSession();
+
+  if (!session?.access_token) {
+    const refreshed = await supabase.auth.refreshSession();
+    session = refreshed.data.session;
+  }
+
+  if (!session?.access_token) {
+    throw new Error("Missing auth session for invitation resend request.");
+  }
+
+  const { data, error } = await supabase.functions.invoke("send-invitation", {
+    body: payload,
+    headers: {
+      Authorization: `Bearer ${session.access_token}`
+    }
+  });
+
+  if (error) {
+    throw new Error(`Invitation resend function error: ${error.message ?? "unknown error"}`);
+  }
+
+  if (data?.success === false) {
+    throw new Error(`Invitation resend failed: ${data.error ?? "unknown function error"}`);
   }
 
   return data;

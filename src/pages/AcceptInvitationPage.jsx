@@ -8,11 +8,10 @@ import { syncBillingSeats } from "../services/billingService";
 function AcceptInvitationPage() {
   const { t } = useI18n();
   const { invitationId } = useParams();
-  const { user, account } = useAuth();
+  const { user, account, switchAccount, refreshAccounts } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-
   const params = new URLSearchParams(window.location.search);
   const invitedEmail = params.get("email") || "";
 
@@ -27,14 +26,17 @@ function AcceptInvitationPage() {
     }
 
     processAcceptance();
-  }, [user?.email, invitationId, invitedEmail, account?.accountId]);
+  }, [user?.email, invitationId, invitedEmail]);
 
   const processAcceptance = async () => {
     try {
       setIsProcessing(true);
-      await markInvitationAccepted({ invitationId: Number(invitationId), email: invitedEmail.toLowerCase() });
-      if (account?.accountId) {
-        await syncBillingSeats({ accountId: account.accountId }).catch(() => null);
+      const accepted = await markInvitationAccepted({ invitationId: Number(invitationId), email: invitedEmail.toLowerCase() });
+      const targetAccountId = Number(accepted?.accountId || 0);
+      if (targetAccountId) {
+        await syncBillingSeats({ accountId: targetAccountId }).catch(() => null);
+        await refreshAccounts?.();
+        switchAccount?.(targetAccountId);
       }
       navigate("/");
     } catch {

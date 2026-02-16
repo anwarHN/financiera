@@ -30,3 +30,6 @@ verify_jwt = false
 
 [functions.deactivate-account-user]
 verify_jwt = false
+
+[functions.accept-shared-invitation]
+verify_jwt = false

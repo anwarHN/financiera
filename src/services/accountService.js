@@ -1,28 +1,32 @@
 import { supabase } from "../lib/supabase";
 
-export async function getCurrentAccount(userId) {
+export async function listUserAccounts(userId) {
   const { data, error } = await supabase
     .from("usersToAccounts")
     .select('accountId, accounts(id, name, "billingStatus", "trialEndsAt", "subscriptionCurrentPeriodEnd")')
     .eq("userId", userId)
-    .limit(1)
-    .maybeSingle();
+    .order("accountId", { ascending: true });
 
   if (error) {
     throw error;
   }
 
-  if (!data) {
+  return (data ?? []).map((row) => ({
+    accountId: row.accountId,
+    accountName: row.accounts?.name ?? "",
+    billingStatus: row.accounts?.billingStatus ?? "trialing",
+    trialEndsAt: row.accounts?.trialEndsAt ?? null,
+    subscriptionCurrentPeriodEnd: row.accounts?.subscriptionCurrentPeriodEnd ?? null
+  }));
+}
+
+export async function getCurrentAccount(userId) {
+  const accounts = await listUserAccounts(userId);
+  if (accounts.length === 0) {
     return null;
   }
 
-  return {
-    accountId: data.accountId,
-    accountName: data.accounts?.name ?? "",
-    billingStatus: data.accounts?.billingStatus ?? "trialing",
-    trialEndsAt: data.accounts?.trialEndsAt ?? null,
-    subscriptionCurrentPeriodEnd: data.accounts?.subscriptionCurrentPeriodEnd ?? null
-  };
+  return accounts[0];
 }
 
 export async function getAccountById(accountId) {

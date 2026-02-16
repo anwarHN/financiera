@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
-import { deactivateAccountUser, listAccountUsers, listInvitations, sendInvitation } from "../services/adminService";
+import { deactivateAccountUser, listAccountUsers, listInvitations, resendInvitation, sendInvitation } from "../services/adminService";
 import { assignUserProfile, listProfiles, listUserProfiles } from "../services/profilesService";
 import { syncBillingSeats } from "../services/billingService";
 
@@ -14,11 +14,18 @@ function AdminPage() {
   const [invitations, setInvitations] = useState([]);
   const [inviteForm, setInviteForm] = useState({ email: "", profileId: "" });
   const [error, setError] = useState("");
+  const [toast, setToast] = useState("");
 
   useEffect(() => {
     if (!account?.accountId) return;
     loadData();
   }, [account?.accountId]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(""), 3200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   const loadData = async () => {
     try {
@@ -65,17 +72,54 @@ function AdminPage() {
     if (!inviteForm.email || !inviteForm.profileId || !account?.accountId || !user?.id) return;
 
     try {
+      const normalizedEmail = inviteForm.email.trim().toLowerCase();
+      const hasPendingSent = invitations.some(
+        (inv) =>
+          (inv.email || "").toLowerCase() === normalizedEmail &&
+          inv.status === "sent" &&
+          (!inv.expiresAt || new Date(inv.expiresAt).getTime() > Date.now())
+      );
+      if (hasPendingSent) {
+        setError(t("admin.activeInvitationExists"));
+        return;
+      }
+
       await sendInvitation({
         accountId: account.accountId,
-        email: inviteForm.email.trim().toLowerCase(),
+        email: normalizedEmail,
         profileId: Number(inviteForm.profileId),
         appUrl: window.location.origin
       });
       setInviteForm({ email: "", profileId: "" });
+      setToast(t("admin.invitationSent"));
       await loadData();
     } catch (err) {
       setError(err?.message || t("common.genericSaveError"));
     }
+  };
+
+  const handleResendInvitation = async (invitationId) => {
+    if (!account?.accountId || !invitationId) return;
+
+    try {
+      setError("");
+      await resendInvitation({
+        accountId: account.accountId,
+        resendInvitationId: invitationId,
+        appUrl: window.location.origin
+      });
+      setToast(t("admin.invitationResent"));
+      await loadData();
+    } catch (err) {
+      setError(err?.message || t("common.genericSaveError"));
+    }
+  };
+
+  const formatDateTime = (value) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleString();
   };
 
   const handleDeactivateUser = async (targetUserId) => {
@@ -95,6 +139,7 @@ function AdminPage() {
     <div className="module-page">
       <h1>{t("admin.title")}</h1>
       {error && <p className="error-text">{error}</p>}
+      {toast && <div className="app-toast">{toast}</div>}
 
       <form className="crud-form" onSubmit={handleInvite}>
         <h3>{t("admin.inviteUser")}</h3>
@@ -175,6 +220,8 @@ function AdminPage() {
             <th>{t("common.email")}</th>
             <th>{t("admin.profile")}</th>
             <th>{t("admin.status")}</th>
+            <th>{t("admin.expiresAt")}</th>
+            <th>{t("common.actions")}</th>
           </tr>
         </thead>
         <tbody>
@@ -183,6 +230,16 @@ function AdminPage() {
               <td>{inv.email}</td>
               <td>{inv.account_profiles?.name ?? "-"}</td>
               <td>{inv.status}</td>
+              <td>{formatDateTime(inv.expiresAt)}</td>
+              <td>
+                {inv.status === "sent" ? (
+                  <button type="button" className="button-secondary" onClick={() => handleResendInvitation(inv.id)}>
+                    {t("admin.resendInvite")}
+                  </button>
+                ) : (
+                  "-"
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

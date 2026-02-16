@@ -40,8 +40,46 @@ create table if not exists public.account_user_invitations (
   email varchar not null,
   "profileId" bigint references public.account_profiles(id),
   status varchar not null default 'pending',
+  "sentAt" timestamptz,
+  "expiresAt" timestamptz not null default (now() + interval '7 days'),
+  "invalidatedAt" timestamptz,
   "createdById" uuid not null default auth.uid() references auth.users(id)
 );
+
+alter table public.account_user_invitations
+add column if not exists "sentAt" timestamptz;
+
+alter table public.account_user_invitations
+add column if not exists "expiresAt" timestamptz not null default (now() + interval '7 days');
+
+alter table public.account_user_invitations
+add column if not exists "invalidatedAt" timestamptz;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'account_user_invitations_status_check'
+  ) then
+    alter table public.account_user_invitations
+    add constraint account_user_invitations_status_check
+    check (status in ('pending', 'sent', 'linked', 'expired', 'invalidated'));
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'account_user_invitations_expires_at_range_check'
+  ) then
+    alter table public.account_user_invitations
+    add constraint account_user_invitations_expires_at_range_check
+    check ("expiresAt" <= created_at + interval '7 days');
+  end if;
+end $$;
 
 alter table public.account_profiles enable row level security;
 alter table public.users_to_profiles enable row level security;
