@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
 
     const { data, error } = await supabaseAdmin
       .from("account_user_invitations")
-      .select('id, email, status, "accountId", "profileId", "expiresAt", account_profiles(name)')
+      .select('id, email, status, "accountId", "profileId", "expiresAt", account_profiles(name), accounts(name)')
       .ilike("email", normalizedEmail)
       .in("status", ["pending", "sent"])
       .is("invalidatedAt", null)

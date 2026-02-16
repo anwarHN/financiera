@@ -2,6 +2,7 @@ export const translations = {
   es: {
     common: {
       appName: "Financiera",
+      account: "Cuenta",
       loading: "Cargando...",
       save: "Guardar",
       cancel: "Cancelar",
@@ -259,6 +260,9 @@ export const translations = {
       users: "Usuarios",
       profiles: "Perfiles",
       settings: "Datos de cuenta",
+      pendingInvitationsTitle: "Invitaciones pendientes",
+      acceptInvitation: "Aceptar invitación",
+      invitationAccepted: "Invitación aceptada correctamente.",
       accountSettingsTitle: "Configuración de la cuenta",
       adminOnly: "Sólo el perfil administrador puede modificar los datos de la cuenta.",
       accountSaved: "Datos de la cuenta actualizados.",
@@ -364,6 +368,7 @@ export const translations = {
   en: {
     common: {
       appName: "Financiera",
+      account: "Account",
       loading: "Loading...",
       save: "Save",
       cancel: "Cancel",
@@ -620,6 +625,9 @@ export const translations = {
       users: "Users",
       profiles: "Profiles",
       settings: "Account details",
+      pendingInvitationsTitle: "Pending invitations",
+      acceptInvitation: "Accept invitation",
+      invitationAccepted: "Invitation accepted successfully.",
       accountSettingsTitle: "Account settings",
       adminOnly: "Only system admin profile can update account details.",
       accountSaved: "Account details updated.",

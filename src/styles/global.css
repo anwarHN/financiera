@@ -119,6 +119,7 @@ body {
   font-size: calc(16px * var(--font-scale));
   color: var(--text);
   background: radial-gradient(circle at top left, var(--bg-grad-start) 0%, var(--bg-main) 50%);
+  overflow-x: hidden;
 }
 
 a {
@@ -1163,12 +1164,15 @@ button:disabled,
 @media (max-width: 620px) {
   .topbar {
     grid-template-columns: auto 1fr auto;
+    gap: 0.45rem;
+    padding: 0 8px;
   }
 
   .topbar-right {
     display: flex;
     gap: 0.35rem;
     margin-left: auto;
+    min-width: 0;
   }
 
   .search-wrap {
@@ -1180,14 +1184,23 @@ button:disabled,
   }
 
   .topbar-left .product-name {
-    max-width: 120px;
+    max-width: 86px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .account-switch-btn {
-    max-width: 120px;
+    max-width: 88px;
+    min-height: 32px;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.8rem;
+  }
+
+  .topbar-right .icon-btn,
+  .topbar-right .avatar-btn {
+    min-width: 32px;
+    min-height: 32px;
   }
 
   .workspace {
