@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import RowActionsMenu from "../components/RowActionsMenu";
 import { listAccountPaymentForms } from "../services/accountPaymentFormsService";
 import {
   listTransactionsByAccountPaymentForm,
@@ -180,21 +181,27 @@ function BankReconciliationPage() {
                 <td>{row.referenceNumber || "-"}</td>
                 <td>{formatNumber(row.total)}</td>
                 <td>{row.isReconciled ? new Date(row.reconciledAt).toLocaleDateString() : "-"}</td>
-                <td>
-                  {!row.isReconciled ? (
-                    <button type="button" className="button-secondary" onClick={() => handleReconcile(row.id)}>
-                      {t("reconciliation.reconcile")}
-                    </button>
-                  ) : (
-                    <div className="table-actions-inline">
-                      <button type="button" className="button-secondary" onClick={() => handleReconcile(row.id)}>
-                        {t("reconciliation.changeReconcileDate")}
-                      </button>
-                      <button type="button" className="button-danger" onClick={() => handleUnreconcile(row.id)}>
-                        {t("reconciliation.unreconcile")}
-                      </button>
-                    </div>
-                  )}
+                <td className="table-actions reconciliation-actions">
+                  <button type="button" className="button-secondary" onClick={() => handleReconcile(row.id)}>
+                    {t("reconciliation.reconcile")}
+                  </button>
+                  <RowActionsMenu
+                    actions={[
+                      {
+                        key: "change-reconcile-date",
+                        label: t("reconciliation.changeReconcileDate"),
+                        onClick: () => handleReconcile(row.id),
+                        disabled: !row.isReconciled
+                      },
+                      {
+                        key: "unreconcile",
+                        label: t("reconciliation.unreconcile"),
+                        onClick: () => handleUnreconcile(row.id),
+                        disabled: !row.isReconciled,
+                        danger: true
+                      }
+                    ]}
+                  />
                 </td>
               </tr>
             ))

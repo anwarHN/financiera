@@ -1093,6 +1093,10 @@ button:disabled,
   flex-wrap: wrap;
 }
 
+.reconciliation-actions {
+  gap: 0.35rem;
+}
+
 .row-actions-wrap {
   position: relative;
 }
