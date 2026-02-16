@@ -581,6 +581,12 @@ button {
   color: var(--text-strong);
 }
 
+.panel-list li.panel-section-separator {
+  margin-top: 0.35rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--line);
+}
+
 .panel-list li:hover {
   background: var(--menu-hover);
   border-radius: 7px;
@@ -1031,6 +1037,33 @@ button:disabled,
   grid-template-rows: auto 1fr;
 }
 
+.account-app-menu .app-menu-primary {
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: thin;
+}
+
+.account-menu-overflow-wrap {
+  position: relative;
+  margin-left: auto;
+}
+
+.account-menu-overflow-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 25;
+  min-width: 180px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-soft);
+  padding: 0.3rem;
+  display: grid;
+  gap: 0.15rem;
+}
+
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1159,6 +1192,16 @@ button:disabled,
   .account-manage-shell {
     grid-template-columns: 1fr;
   }
+
+  .account-app-menu {
+    margin: 0.5rem 0.5rem 0;
+  }
+
+  .account-app-menu .app-menu-primary {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+  }
 }
 
 @media (max-width: 620px) {
@@ -1226,4 +1269,52 @@ button:disabled,
 .search-wrap.search-wrap-panel {
   display: flex;
   max-width: 100%;
+}
+
+@media (max-width: 470px) {
+  .workspace-body {
+    padding: 0.35rem;
+  }
+
+  .generic-panel,
+  .crud-form,
+  .modal-card {
+    padding: 0.65rem;
+  }
+
+  .crud-form-actions {
+    flex-wrap: wrap;
+  }
+
+  .crud-form-actions .button-link-primary,
+  .crud-form-actions .button-link-secondary,
+  .crud-form-actions .button-secondary,
+  .crud-form-actions .button-danger,
+  .crud-form-actions .action-btn {
+    width: 100%;
+  }
+
+  input,
+  select,
+  textarea {
+    min-width: 0;
+  }
+
+  .field-block > span {
+    font-size: 0.82rem;
+  }
+
+  .app-menu {
+    margin: 0.5rem 0.5rem 0;
+    padding: 0 0.3rem;
+  }
+
+  .app-menu-entry {
+    padding: 0.55rem 0.45rem 0.45rem;
+    font-size: 0.86rem;
+  }
+
+  .account-app-menu .app-menu-entry {
+    display: inline-block;
+  }
 }

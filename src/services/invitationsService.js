@@ -46,6 +46,14 @@ export async function getInvitationById(invitationId) {
 }
 
 export async function listPendingInvitationsForCurrentUser() {
+  async function callWithSession(accessToken) {
+    return supabase.functions.invoke("list-pending-invitations", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+  }
+
   let {
     data: { session }
   } = await supabase.auth.getSession();
@@ -59,11 +67,17 @@ export async function listPendingInvitationsForCurrentUser() {
     throw new Error("Missing auth session for pending invitations request.");
   }
 
-  const { data, error } = await supabase.functions.invoke("list-pending-invitations", {
-    headers: {
-      Authorization: `Bearer ${session.access_token}`
+  let { data, error } = await callWithSession(session.access_token);
+
+  if (error?.message?.includes?.("401")) {
+    const refreshed = await supabase.auth.refreshSession();
+    const nextToken = refreshed.data.session?.access_token;
+    if (nextToken) {
+      const retry = await callWithSession(nextToken);
+      data = retry.data;
+      error = retry.error;
     }
-  });
+  }
 
   if (error) {
     throw new Error(`Pending invitations function error: ${error.message ?? "unknown error"}`);

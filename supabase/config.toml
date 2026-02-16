@@ -33,3 +33,6 @@ verify_jwt = false
 
 [functions.accept-shared-invitation]
 verify_jwt = false
+
+[functions.list-pending-invitations]
+verify_jwt = false

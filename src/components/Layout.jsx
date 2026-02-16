@@ -493,6 +493,18 @@ function Layout() {
         <h3>{t("topbar.account")}</h3>
         <ul className="panel-list">
           <li>{user?.email}</li>
+          <li className="panel-section-separator">
+            <button
+              type="button"
+              className="panel-action"
+              onClick={() => {
+                navigate("/account");
+                setOpenPanel(null);
+              }}
+            >
+              <FiList /> {t("topbar.manageAccount")}
+            </button>
+          </li>
           <li>
             <button
               type="button"
@@ -511,18 +523,6 @@ function Layout() {
                 <option value="en">EN</option>
               </select>
             </label>
-          </li>
-          <li>
-            <button
-              type="button"
-              className="panel-action"
-              onClick={() => {
-                navigate("/account");
-                setOpenPanel(null);
-              }}
-            >
-              <FiList /> {t("topbar.manageAccount")}
-            </button>
           </li>
           <li>
             <label className="field-block">
@@ -690,6 +690,10 @@ function Layout() {
                   className={`panel-action ${selectedGroupId === group.id ? "active" : ""}`}
                   onClick={() => {
                     setSelectedGroupId(group.id);
+                    const firstPath = group.items?.[0]?.path;
+                    if (firstPath && pathname !== firstPath) {
+                      navigate(firstPath);
+                    }
                     setOpenToolbarPanel(null);
                   }}
                 >
