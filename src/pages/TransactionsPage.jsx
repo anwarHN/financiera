@@ -6,6 +6,7 @@ import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { deactivateTransaction, listTransactions, TRANSACTION_TYPES } from "../services/transactionsService";
+import { formatNumber } from "../utils/numberFormat";
 
 const moduleConfig = {
   sale: {
@@ -40,12 +41,20 @@ function TransactionsPage({ moduleType }) {
   const { t } = useI18n();
   const { account } = useAuth();
   const config = moduleConfig[moduleType];
+  const supportsTableFilters = ["sale", "purchase", "expense", "income"].includes(moduleType);
 
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [paymentModal, setPaymentModal] = useState({ open: false, transaction: null, direction: "incoming" });
+  const [filters, setFilters] = useState({
+    dateFrom: "",
+    dateTo: "",
+    person: "",
+    minAmount: "",
+    maxAmount: ""
+  });
 
   useEffect(() => {
     if (!account?.accountId) {
@@ -55,10 +64,32 @@ function TransactionsPage({ moduleType }) {
     loadData();
   }, [account?.accountId, config.type]);
 
+  const filteredItems = useMemo(() => {
+    const personQuery = filters.person.trim().toLowerCase();
+    const minAmount = filters.minAmount === "" ? null : Number(filters.minAmount);
+    const maxAmount = filters.maxAmount === "" ? null : Number(filters.maxAmount);
+
+    return items.filter((item) => {
+      if (filters.dateFrom && item.date < filters.dateFrom) return false;
+      if (filters.dateTo && item.date > filters.dateTo) return false;
+      if (personQuery) {
+        const personName = (item.persons?.name || "").toLowerCase();
+        if (!personName.includes(personQuery)) return false;
+      }
+      if (Number.isFinite(minAmount) && Number(item.total || 0) < minAmount) return false;
+      if (Number.isFinite(maxAmount) && Number(item.total || 0) > maxAmount) return false;
+      return true;
+    });
+  }, [items, filters]);
+
   const paginatedItems = useMemo(() => {
     const start = (page - 1) * pageSize;
-    return items.slice(start, start + pageSize);
-  }, [items, page]);
+    return filteredItems.slice(start, start + pageSize);
+  }, [filteredItems, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filters]);
 
   const loadData = async () => {
     try {
@@ -87,15 +118,68 @@ function TransactionsPage({ moduleType }) {
     }
   };
 
+  const handleFilterChange = (event) => {
+    const { name, value } = event.target;
+    setFilters((prev) => ({ ...prev, [name]: value }));
+  };
+
   return (
     <div className="module-page">
       <h1>{t(config.titleKey)}</h1>
+      {supportsTableFilters && (
+        <section className="generic-panel">
+          <div className="crud-grid crud-grid-4">
+            <label>
+              {t("reports.dateFrom")}
+              <input type="date" name="dateFrom" value={filters.dateFrom} onChange={handleFilterChange} />
+            </label>
+            <label>
+              {t("reports.dateTo")}
+              <input type="date" name="dateTo" value={filters.dateTo} onChange={handleFilterChange} />
+            </label>
+            <label>
+              {t("transactions.person")}
+              <input
+                type="text"
+                name="person"
+                value={filters.person}
+                onChange={handleFilterChange}
+                placeholder={`-- ${t("transactions.person")} --`}
+              />
+            </label>
+            <label>
+              {t("transactions.minAmount")}
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                name="minAmount"
+                value={filters.minAmount}
+                onChange={handleFilterChange}
+                placeholder={`-- ${t("transactions.minAmount")} --`}
+              />
+            </label>
+            <label>
+              {t("transactions.maxAmount")}
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                name="maxAmount"
+                value={filters.maxAmount}
+                onChange={handleFilterChange}
+                placeholder={`-- ${t("transactions.maxAmount")} --`}
+              />
+            </label>
+          </div>
+        </section>
+      )}
 
       {error && <p className="error-text">{error}</p>}
 
       {isLoading ? (
         <p>{t("common.loading")}</p>
-      ) : items.length === 0 ? (
+      ) : filteredItems.length === 0 ? (
         <p>{t("common.empty")}</p>
       ) : (
         <>
@@ -106,6 +190,7 @@ function TransactionsPage({ moduleType }) {
                 <th>{t("transactions.date")}</th>
                 <th>{t("common.name")}</th>
                 <th>{t("transactions.person")}</th>
+                <th>{t("projects.project")}</th>
                 <th>{t("transactions.total")}</th>
                 <th>{t("transactions.balance")}</th>
                 <th>{t("transactions.referenceNumber")}</th>
@@ -126,8 +211,9 @@ function TransactionsPage({ moduleType }) {
                   <td>{item.date}</td>
                   <td>{item.name ?? "-"}</td>
                   <td>{item.persons?.name ?? "-"}</td>
-                  <td>{item.total.toFixed(2)}</td>
-                  <td>{item.balance.toFixed(2)}</td>
+                  <td>{item.projects?.name ?? "-"}</td>
+                  <td>{formatNumber(item.total)}</td>
+                  <td>{formatNumber(item.balance)}</td>
                   <td>{item.referenceNumber ?? "-"}</td>
                   <td>{item.isActive ? t("transactions.active") : t("transactions.inactive")}</td>
                   <td className="table-actions">
@@ -169,7 +255,7 @@ function TransactionsPage({ moduleType }) {
             </tbody>
           </table>
 
-          <Pagination page={page} pageSize={pageSize} totalItems={items.length} onPageChange={setPage} />
+          <Pagination page={page} pageSize={pageSize} totalItems={filteredItems.length} onPageChange={setPage} />
           <PaymentRegisterModal
             isOpen={paymentModal.open}
             transaction={paymentModal.transaction}

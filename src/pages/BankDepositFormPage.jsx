@@ -126,7 +126,7 @@ function BankDepositFormPage() {
           <label className="field-block">
             <span>{t("transactions.currency")}</span>
             <select name="currencyId" value={form.currencyId} onChange={handleChange} required>
-              <option value="">{t("transactions.selectCurrency")}</option>
+              <option value="">{`-- ${t("transactions.selectCurrency")} --`}</option>
               {currencies.map((currency) => (
                 <option key={currency.id} value={currency.id}>
                   {currency.name} ({currency.symbol})
@@ -137,7 +137,7 @@ function BankDepositFormPage() {
           <label className="field-block">
             <span>{t("bankDeposits.fromCash")}</span>
             <select name="fromCashFormId" value={form.fromCashFormId} onChange={handleChange} required>
-              <option value="">{t("transactions.selectAccountPaymentForm")}</option>
+              <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
               {cashForms.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
@@ -148,7 +148,7 @@ function BankDepositFormPage() {
           <label className="field-block">
             <span>{t("bankDeposits.toBankAccount")}</span>
             <select name="toBankFormId" value={form.toBankFormId} onChange={handleChange} required>
-              <option value="">{t("transactions.selectAccountPaymentForm")}</option>
+              <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
               {bankForms.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}

@@ -146,7 +146,7 @@ function AccountPaymentFormPage() {
             <label className="field-block">
               <span>{t("paymentForms.employee")}</span>
               <select name="employeeId" value={form.employeeId} onChange={handleChange}>
-                <option value="">{t("transactions.optionalSeller")}</option>
+                <option value="">{`-- ${t("transactions.optionalSeller")} --`}</option>
                 {employees.map((employee) => (
                   <option key={employee.id} value={employee.id}>
                     {employee.name}

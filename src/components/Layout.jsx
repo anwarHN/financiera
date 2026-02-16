@@ -9,6 +9,7 @@ import {
   FiCreditCard,
   FiDollarSign,
   FiFileText,
+  FiFolder,
   FiHome,
   FiGitMerge,
   FiLayers,
@@ -77,6 +78,15 @@ const navGroups = [
       { path: "/bank-deposits", key: "nav.bankDeposits", icon: FiDollarSign },
       { path: "/internal-obligations", key: "nav.internalObligations", icon: FiFileText },
       { path: "/bank-reconciliation", key: "nav.bankReconciliation", icon: FiGitMerge }
+    ]
+  },
+  {
+    id: "planning",
+    titleKey: "nav.planning",
+    icon: FiFolder,
+    items: [
+      { path: "/projects", key: "nav.projects", icon: FiFolder },
+      { path: "/budgets", key: "nav.budgets", icon: FiFileText }
     ]
   },
   {
@@ -209,6 +219,8 @@ function Layout() {
     if (pathname.startsWith("/purchases")) return { createPath: "/purchases/new", createLabel: t("actions.newPurchase") };
     if (pathname.startsWith("/expenses")) return { createPath: "/expenses/new", createLabel: t("actions.newExpense") };
     if (pathname.startsWith("/incomes")) return { createPath: "/incomes/new", createLabel: t("actions.newIncome") };
+    if (pathname.startsWith("/projects")) return { createPath: "/projects/new", createLabel: t("actions.newProject") };
+    if (pathname.startsWith("/budgets")) return { createPath: "/budgets/new", createLabel: t("actions.newBudget") };
     if (pathname.startsWith("/account")) return { createPath: null, createLabel: null };
     if (pathname.startsWith("/reports")) return { createPath: null, createLabel: null };
 

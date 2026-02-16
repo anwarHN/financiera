@@ -109,7 +109,7 @@ function BankReconciliationPage() {
           <label className="field-block">
             <span>{t("reconciliation.bankAccount")}</span>
             <select value={selectedFormId} onChange={(event) => setSelectedFormId(event.target.value)}>
-              <option value="">{t("transactions.selectAccountPaymentForm")}</option>
+              <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
               {forms.map((row) => (
                 <option key={row.id} value={row.id}>
                   {row.name}

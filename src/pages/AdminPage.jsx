@@ -158,7 +158,7 @@ function AdminPage() {
           <label className="field-block">
             <span>{t("admin.profile")}</span>
             <select name="profileId" value={inviteForm.profileId} onChange={handleInviteChange} required>
-              <option value="">{t("admin.selectProfile")}</option>
+              <option value="">{`-- ${t("admin.selectProfile")} --`}</option>
               {profiles.map((profile) => (
                 <option key={profile.id} value={profile.id}>
                   {profile.name}
@@ -192,7 +192,7 @@ function AdminPage() {
                   value={getUserProfileId(userRow.userId)}
                   onChange={(event) => handleAssignProfile(userRow.userId, event.target.value)}
                 >
-                  <option value="">{t("admin.selectProfile")}</option>
+                  <option value="">{`-- ${t("admin.selectProfile")} --`}</option>
                   {profiles.map((profile) => (
                     <option key={profile.id} value={profile.id}>
                       {profile.name}

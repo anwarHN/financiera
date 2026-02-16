@@ -13,7 +13,7 @@ export async function listTransactions({ accountId, type, excludeInternalObligat
   let query = supabase
     .from("transactions")
     .select(
-      'id, personId, date, type, status, total, balance, payments, name, currencyId, "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "sourceTransactionId", "isInternalTransfer", "isDeposit", isActive, persons(name), account_payment_forms(name)'
+      'id, personId, date, type, status, total, balance, payments, name, currencyId, "projectId", "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "sourceTransactionId", "isInternalTransfer", "isDeposit", isActive, persons(name), projects(name), account_payment_forms(name)'
     )
     .eq("accountId", accountId)
     .eq("type", type);
@@ -28,6 +28,24 @@ export async function listTransactions({ accountId, type, excludeInternalObligat
     throw error;
   }
 
+  return data ?? [];
+}
+
+export async function listTransactionsByProject({ accountId, projectId, dateFrom, dateTo }) {
+  let query = supabase
+    .from("transactions")
+    .select(
+      'id, date, type, total, balance, name, personId, "projectId", isActive, persons(name), projects(name)'
+    )
+    .eq("accountId", accountId)
+    .eq("projectId", projectId)
+    .eq("isActive", true);
+
+  if (dateFrom) query = query.gte("date", dateFrom);
+  if (dateTo) query = query.lte("date", dateTo);
+
+  const { data, error } = await query.order("date", { ascending: false });
+  if (error) throw error;
   return data ?? [];
 }
 
@@ -73,7 +91,7 @@ export async function getTransactionById(id) {
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      'id, accountId, personId, date, type, name, total, balance, payments, "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "sourceTransactionId", "isInternalTransfer", "isDeposit", isActive, currencyId, persons(name), account_payment_forms(name)'
+      'id, accountId, personId, date, type, name, total, balance, payments, "projectId", "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "sourceTransactionId", "isInternalTransfer", "isDeposit", isActive, currencyId, persons(name), projects(name), account_payment_forms(name)'
     )
     .eq("id", id)
     .single();

@@ -28,6 +28,12 @@ import InternalAccountPayablesPage from "./pages/InternalAccountPayablesPage";
 import InternalAccountPayableFormPage from "./pages/InternalAccountPayableFormPage";
 import BankDepositsPage from "./pages/BankDepositsPage";
 import BankDepositFormPage from "./pages/BankDepositFormPage";
+import ProjectsPage from "./pages/ProjectsPage";
+import ProjectFormPage from "./pages/ProjectFormPage";
+import ProjectDetailPage from "./pages/ProjectDetailPage";
+import BudgetsPage from "./pages/BudgetsPage";
+import BudgetFormPage from "./pages/BudgetFormPage";
+import BudgetDetailPage from "./pages/BudgetDetailPage";
 
 function App() {
   return (
@@ -195,6 +201,14 @@ function App() {
         <Route path="internal-obligations/new" element={<InternalAccountPayableFormPage />} />
         <Route path="internal-obligations/:id/edit" element={<InternalAccountPayableFormPage />} />
         <Route path="bank-reconciliation" element={<BankReconciliationPage />} />
+        <Route path="projects" element={<ProjectsPage />} />
+        <Route path="projects/new" element={<ProjectFormPage />} />
+        <Route path="projects/:id" element={<ProjectDetailPage />} />
+        <Route path="projects/:id/edit" element={<ProjectFormPage />} />
+        <Route path="budgets" element={<BudgetsPage />} />
+        <Route path="budgets/new" element={<BudgetFormPage />} />
+        <Route path="budgets/:id" element={<BudgetDetailPage />} />
+        <Route path="budgets/:id/edit" element={<BudgetFormPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="account" element={<AccountManagePage />}>
           <Route index element={<Navigate to="/account/users" replace />} />

@@ -8,6 +8,7 @@ import { listCurrencies } from "../services/currenciesService";
 import { listEmployees } from "../services/employeesService";
 import { listPaymentMethods } from "../services/paymentMethodsService";
 import { listPersons } from "../services/personsService";
+import { listProjects } from "../services/projectsService";
 import { createTransactionWithDetails, TRANSACTION_TYPES } from "../services/transactionsService";
 
 const moduleConfig = {
@@ -52,7 +53,8 @@ const initialSimpleForm = {
   referenceNumber: "",
   paymentMode: "cash",
   paymentMethodId: "",
-  accountPaymentFormId: ""
+  accountPaymentFormId: "",
+  projectId: ""
 };
 
 const initialSaleHeader = {
@@ -62,7 +64,8 @@ const initialSaleHeader = {
   currencyId: "",
   referenceNumber: "",
   paymentMethodId: "",
-  accountPaymentFormId: ""
+  accountPaymentFormId: "",
+  projectId: ""
 };
 
 function calculateLineAmounts(line) {
@@ -107,6 +110,7 @@ function TransactionCreatePage({ moduleType }) {
   const [currencies, setCurrencies] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [accountPaymentForms, setAccountPaymentForms] = useState([]);
+  const [projects, setProjects] = useState([]);
 
   const [simpleForm, setSimpleForm] = useState(initialSimpleForm);
   const [saleHeader, setSaleHeader] = useState(initialSaleHeader);
@@ -191,13 +195,14 @@ function TransactionCreatePage({ moduleType }) {
   const loadDependencies = async () => {
     try {
       setIsLoading(true);
-      const [personsRes, conceptsRes, employeesRes, currenciesRes, paymentMethodsRes, accountPaymentFormsRes] = await Promise.allSettled([
+      const [personsRes, conceptsRes, employeesRes, currenciesRes, paymentMethodsRes, accountPaymentFormsRes, projectsRes] = await Promise.allSettled([
         listPersons(account.accountId),
         listConcepts(account.accountId),
         listEmployees(account.accountId),
         listCurrencies(account.accountId),
         listPaymentMethods(account.accountId),
-        listAccountPaymentForms(account.accountId)
+        listAccountPaymentForms(account.accountId),
+        listProjects(account.accountId)
       ]);
 
       setPersons(personsRes.status === "fulfilled" ? personsRes.value : []);
@@ -206,6 +211,7 @@ function TransactionCreatePage({ moduleType }) {
       setCurrencies(currenciesRes.status === "fulfilled" ? currenciesRes.value : []);
       setPaymentMethods(paymentMethodsRes.status === "fulfilled" ? paymentMethodsRes.value : []);
       setAccountPaymentForms(accountPaymentFormsRes.status === "fulfilled" ? accountPaymentFormsRes.value : []);
+      setProjects(projectsRes.status === "fulfilled" ? projectsRes.value : []);
       setError("");
     } catch {
       setError(t("common.genericLoadError"));
@@ -296,6 +302,7 @@ function TransactionCreatePage({ moduleType }) {
     referenceNumber,
     paymentMethodId,
     accountPaymentFormId,
+    projectId,
     incomingPayment = false
   }) => ({
     accountId: account.accountId,
@@ -321,6 +328,7 @@ function TransactionCreatePage({ moduleType }) {
     payments: isCredit ? 0 : totals.total,
     isActive: true,
     currencyId: currencyId ? Number(currencyId) : null,
+    projectId: projectId ? Number(projectId) : null,
     paymentMethodId: paymentMethodId ? Number(paymentMethodId) : null,
     accountPaymentFormId: accountPaymentFormId ? Number(accountPaymentFormId) : null
   });
@@ -359,6 +367,7 @@ function TransactionCreatePage({ moduleType }) {
       referenceNumber: simpleForm.referenceNumber,
       paymentMethodId: shouldPersistPayment ? simpleForm.paymentMethodId : null,
       accountPaymentFormId: shouldPersistPayment ? simpleForm.accountPaymentFormId : null,
+      projectId: simpleForm.projectId,
       incomingPayment: moduleType === "income"
     });
 
@@ -416,6 +425,7 @@ function TransactionCreatePage({ moduleType }) {
       referenceNumber: saleHeader.referenceNumber,
       paymentMethodId: isCredit ? null : saleHeader.paymentMethodId,
       accountPaymentFormId: isCredit ? null : saleHeader.accountPaymentFormId,
+      projectId: saleHeader.projectId,
       incomingPayment: false
     });
 
@@ -474,7 +484,7 @@ function TransactionCreatePage({ moduleType }) {
               <label className="field-block">
                 <span>{t("transactions.currency")}</span>
                 <select name="currencyId" value={simpleForm.currencyId} onChange={handleSimpleChange} required>
-                  <option value="">{t("transactions.selectCurrency")}</option>
+                  <option value="">{`-- ${t("transactions.selectCurrency")} --`}</option>
                   {currencies.map((currency) => (
                     <option key={currency.id} value={currency.id}>
                       {currency.name} ({currency.symbol})
@@ -485,7 +495,7 @@ function TransactionCreatePage({ moduleType }) {
               <label className="field-block">
                 <span>{t("transactions.person")}</span>
                 <select name="personId" value={simpleForm.personId} onChange={handleSimpleChange}>
-                  <option value="">{t("transactions.optionalPerson")}</option>
+                  <option value="">{`-- ${t("transactions.optionalPerson")} --`}</option>
                   {personOptions.map((person) => (
                     <option key={person.id} value={person.id}>
                       {person.name}
@@ -496,7 +506,7 @@ function TransactionCreatePage({ moduleType }) {
               <label className="field-block">
                 <span>{t("transactions.concept")}</span>
                 <select name="conceptId" value={simpleForm.conceptId} onChange={handleSimpleChange} required>
-                  <option value="">{t("transactions.selectConcept")}</option>
+                  <option value="">{`-- ${t("transactions.selectConcept")} --`}</option>
                   {conceptOptions.map((concept) => (
                     <option key={concept.id} value={concept.id}>
                       {concept.name}
@@ -511,6 +521,17 @@ function TransactionCreatePage({ moduleType }) {
               <label className="field-block">
                 <span>{t("transactions.referenceNumber")}</span>
                 <input name="referenceNumber" value={simpleForm.referenceNumber} onChange={handleSimpleChange} />
+              </label>
+              <label className="field-block">
+                <span>{t("projects.project")}</span>
+                <select name="projectId" value={simpleForm.projectId} onChange={handleSimpleChange}>
+                  <option value="">{`-- ${t("projects.optionalProject")} --`}</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
           </section>
@@ -538,7 +559,7 @@ function TransactionCreatePage({ moduleType }) {
                         onChange={handleSimpleChange}
                         required={moduleType !== "purchase" || simpleForm.paymentMode === "cash"}
                       >
-                        <option value="">{t("transactions.selectPaymentMethod")}</option>
+                        <option value="">{`-- ${t("transactions.selectPaymentMethod")} --`}</option>
                         {paymentMethods.map((method) => (
                           <option key={method.id} value={method.id}>
                             {method.name}
@@ -554,7 +575,7 @@ function TransactionCreatePage({ moduleType }) {
                         onChange={handleSimpleChange}
                         required={simpleRequiresAccountPaymentForm}
                       >
-                        <option value="">{t("transactions.selectAccountPaymentForm")}</option>
+                        <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
                         {simpleFilteredAccountPaymentForms.map((form) => (
                           <option key={form.id} value={form.id}>
                             {form.name}
@@ -604,7 +625,7 @@ function TransactionCreatePage({ moduleType }) {
               <label className="field-block">
                 <span>{t("transactions.currency")}</span>
                 <select name="currencyId" value={saleHeader.currencyId} onChange={handleSaleHeaderChange} required>
-                  <option value="">{t("transactions.selectCurrency")}</option>
+                  <option value="">{`-- ${t("transactions.selectCurrency")} --`}</option>
                   {currencies.map((currency) => (
                     <option key={currency.id} value={currency.id}>
                       {currency.name} ({currency.symbol})
@@ -659,6 +680,17 @@ function TransactionCreatePage({ moduleType }) {
                 <span>{t("transactions.referenceNumber")}</span>
                 <input name="referenceNumber" value={saleHeader.referenceNumber} onChange={handleSaleHeaderChange} />
               </label>
+              <label className="field-block">
+                <span>{t("projects.project")}</span>
+                <select name="projectId" value={saleHeader.projectId} onChange={handleSaleHeaderChange}>
+                  <option value="">{`-- ${t("projects.optionalProject")} --`}</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
           </section>
 
@@ -669,7 +701,7 @@ function TransactionCreatePage({ moduleType }) {
                 <label className="field-block">
                   <span>{t("transactions.paymentMethod")}</span>
                   <select name="paymentMethodId" value={saleHeader.paymentMethodId} onChange={handleSaleHeaderChange} required>
-                    <option value="">{t("transactions.selectPaymentMethod")}</option>
+                    <option value="">{`-- ${t("transactions.selectPaymentMethod")} --`}</option>
                     {paymentMethods.map((method) => (
                       <option key={method.id} value={method.id}>
                         {method.name}
@@ -685,7 +717,7 @@ function TransactionCreatePage({ moduleType }) {
                     onChange={handleSaleHeaderChange}
                     required={saleRequiresAccountPaymentForm}
                   >
-                    <option value="">{t("transactions.selectAccountPaymentForm")}</option>
+                    <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
                     {saleFilteredAccountPaymentForms.map((form) => (
                       <option key={form.id} value={form.id}>
                         {form.name}
@@ -778,7 +810,7 @@ function TransactionCreatePage({ moduleType }) {
                       <td>{lineAmounts.total.toFixed(2)}</td>
                       <td>
                         <select value={line.sellerId} onChange={(event) => updateSaleLine(line.rowId, "sellerId", event.target.value)}>
-                          <option value="">{t("transactions.optionalSeller")}</option>
+                          <option value="">{`-- ${t("transactions.optionalSeller")} --`}</option>
                           {employees.map((employee) => (
                             <option key={employee.id} value={employee.id}>
                               {employee.name}

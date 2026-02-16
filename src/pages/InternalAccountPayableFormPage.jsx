@@ -142,7 +142,7 @@ function InternalAccountPayableFormPage() {
             <label className="field-block">
               <span>{t("transactions.currency")}</span>
               <select name="currencyId" value={form.currencyId} onChange={handleChange} required>
-                <option value="">{t("transactions.selectCurrency")}</option>
+                <option value="">{`-- ${t("transactions.selectCurrency")} --`}</option>
                 {currencies.map((currency) => (
                   <option key={currency.id} value={currency.id}>
                     {currency.name} ({currency.symbol})
@@ -157,7 +157,7 @@ function InternalAccountPayableFormPage() {
             <label className="field-block">
               <span>{t("paymentForms.title")}</span>
               <select name="accountPaymentFormId" value={form.accountPaymentFormId} onChange={handleChange}>
-                <option value="">{t("transactions.selectAccountPaymentForm")}</option>
+                <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
                 {paymentForms.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name}

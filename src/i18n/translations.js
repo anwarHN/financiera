@@ -79,7 +79,9 @@ export const translations = {
       newPaymentForm: "Nueva cuenta/tarjeta",
       newBankDeposit: "Nuevo depósito",
       newInternalObligation: "Nueva obligación interna",
-      newPayableConcept: "Nuevo concepto de cuentas por pagar"
+      newPayableConcept: "Nuevo concepto de cuentas por pagar",
+      newProject: "Nuevo proyecto",
+      newBudget: "Nuevo presupuesto"
     },
     auth: {
       loginTitle: "Iniciar sesión",
@@ -103,6 +105,9 @@ export const translations = {
       providers: "Proveedores",
       persons: "Clientes/Proveedores",
       employees: "Empleados",
+      planning: "Planeación",
+      projects: "Proyectos",
+      budgets: "Presupuestos",
       products: "Productos",
       incomeConcepts: "Conceptos ingreso",
       expenseConcepts: "Conceptos gasto",
@@ -196,6 +201,15 @@ export const translations = {
       sales: "Ventas",
       expenses: "Gastos",
       incomes: "Ingresos",
+      budgetExecution: "Ejecución de presupuesto",
+      projectExecution: "Ejecución de proyecto",
+      budget: "Presupuesto",
+      selectBudget: "Seleccionar presupuesto",
+      selectProject: "Seleccionar proyecto",
+      budgetRequired: "Selecciona un presupuesto.",
+      projectRequired: "Selecciona un proyecto.",
+      executed: "Ejecutado",
+      variance: "Variación",
       availableReports: "Reportes disponibles",
       applicableFilters: "Filtros aplicables",
       accountsReceivable: "Cuentas por cobrar",
@@ -213,6 +227,27 @@ export const translations = {
       totalRecords: "Total de registros",
       changeReportFilters: "Cambiar reporte y filtros",
       exportExcel: "Exportar a Excel"
+    },
+    projects: {
+      title: "Proyectos",
+      project: "Proyecto",
+      optionalProject: "Sin proyecto",
+      startDate: "Inicio",
+      endDate: "Fin"
+    },
+    budgets: {
+      title: "Presupuestos",
+      periodType: "Período",
+      lines: "Líneas de presupuesto",
+      addLine: "Agregar línea",
+      budgetAmount: "Monto presupuestado",
+      totalBudget: "Presupuesto total",
+      periods: {
+        daily: "Diario",
+        weekly: "Semanal",
+        monthly: "Mensual",
+        yearly: "Anual"
+      }
     },
     profiles: {
       title: "Perfiles",
@@ -352,6 +387,8 @@ export const translations = {
       saleValidationError: "Selecciona un cliente y agrega al menos una línea de detalle.",
       quantity: "Cantidad",
       amount: "Monto",
+      minAmount: "Monto mínimo",
+      maxAmount: "Monto máximo",
       price: "Precio unitario",
       taxPercentage: "% impuesto",
       discountPercentage: "% descuento",
@@ -447,7 +484,9 @@ export const translations = {
       newPaymentForm: "New bank/card account",
       newBankDeposit: "New bank deposit",
       newInternalObligation: "New internal obligation",
-      newPayableConcept: "New accounts payable concept"
+      newPayableConcept: "New accounts payable concept",
+      newProject: "New project",
+      newBudget: "New budget"
     },
     auth: {
       loginTitle: "Sign in",
@@ -470,6 +509,9 @@ export const translations = {
       providers: "Suppliers",
       persons: "Clients/Suppliers",
       employees: "Employees",
+      planning: "Planning",
+      projects: "Projects",
+      budgets: "Budgets",
       products: "Products",
       incomeConcepts: "Income concepts",
       expenseConcepts: "Expense concepts",
@@ -563,6 +605,15 @@ export const translations = {
       sales: "Sales",
       expenses: "Expenses",
       incomes: "Incomes",
+      budgetExecution: "Budget execution",
+      projectExecution: "Project execution",
+      budget: "Budget",
+      selectBudget: "Select budget",
+      selectProject: "Select project",
+      budgetRequired: "Select a budget.",
+      projectRequired: "Select a project.",
+      executed: "Executed",
+      variance: "Variance",
       availableReports: "Available reports",
       applicableFilters: "Applicable filters",
       accountsReceivable: "Accounts receivable",
@@ -580,6 +631,27 @@ export const translations = {
       totalRecords: "Total records",
       changeReportFilters: "Change report and filters",
       exportExcel: "Export to Excel"
+    },
+    projects: {
+      title: "Projects",
+      project: "Project",
+      optionalProject: "No project",
+      startDate: "Start",
+      endDate: "End"
+    },
+    budgets: {
+      title: "Budgets",
+      periodType: "Period",
+      lines: "Budget lines",
+      addLine: "Add line",
+      budgetAmount: "Budgeted amount",
+      totalBudget: "Total budget",
+      periods: {
+        daily: "Daily",
+        weekly: "Weekly",
+        monthly: "Monthly",
+        yearly: "Yearly"
+      }
     },
     profiles: {
       title: "Profiles",
@@ -719,6 +791,8 @@ export const translations = {
       saleValidationError: "Select a client and add at least one detail line.",
       quantity: "Quantity",
       amount: "Amount",
+      minAmount: "Minimum amount",
+      maxAmount: "Maximum amount",
       price: "Unit price",
       taxPercentage: "Tax %",
       discountPercentage: "Discount %",

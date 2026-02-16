@@ -4,7 +4,7 @@ export async function getTransactionsForReports(accountId, { dateFrom, dateTo } 
   let query = supabase
     .from("transactions")
     .select(
-      'id, date, type, total, balance, payments, isActive, isAccountPayable, isAccountReceivable, isIncomingPayment, isOutcomingPayment, "accountPaymentFormId", currencyId, account_payment_forms(name)'
+      'id, date, type, total, balance, payments, isActive, isAccountPayable, isAccountReceivable, isIncomingPayment, isOutcomingPayment, "accountPaymentFormId", "projectId", currencyId, account_payment_forms(name), projects(name)'
     )
     .eq("accountId", accountId)
     .eq("isActive", true);
@@ -30,7 +30,9 @@ export async function exportReportXlsx({
   reportId,
   dateFrom,
   dateTo,
-  currencyId
+  currencyId,
+  budgetId,
+  projectId
 }) {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -69,7 +71,7 @@ export async function exportReportXlsx({
         apikey: supabaseAnonKey,
         Authorization: `Bearer ${accessToken}`
       },
-      body: JSON.stringify({ accountId, reportId, dateFrom, dateTo, currencyId })
+      body: JSON.stringify({ accountId, reportId, dateFrom, dateTo, currencyId, budgetId, projectId })
     });
 
     let payload;

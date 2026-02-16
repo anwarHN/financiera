@@ -108,7 +108,7 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath }) {
       accountId: account.accountId,
       name: form.name.trim(),
       parentConceptId: moduleType === "groups" ? null : form.parentConceptId ? Number(form.parentConceptId) : null,
-      taxPercentage: Number(form.taxPercentage) || 0,
+      taxPercentage: ["income", "expense", "payable"].includes(moduleType) ? 0 : Number(form.taxPercentage) || 0,
       price: Number(form.price) || 0,
       additionalCharges: Number(form.additionalCharges) || 0,
       ...moduleFlags[moduleType]
@@ -158,7 +158,7 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath }) {
               <label className="field-block">
                 <span>{t("concepts.group")}</span>
                 <select name="parentConceptId" value={form.parentConceptId} onChange={handleChange}>
-                  <option value="">{t("concepts.noGroup")}</option>
+                  <option value="">{`-- ${t("concepts.noGroup")} --`}</option>
                   {groupOptions.map((group) => (
                     <option key={group.id} value={group.id}>
                       {group.name}
@@ -176,19 +176,21 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath }) {
               </label>
             )}
 
-            <label className="field-block">
-              <span>{t("concepts.taxPercentage")}</span>
-              <input
-                name="taxPercentage"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder={t("concepts.taxPercentage")}
-                value={form.taxPercentage}
-                onChange={handleChange}
-                required
-              />
-            </label>
+            {!["income", "expense", "payable"].includes(moduleType) ? (
+              <label className="field-block">
+                <span>{t("concepts.taxPercentage")}</span>
+                <input
+                  name="taxPercentage"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder={t("concepts.taxPercentage")}
+                  value={form.taxPercentage}
+                  onChange={handleChange}
+                  required
+                />
+              </label>
+            ) : null}
 
             {moduleType === "products" && (
               <>

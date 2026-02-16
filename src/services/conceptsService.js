@@ -29,7 +29,11 @@ export async function listConceptsByModule(accountId, moduleType) {
   }
 
   if (moduleType === "expense") {
-    query = query.eq("isExpense", true).eq("isGroup", false).eq("isOutgoingPaymentConcept", false);
+    query = query
+      .eq("isExpense", true)
+      .eq("isGroup", false)
+      .eq("isOutgoingPaymentConcept", false)
+      .eq("isAccountPayableConcept", false);
   }
 
   if (moduleType === "groups") {

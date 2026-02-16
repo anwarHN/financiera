@@ -174,7 +174,7 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
             <label className="field-block">
               <span>{t("transactions.paymentMethod")}</span>
               <select name="paymentMethodId" value={form.paymentMethodId} onChange={handleChange} required>
-                <option value="">{t("transactions.selectPaymentMethod")}</option>
+                <option value="">{`-- ${t("transactions.selectPaymentMethod")} --`}</option>
                 {paymentMethods.map((method) => (
                   <option key={method.id} value={method.id}>
                     {method.name}
@@ -190,7 +190,7 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
                 onChange={handleChange}
                 required={requiresAccountPaymentForm}
               >
-                <option value="">{t("transactions.selectAccountPaymentForm")}</option>
+                <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
                 {filteredAccountPaymentForms.map((row) => (
                   <option key={row.id} value={row.id}>
                     {row.name}
