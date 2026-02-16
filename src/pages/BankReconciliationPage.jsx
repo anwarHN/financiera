@@ -182,9 +182,11 @@ function BankReconciliationPage() {
                 <td>{formatNumber(row.total)}</td>
                 <td>{row.isReconciled ? new Date(row.reconciledAt).toLocaleDateString() : "-"}</td>
                 <td className="table-actions reconciliation-actions">
-                  <button type="button" className="button-secondary" onClick={() => handleReconcile(row.id)}>
-                    {t("reconciliation.reconcile")}
-                  </button>
+                  {!row.isReconciled ? (
+                    <button type="button" className="button-secondary" onClick={() => handleReconcile(row.id)}>
+                      {t("reconciliation.reconcile")}
+                    </button>
+                  ) : null}
                   <RowActionsMenu
                     actions={[
                       {
