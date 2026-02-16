@@ -335,7 +335,8 @@ function ReportsPage() {
             <p key={line}>{line}</p>
           ))}
           <p>
-            {t("reports.totalRecords")}: {results.length}
+            {t("reports.totalRecords")}:{" "}
+            {formatNumber(results.length, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </p>
 
           {budgetExecutionTotals ? (

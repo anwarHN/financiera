@@ -4,11 +4,10 @@ import { useI18n } from "../contexts/I18nContext";
 import { listAccountPaymentForms } from "../services/accountPaymentFormsService";
 import { listTransactionsByAccountPaymentForm, reconcileTransaction } from "../services/transactionsService";
 import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
+import { formatNumber } from "../utils/numberFormat";
 
-function signedAmount(transaction) {
-  const amount = Math.abs(Number(transaction.total || 0));
-  if (transaction.isIncomingPayment || transaction.type === 3 || transaction.type === 6) return amount;
-  return -amount;
+function transactionAmount(transaction) {
+  return Number(transaction.total || 0);
 }
 
 function BankReconciliationPage() {
@@ -59,13 +58,13 @@ function BankReconciliationPage() {
     }
   };
 
-  const currentBalance = useMemo(() => transactions.reduce((acc, row) => acc + signedAmount(row), 0), [transactions]);
+  const currentBalance = useMemo(() => transactions.reduce((acc, row) => acc + transactionAmount(row), 0), [transactions]);
 
   const previousBalance = useMemo(() => {
     const from = new Date(`${dateFrom}T00:00:00.000Z`);
     return transactions
       .filter((row) => row.isReconciled && row.reconciledAt && new Date(row.reconciledAt) < from)
-      .reduce((acc, row) => acc + signedAmount(row), 0);
+      .reduce((acc, row) => acc + transactionAmount(row), 0);
   }, [transactions, dateFrom]);
 
   const reconciledBalanceAsOfDate = useMemo(() => {
@@ -79,7 +78,7 @@ function BankReconciliationPage() {
           new Date(row.reconciledAt) >= from &&
           new Date(row.reconciledAt) <= until
       )
-      .reduce((acc, row) => acc + signedAmount(row), 0);
+      .reduce((acc, row) => acc + transactionAmount(row), 0);
   }, [transactions, dateFrom, dateTo]);
 
   const transactionsInRange = useMemo(() => {
@@ -133,13 +132,13 @@ function BankReconciliationPage() {
         </div>
 
         <p>
-          {t("reconciliation.currentBalance")}: <strong>{currentBalance.toFixed(2)}</strong>
+          {t("reconciliation.currentBalance")}: <strong>{formatNumber(currentBalance)}</strong>
         </p>
         <p>
-          {t("reconciliation.previousBalance")}: <strong>{previousBalance.toFixed(2)}</strong>
+          {t("reconciliation.previousBalance")}: <strong>{formatNumber(previousBalance)}</strong>
         </p>
         <p>
-          {t("reconciliation.reconciledBalanceAsOfDate")}: <strong>{reconciledBalanceAsOfDate.toFixed(2)}</strong>
+          {t("reconciliation.reconciledBalanceAsOfDate")}: <strong>{formatNumber(reconciledBalanceAsOfDate)}</strong>
         </p>
       </section>
 
@@ -165,7 +164,7 @@ function BankReconciliationPage() {
                 <td>{row.id}</td>
                 <td>{row.date}</td>
                 <td>{row.referenceNumber || "-"}</td>
-                <td>{Number(row.total || 0).toFixed(2)}</td>
+                <td>{formatNumber(row.total)}</td>
                 <td>{row.isReconciled ? new Date(row.reconciledAt).toLocaleDateString() : "-"}</td>
                 <td>
                   {row.isReconciled ? (
