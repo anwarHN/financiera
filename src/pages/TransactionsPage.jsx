@@ -123,56 +123,74 @@ function TransactionsPage({ moduleType }) {
     setFilters((prev) => ({ ...prev, [name]: value }));
   };
 
+  const clearFilters = () => {
+    setFilters({
+      dateFrom: "",
+      dateTo: "",
+      person: "",
+      minAmount: "",
+      maxAmount: ""
+    });
+  };
+
   return (
     <div className="module-page">
       <h1>{t(config.titleKey)}</h1>
       {supportsTableFilters && (
-        <section className="generic-panel">
-          <div className="crud-grid crud-grid-4">
-            <label>
-              {t("reports.dateFrom")}
-              <input type="date" name="dateFrom" value={filters.dateFrom} onChange={handleFilterChange} />
-            </label>
-            <label>
-              {t("reports.dateTo")}
-              <input type="date" name="dateTo" value={filters.dateTo} onChange={handleFilterChange} />
-            </label>
-            <label>
-              {t("transactions.person")}
-              <input
-                type="text"
-                name="person"
-                value={filters.person}
-                onChange={handleFilterChange}
-                placeholder={`-- ${t("transactions.person")} --`}
-              />
-            </label>
-            <label>
-              {t("transactions.minAmount")}
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                name="minAmount"
-                value={filters.minAmount}
-                onChange={handleFilterChange}
-                placeholder={`-- ${t("transactions.minAmount")} --`}
-              />
-            </label>
-            <label>
-              {t("transactions.maxAmount")}
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                name="maxAmount"
-                value={filters.maxAmount}
-                onChange={handleFilterChange}
-                placeholder={`-- ${t("transactions.maxAmount")} --`}
-              />
-            </label>
+        <details className="generic-panel filters-accordion">
+          <summary className="filters-accordion-summary">{t("reports.applicableFilters")}</summary>
+          <div className="filters-accordion-body">
+            <div className="transaction-filters-grid">
+              <label className="field-block">
+                <span>{t("reports.dateFrom")}</span>
+                <input type="date" name="dateFrom" value={filters.dateFrom} onChange={handleFilterChange} />
+              </label>
+              <label className="field-block">
+                <span>{t("reports.dateTo")}</span>
+                <input type="date" name="dateTo" value={filters.dateTo} onChange={handleFilterChange} />
+              </label>
+              <label className="field-block">
+                <span>{t("transactions.person")}</span>
+                <input
+                  type="text"
+                  name="person"
+                  value={filters.person}
+                  onChange={handleFilterChange}
+                  placeholder={`-- ${t("transactions.person")} --`}
+                />
+              </label>
+              <label className="field-block">
+                <span>{t("transactions.minAmount")}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  name="minAmount"
+                  value={filters.minAmount}
+                  onChange={handleFilterChange}
+                  placeholder={`-- ${t("transactions.minAmount")} --`}
+                />
+              </label>
+              <label className="field-block">
+                <span>{t("transactions.maxAmount")}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  name="maxAmount"
+                  value={filters.maxAmount}
+                  onChange={handleFilterChange}
+                  placeholder={`-- ${t("transactions.maxAmount")} --`}
+                />
+              </label>
+            </div>
+            <div className="crud-form-actions">
+              <button type="button" className="button-secondary" onClick={clearFilters}>
+                {t("common.clearFilters")}
+              </button>
+            </div>
           </div>
-        </section>
+        </details>
       )}
 
       {error && <p className="error-text">{error}</p>}

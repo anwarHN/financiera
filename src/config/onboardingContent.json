@@ -1,0 +1,226 @@
+{
+  "es": {
+    "dashboard": {
+      "intro": "Este módulo te da una vista general del negocio.",
+      "sidebarTitle": "Menú principal",
+      "sidebarText": "Aquí cambias entre grupos principales del sistema.",
+      "actionsTitle": "Acciones rápidas",
+      "actionsText": "Aquí encontrarás acciones como crear o refrescar.",
+      "workspaceTitle": "Área de trabajo",
+      "workspaceText": "Aquí se muestran listados, formularios y reportes.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Desde aquí navegas los accesos del módulo General.",
+      "appMenuOptions": [
+        { "name": "Dashboard", "description": "Resumen general y métricas clave." },
+        { "name": "Clientes", "description": "Consulta y gestión de clientes." },
+        { "name": "Proveedores", "description": "Consulta y gestión de proveedores." },
+        { "name": "Empleados", "description": "Consulta y gestión de empleados." }
+      ]
+    },
+    "clients": {
+      "intro": "En este módulo administras la base de clientes.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Opciones disponibles para clientes.",
+      "appMenuOptions": [
+        { "name": "Clientes", "description": "Listado principal con filtros y acciones." }
+      ]
+    },
+    "providers": {
+      "intro": "En este módulo administras la base de proveedores.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Opciones disponibles para proveedores.",
+      "appMenuOptions": [
+        { "name": "Proveedores", "description": "Listado principal con filtros y acciones." }
+      ]
+    },
+    "employees": {
+      "intro": "En este módulo gestionas empleados y datos relacionados.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Opciones disponibles para empleados.",
+      "appMenuOptions": [
+        { "name": "Empleados", "description": "Listado y mantenimiento de empleados." }
+      ]
+    },
+    "products": {
+      "intro": "En este módulo administras el catálogo de productos.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Opciones disponibles para productos.",
+      "appMenuOptions": [
+        { "name": "Productos", "description": "Listado y mantenimiento del catálogo." }
+      ]
+    },
+    "transactions": {
+      "intro": "En este módulo registras y consultas movimientos de negocio.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Opciones disponibles en transacciones.",
+      "appMenuOptions": [
+        { "name": "Ventas", "description": "Registro y control de ventas." },
+        { "name": "Compras", "description": "Registro y control de compras." },
+        { "name": "Gastos", "description": "Registro de gastos operativos." },
+        { "name": "Ingresos", "description": "Registro de ingresos adicionales." }
+      ]
+    },
+    "concepts": {
+      "intro": "En este módulo defines conceptos y su clasificación.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Opciones disponibles para conceptos.",
+      "appMenuOptions": [
+        { "name": "Conceptos ingreso", "description": "Conceptos para ingresos." },
+        { "name": "Conceptos gasto", "description": "Conceptos para gastos." },
+        { "name": "Conceptos CxP", "description": "Conceptos para cuentas por pagar." },
+        { "name": "Grupos", "description": "Agrupadores para organizar conceptos." }
+      ]
+    },
+    "payments": {
+      "intro": "En este módulo gestionas pagos, bancos y conciliaciones.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Opciones disponibles para pagos y bancos.",
+      "appMenuOptions": [
+        { "name": "Cuentas y tarjetas", "description": "Mantenimiento de cuentas y tarjetas." },
+        { "name": "Depósitos bancarios", "description": "Registro de depósitos entre formas de pago." },
+        { "name": "Obligaciones internas", "description": "Control de obligaciones internas." },
+        { "name": "Conciliación bancaria", "description": "Conciliación y saldos por fecha de corte." }
+      ]
+    },
+    "planning": {
+      "intro": "En este módulo gestionas proyectos y presupuestos.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Opciones disponibles para planeación.",
+      "appMenuOptions": [
+        { "name": "Proyectos", "description": "Creación y seguimiento de proyectos." },
+        { "name": "Presupuestos", "description": "Definición y ejecución presupuestaria." }
+      ]
+    },
+    "reports": {
+      "intro": "En este módulo ejecutas reportes financieros y operativos.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Opciones disponibles para reportes.",
+      "appMenuOptions": [
+        { "name": "Reportes", "description": "Selección, filtros y ejecución de reportes." }
+      ]
+    },
+    "account": {
+      "intro": "En este módulo administras usuarios, perfiles y datos de cuenta.",
+      "appMenuTitle": "Accesos del módulo",
+      "appMenuText": "Opciones disponibles en gestionar cuenta.",
+      "appMenuOptions": [
+        { "name": "Usuarios", "description": "Alta, baja e invitación de usuarios." },
+        { "name": "Perfiles", "description": "Definición de permisos y roles." },
+        { "name": "Invitaciones", "description": "Aceptación y estado de invitaciones." },
+        { "name": "Datos de cuenta", "description": "Configuración general de la cuenta." }
+      ]
+    }
+  },
+  "en": {
+    "dashboard": {
+      "intro": "This module gives you a general overview of the business.",
+      "sidebarTitle": "Main menu",
+      "sidebarText": "Switch between main system groups here.",
+      "actionsTitle": "Quick actions",
+      "actionsText": "Find quick actions like create and refresh here.",
+      "workspaceTitle": "Workspace",
+      "workspaceText": "Lists, forms and reports are displayed here.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Use these entries to navigate General module options.",
+      "appMenuOptions": [
+        { "name": "Dashboard", "description": "General summary and key metrics." },
+        { "name": "Clients", "description": "Client list and management." },
+        { "name": "Suppliers", "description": "Supplier list and management." },
+        { "name": "Employees", "description": "Employee list and management." }
+      ]
+    },
+    "clients": {
+      "intro": "This module manages your client master data.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Available options for clients.",
+      "appMenuOptions": [
+        { "name": "Clients", "description": "Main list with filters and actions." }
+      ]
+    },
+    "providers": {
+      "intro": "This module manages your supplier master data.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Available options for suppliers.",
+      "appMenuOptions": [
+        { "name": "Suppliers", "description": "Main list with filters and actions." }
+      ]
+    },
+    "employees": {
+      "intro": "This module manages employees and related data.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Available options for employees.",
+      "appMenuOptions": [
+        { "name": "Employees", "description": "Employee list and maintenance." }
+      ]
+    },
+    "products": {
+      "intro": "This module manages your product catalog.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Available options for products.",
+      "appMenuOptions": [
+        { "name": "Products", "description": "Catalog list and maintenance." }
+      ]
+    },
+    "transactions": {
+      "intro": "This module records and tracks business transactions.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Available transaction options.",
+      "appMenuOptions": [
+        { "name": "Sales", "description": "Sales registration and control." },
+        { "name": "Purchases", "description": "Purchase registration and control." },
+        { "name": "Expenses", "description": "Operational expense registration." },
+        { "name": "Incomes", "description": "Additional income registration." }
+      ]
+    },
+    "concepts": {
+      "intro": "This module defines concepts and their classification.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Available concept options.",
+      "appMenuOptions": [
+        { "name": "Income concepts", "description": "Concepts used for income." },
+        { "name": "Expense concepts", "description": "Concepts used for expenses." },
+        { "name": "A/P concepts", "description": "Concepts used for accounts payable." },
+        { "name": "Groups", "description": "Groupers to organize concepts." }
+      ]
+    },
+    "payments": {
+      "intro": "This module manages payments, banks and reconciliations.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Available payment and bank options.",
+      "appMenuOptions": [
+        { "name": "Accounts and cards", "description": "Maintain bank accounts and cards." },
+        { "name": "Bank deposits", "description": "Record deposits between payment forms." },
+        { "name": "Internal obligations", "description": "Track internal obligations." },
+        { "name": "Bank reconciliation", "description": "Reconcile balances by cutoff date." }
+      ]
+    },
+    "planning": {
+      "intro": "This module manages projects and budgets.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Available planning options.",
+      "appMenuOptions": [
+        { "name": "Projects", "description": "Project creation and tracking." },
+        { "name": "Budgets", "description": "Budget definition and execution." }
+      ]
+    },
+    "reports": {
+      "intro": "This module runs financial and operational reports.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Available report options.",
+      "appMenuOptions": [
+        { "name": "Reports", "description": "Select, filter and run reports." }
+      ]
+    },
+    "account": {
+      "intro": "This module manages users, profiles and account data.",
+      "appMenuTitle": "Module entries",
+      "appMenuText": "Available manage-account options.",
+      "appMenuOptions": [
+        { "name": "Users", "description": "Invite, activate and deactivate users." },
+        { "name": "Profiles", "description": "Define roles and permissions." },
+        { "name": "Invitations", "description": "Review and accept invitations." },
+        { "name": "Account details", "description": "Maintain account configuration." }
+      ]
+    }
+  }
+}

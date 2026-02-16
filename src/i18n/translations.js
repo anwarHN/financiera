@@ -29,6 +29,7 @@ export const translations = {
       page: "Página",
       of: "de",
       more: "Más",
+      clearFilters: "Limpiar filtros",
       genericLoadError: "No fue posible cargar los datos",
       genericSaveError: "No fue posible guardar los cambios"
     },
@@ -50,6 +51,27 @@ export const translations = {
       large: "Grande",
       compact: "Compacto",
       comfortable: "Confortable"
+    },
+    onboarding: {
+      welcomeTitle: "Bienvenido al módulo",
+      welcomeDescription: "Te mostraremos rápidamente dónde está cada menú en",
+      start: "Comenzar guía",
+      skip: "Omitir",
+      finish: "Finalizar",
+      sidebarTitle: "Menú principal",
+      sidebarText: "Aquí cambias entre grupos principales del sistema.",
+      appMenuTitle: "Menú del módulo",
+      appMenuText: "Aquí navegas las opciones específicas del módulo.",
+      actionsMenuTitle: "Acciones rápidas",
+      actionsMenuText: "Aquí tienes acciones como crear y refrescar.",
+      tableTitle: "Tabla del módulo",
+      tableText: "La tabla muestra los últimos registros incluidos en este módulo.",
+      workspaceTitle: "Área de trabajo",
+      workspaceText: "Aquí se muestra el listado, formulario o reporte del módulo.",
+      accountSwitchTitle: "Cambio de cuenta",
+      accountSwitchText: "Desde aquí puedes cambiar entre cuentas con acceso.",
+      userMenuTitle: "Menú de usuario",
+      userMenuText: "Aquí encontrarás configuración, preferencias y cierre de sesión."
     },
     sidebar: {
       expand: "Expandir menú",
@@ -304,7 +326,15 @@ export const translations = {
       adminOnly: "Sólo el perfil administrador puede modificar los datos de la cuenta.",
       accountSaved: "Datos de la cuenta actualizados.",
       reportRetentionDays: "Retención de reportes (días)",
-      reportRetentionHint: "Los archivos exportados se eliminan automáticamente cada día según esta retención."
+      reportRetentionHint: "Los archivos exportados se eliminan automáticamente cada día según esta retención.",
+      onboardingTextsTitle: "Textos de onboarding",
+      onboardingTextsHint: "Puedes personalizar los textos que se muestran en la guía de bienvenida.",
+      saveOnboardingTexts: "Guardar textos onboarding",
+      resetOnboardingTexts: "Restablecer textos onboarding",
+      resetOnboardingTours: "Reiniciar tours vistos",
+      onboardingTextsSaved: "Textos de onboarding guardados.",
+      onboardingTextsReset: "Textos de onboarding restablecidos.",
+      onboardingToursReset: "Se reinició el estado de tours vistos."
     },
     billing: {
       title: "Membresía",
@@ -434,6 +464,7 @@ export const translations = {
       page: "Page",
       of: "of",
       more: "More",
+      clearFilters: "Clear filters",
       genericLoadError: "Could not load data",
       genericSaveError: "Could not save changes"
     },
@@ -455,6 +486,27 @@ export const translations = {
       large: "Large",
       compact: "Compact",
       comfortable: "Comfortable"
+    },
+    onboarding: {
+      welcomeTitle: "Welcome to module",
+      welcomeDescription: "We will quickly show you where each menu is in",
+      start: "Start guide",
+      skip: "Skip",
+      finish: "Finish",
+      sidebarTitle: "Main menu",
+      sidebarText: "Switch between the main system groups here.",
+      appMenuTitle: "Module menu",
+      appMenuText: "Navigate module-specific options here.",
+      actionsMenuTitle: "Quick actions",
+      actionsMenuText: "Use quick actions like create and refresh here.",
+      tableTitle: "Module table",
+      tableText: "This table shows the latest records included in this module.",
+      workspaceTitle: "Workspace",
+      workspaceText: "The module list, form, or report is displayed here.",
+      accountSwitchTitle: "Account switch",
+      accountSwitchText: "Switch between accounts you can access from here.",
+      userMenuTitle: "User menu",
+      userMenuText: "Find settings, preferences and sign out here."
     },
     sidebar: {
       expand: "Expand menu",
@@ -708,7 +760,15 @@ export const translations = {
       adminOnly: "Only system admin profile can update account details.",
       accountSaved: "Account details updated.",
       reportRetentionDays: "Report retention (days)",
-      reportRetentionHint: "Exported files are automatically deleted every day based on this retention."
+      reportRetentionHint: "Exported files are automatically deleted every day based on this retention.",
+      onboardingTextsTitle: "Onboarding texts",
+      onboardingTextsHint: "You can customize texts shown in the welcome guide.",
+      saveOnboardingTexts: "Save onboarding texts",
+      resetOnboardingTexts: "Reset onboarding texts",
+      resetOnboardingTours: "Reset viewed tours",
+      onboardingTextsSaved: "Onboarding texts saved.",
+      onboardingTextsReset: "Onboarding texts reset.",
+      onboardingToursReset: "Viewed tours state has been reset."
     },
     billing: {
       title: "Membership",

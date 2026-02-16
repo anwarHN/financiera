@@ -5,6 +5,7 @@ import { useI18n } from "../contexts/I18nContext";
 import { listAccountPaymentForms } from "../services/accountPaymentFormsService";
 import { listCurrencies } from "../services/currenciesService";
 import { createInternalObligation, getTransactionById, updateInternalObligation } from "../services/transactionsService";
+import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
 
 const initialForm = {
   date: new Date().toISOString().slice(0, 10),
@@ -160,7 +161,7 @@ function InternalAccountPayableFormPage() {
                 <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
                 {paymentForms.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.name}
+                    {formatPaymentFormLabel(item)}
                   </option>
                 ))}
               </select>

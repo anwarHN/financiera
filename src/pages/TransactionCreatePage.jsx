@@ -10,6 +10,7 @@ import { listPaymentMethods } from "../services/paymentMethodsService";
 import { listPersons } from "../services/personsService";
 import { listProjects } from "../services/projectsService";
 import { createTransactionWithDetails, TRANSACTION_TYPES } from "../services/transactionsService";
+import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
 
 const moduleConfig = {
   sale: {
@@ -578,7 +579,7 @@ function TransactionCreatePage({ moduleType }) {
                         <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
                         {simpleFilteredAccountPaymentForms.map((form) => (
                           <option key={form.id} value={form.id}>
-                            {form.name}
+                            {formatPaymentFormLabel(form)}
                           </option>
                         ))}
                       </select>
@@ -720,7 +721,7 @@ function TransactionCreatePage({ moduleType }) {
                     <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
                     {saleFilteredAccountPaymentForms.map((form) => (
                       <option key={form.id} value={form.id}>
-                        {form.name}
+                        {formatPaymentFormLabel(form)}
                       </option>
                     ))}
                   </select>

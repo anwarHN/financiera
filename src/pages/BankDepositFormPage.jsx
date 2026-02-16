@@ -7,6 +7,7 @@ import { listConcepts } from "../services/conceptsService";
 import { listCurrencies } from "../services/currenciesService";
 import { listPaymentMethods } from "../services/paymentMethodsService";
 import { createBankDeposit } from "../services/transactionsService";
+import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
 
 const initialForm = {
   date: new Date().toISOString().slice(0, 10),
@@ -140,7 +141,7 @@ function BankDepositFormPage() {
               <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
               {cashForms.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.name}
+                  {formatPaymentFormLabel(item)}
                 </option>
               ))}
             </select>
@@ -151,7 +152,7 @@ function BankDepositFormPage() {
               <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
               {bankForms.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.name}
+                  {formatPaymentFormLabel(item)}
                 </option>
               ))}
             </select>

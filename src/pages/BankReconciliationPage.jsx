@@ -3,6 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { listAccountPaymentForms } from "../services/accountPaymentFormsService";
 import { listTransactionsByAccountPaymentForm, reconcileTransaction } from "../services/transactionsService";
+import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
 
 function signedAmount(transaction) {
   const amount = Math.abs(Number(transaction.total || 0));
@@ -112,7 +113,7 @@ function BankReconciliationPage() {
               <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
               {forms.map((row) => (
                 <option key={row.id} value={row.id}>
-                  {row.name}
+                  {formatPaymentFormLabel(row)}
                 </option>
               ))}
             </select>

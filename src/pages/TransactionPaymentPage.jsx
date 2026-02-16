@@ -6,6 +6,7 @@ import { listAccountPaymentForms } from "../services/accountPaymentFormsService"
 import { listConcepts } from "../services/conceptsService";
 import { listPaymentMethods } from "../services/paymentMethodsService";
 import { getTransactionById, registerPaymentForTransaction, TRANSACTION_TYPES } from "../services/transactionsService";
+import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
 
 const initialForm = {
   date: new Date().toISOString().slice(0, 10),
@@ -207,7 +208,7 @@ function TransactionPaymentPage({ direction }) {
               <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
               {filteredAccountPaymentForms.map((row) => (
                 <option key={row.id} value={row.id}>
-                  {row.name}
+                  {formatPaymentFormLabel(row)}
                 </option>
               ))}
             </select>

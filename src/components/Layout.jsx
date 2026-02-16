@@ -28,6 +28,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { listPendingInvitationsForCurrentUser } from "../services/invitationsService";
+import ModuleOnboarding from "./ModuleOnboarding";
 
 const navGroups = [
   {
@@ -132,6 +133,7 @@ function Layout() {
   const [isMobile620, setIsMobile620] = useState(window.matchMedia("(max-width: 620px)").matches);
   const [isAppMenuCompact, setIsAppMenuCompact] = useState(false);
   const [isActionsCompact, setIsActionsCompact] = useState(false);
+  const [isSidebarForcedCollapsed, setIsSidebarForcedCollapsed] = useState(false);
 
   const appMenuPrimaryRef = useRef(null);
   const actionsPrimaryRef = useRef(null);
@@ -413,6 +415,7 @@ function Layout() {
           <button
             className="account-switch-btn"
             ref={accountSwitchBtnRef}
+            data-tour="topbar-account-switch"
             onClick={(event) => togglePanel("account-switch", event)}
             aria-label={t("topbar.currentAccount")}
             title={t("topbar.currentAccount")}
@@ -432,6 +435,7 @@ function Layout() {
             <button
               className="avatar-btn"
               ref={userMenuBtnRef}
+              data-tour="user-menu-button"
               onClick={(event) => togglePanel("user", event)}
               aria-label={t("topbar.userMenu")}
             >
@@ -584,7 +588,15 @@ function Layout() {
 
       <main className="content">
         {!isAccountRoute && (
-          <aside className="sidebar-icons">
+          <aside
+            className={`sidebar-icons ${isSidebarForcedCollapsed ? "force-collapsed" : ""}`}
+            data-tour="sidebar-icons"
+            onMouseEnter={() => {
+              if (isSidebarForcedCollapsed) {
+                setIsSidebarForcedCollapsed(false);
+              }
+            }}
+          >
             {navGroups.map((group) => {
               const isActiveGroup = selectedGroupId === group.id;
 
@@ -595,6 +607,7 @@ function Layout() {
                     className={`side-icon group-root ${isActiveGroup ? "active" : ""}`}
                     onClick={() => {
                       setSelectedGroupId(group.id);
+                      setIsSidebarForcedCollapsed(true);
                       const firstPath = group.items?.[0]?.path;
                       if (firstPath && pathname !== firstPath) {
                         navigate(firstPath);
@@ -614,7 +627,7 @@ function Layout() {
 
         <section className={`workspace ${isAccountRoute ? "account-mode" : ""}`}>
           {shouldShowAppMenu && (
-            <div className="app-menu">
+            <div className="app-menu" data-tour="app-menu">
               {isMobile980 ? (
                 <button
                   type="button"
@@ -670,7 +683,7 @@ function Layout() {
           )}
 
           {!isAccountRoute && (
-            <div className="actions-menu">
+            <div className="actions-menu" data-tour="actions-menu">
               <div className="actions-primary" ref={actionsPrimaryRef}>
                 {actionItems.map((item) => {
                   const hideInCompact = isActionsCompact && item.overflowable;
@@ -780,7 +793,7 @@ function Layout() {
             </div>
           )}
 
-          <div className="workspace-body single-column">
+          <div className="workspace-body single-column" data-tour="workspace">
             {isAccountRoute ? (
               <Outlet />
             ) : (
@@ -791,6 +804,7 @@ function Layout() {
           </div>
         </section>
       </main>
+      <ModuleOnboarding />
     </div>
   );
 }
