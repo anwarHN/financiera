@@ -4,11 +4,12 @@ import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { deactivateProject, listProjects } from "../services/projectsService";
+import { formatDate } from "../utils/dateFormat";
 
 const pageSize = 10;
 
 function ProjectsPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { account } = useAuth();
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
@@ -73,8 +74,8 @@ function ProjectsPage() {
               {paginatedItems.map((item) => (
                 <tr key={item.id}>
                   <td>{item.name}</td>
-                  <td>{item.startDate || "-"}</td>
-                  <td>{item.endDate || "-"}</td>
+                  <td>{formatDate(item.startDate, language)}</td>
+                  <td>{formatDate(item.endDate, language)}</td>
                   <td>{item.isActive ? t("transactions.active") : t("transactions.inactive")}</td>
                   <td className="table-actions">
                     <RowActionsMenu
