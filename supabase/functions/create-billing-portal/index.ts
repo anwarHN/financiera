@@ -11,6 +11,16 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS"
 };
 
+function buildManageUrl(subscriptionId: string) {
+  const customTemplate = Deno.env.get("PAYPAL_MANAGE_SUBSCRIPTION_URL_TEMPLATE");
+  if (customTemplate && customTemplate.includes("{subscriptionId}")) {
+    return customTemplate.replace("{subscriptionId}", encodeURIComponent(subscriptionId));
+  }
+
+  const isSandbox = (Deno.env.get("PAYPAL_ENV") || "live").toLowerCase() === "sandbox";
+  return `${isSandbox ? "https://www.sandbox.paypal.com" : "https://www.paypal.com"}/myaccount/autopay/connect/${encodeURIComponent(subscriptionId)}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders, status: 200 });
@@ -25,8 +35,8 @@ Deno.serve(async (req) => {
     }
 
     const payload = (await req.json()) as PortalPayload;
-    if (!payload?.accountId || !payload?.appUrl) {
-      return new Response(JSON.stringify({ success: false, error: "Missing accountId/appUrl" }), {
+    if (!payload?.accountId) {
+      return new Response(JSON.stringify({ success: false, error: "Missing accountId" }), {
         headers: { ...corsHeaders, "content-type": "application/json" },
         status: 400
       });
@@ -34,8 +44,7 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!supabaseUrl || !serviceRoleKey || !stripeSecretKey) {
+    if (!supabaseUrl || !serviceRoleKey) {
       return new Response(JSON.stringify({ success: false, error: "Missing function secrets." }), {
         headers: { ...corsHeaders, "content-type": "application/json" },
         status: 500
@@ -72,6 +81,7 @@ Deno.serve(async (req) => {
       .eq("accountId", payload.accountId)
       .eq("userId", user.id)
       .maybeSingle();
+
     if (!membership) {
       return new Response(JSON.stringify({ success: false, error: "Forbidden" }), {
         headers: { ...corsHeaders, "content-type": "application/json" },
@@ -81,33 +91,19 @@ Deno.serve(async (req) => {
 
     const { data: account, error: accountError } = await supabaseAdmin
       .from("accounts")
-      .select('"stripeCustomerId"')
+      .select('"paypalSubscriptionId", "stripeSubscriptionId"')
       .eq("id", payload.accountId)
       .single();
-    if (accountError || !account?.stripeCustomerId) {
-      return new Response(JSON.stringify({ success: false, error: "Account has no Stripe customer yet." }), {
+
+    const subscriptionId = account?.paypalSubscriptionId || account?.stripeSubscriptionId;
+    if (accountError || !subscriptionId) {
+      return new Response(JSON.stringify({ success: false, error: "Account has no PayPal subscription yet." }), {
         headers: { ...corsHeaders, "content-type": "application/json" },
         status: 400
       });
     }
 
-    const portalRes = await fetch("https://api.stripe.com/v1/billing_portal/sessions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${stripeSecretKey}`,
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: new URLSearchParams({
-        customer: account.stripeCustomerId,
-        return_url: `${payload.appUrl.replace(/\/$/, "")}/account/billing`
-      }).toString()
-    });
-    const portalPayload = await portalRes.json();
-    if (!portalRes.ok) {
-      throw new Error(portalPayload?.error?.message ?? `Stripe error (${portalRes.status})`);
-    }
-
-    return new Response(JSON.stringify({ success: true, url: portalPayload.url }), {
+    return new Response(JSON.stringify({ success: true, url: buildManageUrl(subscriptionId) }), {
       headers: { ...corsHeaders, "content-type": "application/json" },
       status: 200
     });

@@ -349,13 +349,15 @@ export const translations = {
       trialDaysLeft: "Días restantes de prueba",
       startMembership: "Activar membresía",
       manageSubscription: "Gestionar suscripción",
-      syncSeats: "Actualizar usuarios en Stripe",
-      addPaymentMethod: "Agregar método de pago",
-      cardBrand: "Marca",
+      syncSeats: "Sincronizar usuarios con PayPal",
+      addPaymentMethod: "Gestionar método de pago",
+      cardBrand: "Proveedor",
       cardLast4: "Tarjeta",
       cardExpiry: "Vencimiento",
       defaultMethod: "Predeterminado",
-      setDefaultMethod: "Definir como predeterminado"
+      setDefaultMethod: "Definir como predeterminado",
+      seatsSynced: "Usuarios sincronizados en PayPal.",
+      paypalManageHint: "La gestión de métodos de pago se realiza directamente en PayPal."
     },
     reconciliation: {
       title: "Conciliación bancaria",
@@ -793,13 +795,15 @@ export const translations = {
       trialDaysLeft: "Trial days left",
       startMembership: "Start membership",
       manageSubscription: "Manage subscription",
-      syncSeats: "Sync seats with Stripe",
-      addPaymentMethod: "Add payment method",
-      cardBrand: "Brand",
+      syncSeats: "Sync seats with PayPal",
+      addPaymentMethod: "Manage payment method",
+      cardBrand: "Provider",
       cardLast4: "Card",
       cardExpiry: "Expiry",
       defaultMethod: "Default",
-      setDefaultMethod: "Set as default"
+      setDefaultMethod: "Set as default",
+      seatsSynced: "Seats synced with PayPal.",
+      paypalManageHint: "Payment methods are managed directly in PayPal."
     },
     reconciliation: {
       title: "Bank reconciliation",

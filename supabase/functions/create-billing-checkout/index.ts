@@ -11,21 +11,61 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS"
 };
 
-async function stripeRequest(path: string, secretKey: string, params: URLSearchParams) {
-  const response = await fetch(`https://api.stripe.com${path}`, {
+function getPayPalBaseUrl() {
+  return (Deno.env.get("PAYPAL_ENV") || "live").toLowerCase() === "sandbox"
+    ? "https://api-m.sandbox.paypal.com"
+    : "https://api-m.paypal.com";
+}
+
+async function getPayPalAccessToken() {
+  const clientId = Deno.env.get("PAYPAL_CLIENT_ID");
+  const clientSecret = Deno.env.get("PAYPAL_CLIENT_SECRET");
+  if (!clientId || !clientSecret) {
+    throw new Error("Missing PAYPAL_CLIENT_ID/PAYPAL_CLIENT_SECRET");
+  }
+
+  const tokenResponse = await fetch(`${getPayPalBaseUrl()}/v1/oauth2/token`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${secretKey}`,
+      Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
       "Content-Type": "application/x-www-form-urlencoded"
     },
-    body: params.toString()
+    body: "grant_type=client_credentials"
+  });
+
+  const tokenPayload = await tokenResponse.json();
+  if (!tokenResponse.ok || !tokenPayload?.access_token) {
+    throw new Error(tokenPayload?.error_description ?? tokenPayload?.error ?? `PayPal auth error (${tokenResponse.status})`);
+  }
+
+  return tokenPayload.access_token as string;
+}
+
+async function paypalRequest(path: string, accessToken: string, body: unknown) {
+  const response = await fetch(`${getPayPalBaseUrl()}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
   });
 
   const payload = await response.json();
   if (!response.ok) {
-    throw new Error(payload?.error?.message ?? `Stripe error (${response.status})`);
+    throw new Error(payload?.message ?? payload?.name ?? `PayPal error (${response.status})`);
   }
+
   return payload;
+}
+
+function mapPayPalStatusToBillingStatus(status?: string | null) {
+  const normalized = (status || "").toUpperCase();
+  if (normalized === "ACTIVE") return "active";
+  if (normalized === "APPROVAL_PENDING" || normalized === "APPROVED") return "incomplete";
+  if (normalized === "SUSPENDED") return "past_due";
+  if (normalized === "CANCELLED" || normalized === "EXPIRED") return "canceled";
+  return "trialing";
 }
 
 Deno.serve(async (req) => {
@@ -51,9 +91,8 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
-    const stripePriceId = Deno.env.get("STRIPE_PRICE_ID_MONTHLY");
-    if (!supabaseUrl || !serviceRoleKey || !stripeSecretKey || !stripePriceId) {
+    const paypalPlanId = Deno.env.get("PAYPAL_PLAN_ID_MONTHLY") || Deno.env.get("PAYPAL_PLAN_ID");
+    if (!supabaseUrl || !serviceRoleKey || !paypalPlanId) {
       return new Response(JSON.stringify({ success: false, error: "Missing function secrets." }), {
         headers: { ...corsHeaders, "content-type": "application/json" },
         status: 500
@@ -101,7 +140,7 @@ Deno.serve(async (req) => {
 
     const { data: account, error: accountError } = await supabaseAdmin
       .from("accounts")
-      .select('id, name, email, "trialEndsAt", "stripeCustomerId"')
+      .select('id, name, email, "trialEndsAt"')
       .eq("id", payload.accountId)
       .single();
 
@@ -113,48 +152,58 @@ Deno.serve(async (req) => {
       .eq("accountId", payload.accountId);
     if (seatError) throw seatError;
 
-    let stripeCustomerId = account.stripeCustomerId as string | null;
-    if (!stripeCustomerId) {
-      const customer = await stripeRequest(
-        "/v1/customers",
-        stripeSecretKey,
-        new URLSearchParams({
-          name: account.name ?? `Account ${payload.accountId}`,
-          email: account.email ?? user.email ?? "",
-          "metadata[accountId]": String(payload.accountId)
-        })
-      );
-      stripeCustomerId = customer.id;
-      const { error: updateCustomerError } = await supabaseAdmin
-        .from("accounts")
-        .update({ stripeCustomerId })
-        .eq("id", payload.accountId);
-      if (updateCustomerError) throw updateCustomerError;
+    const targetSeats = Math.max(1, seatsCount ?? 1);
+    const paypalAccessToken = await getPayPalAccessToken();
+
+    const createBody: Record<string, unknown> = {
+      plan_id: paypalPlanId,
+      quantity: String(targetSeats),
+      custom_id: String(payload.accountId),
+      application_context: {
+        brand_name: account.name ?? `Account ${payload.accountId}`,
+        user_action: "SUBSCRIBE_NOW",
+        return_url: `${payload.appUrl.replace(/\/$/, "")}/account/billing?checkout=success`,
+        cancel_url: `${payload.appUrl.replace(/\/$/, "")}/account/billing?checkout=cancel`
+      },
+      subscriber: {
+        email_address: account.email ?? user.email ?? ""
+      }
+    };
+
+    const trialEndDate = account.trialEndsAt ? new Date(account.trialEndsAt as string) : null;
+    if (trialEndDate && trialEndDate.getTime() > Date.now() + 5 * 60 * 1000) {
+      createBody.start_time = trialEndDate.toISOString();
     }
 
-    const successUrl = `${payload.appUrl.replace(/\/$/, "")}/account/billing?checkout=success`;
-    const cancelUrl = `${payload.appUrl.replace(/\/$/, "")}/account/billing?checkout=cancel`;
-    const trialEnd = account.trialEndsAt ? Math.floor(new Date(account.trialEndsAt as string).getTime() / 1000) : null;
-    const nowTs = Math.floor(Date.now() / 1000);
+    const subscription = await paypalRequest("/v1/billing/subscriptions", paypalAccessToken, createBody);
+    const approvalUrl = subscription?.links?.find((link: { rel?: string; href?: string }) => link.rel === "approve")?.href;
+    if (!approvalUrl) {
+      throw new Error("PayPal approval URL not found");
+    }
 
-    const params = new URLSearchParams({
-      mode: "subscription",
-      customer: stripeCustomerId,
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      "line_items[0][price]": stripePriceId,
-      "line_items[0][quantity]": String(Math.max(1, seatsCount ?? 1)),
-      client_reference_id: String(payload.accountId),
-      "metadata[accountId]": String(payload.accountId)
+    const billingStatus = mapPayPalStatusToBillingStatus(subscription?.status);
+    await supabaseAdmin
+      .from("accounts")
+      .update({
+        billingStatus,
+        paypalSubscriptionId: subscription.id,
+        stripeSubscriptionId: subscription.id,
+        subscriptionPriceId: paypalPlanId
+      })
+      .eq("id", payload.accountId);
+
+    await supabaseAdmin.from("account_billing_events").insert({
+      accountId: payload.accountId,
+      eventType: "paypal.subscription.created",
+      stripeEventId: subscription.id,
+      payload: {
+        provider: "paypal",
+        status: subscription?.status ?? null,
+        quantity: targetSeats
+      }
     });
 
-    if (trialEnd && trialEnd > nowTs) {
-      params.append("subscription_data[trial_end]", String(trialEnd));
-    }
-
-    const session = await stripeRequest("/v1/checkout/sessions", stripeSecretKey, params);
-
-    return new Response(JSON.stringify({ success: true, url: session.url, sessionId: session.id }), {
+    return new Response(JSON.stringify({ success: true, url: approvalUrl, subscriptionId: subscription.id }), {
       headers: { ...corsHeaders, "content-type": "application/json" },
       status: 200
     });
