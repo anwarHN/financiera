@@ -76,9 +76,8 @@ function BankReconciliationPage() {
   }, [transactions, dateFrom, dateTo]);
 
   const previousBalance = useMemo(() => {
-    const from = new Date(`${dateFrom}T00:00:00.000Z`);
     return transactions
-      .filter((row) => row.isReconciled && row.reconciledAt && new Date(row.reconciledAt) < from)
+      .filter((row) => row.isReconciled && row.reconciledAt && row.reconciledAt < dateFrom)
       .reduce((acc, row) => acc + transactionAmount(row), 0);
   }, [transactions, dateFrom]);
 
@@ -98,7 +97,7 @@ function BankReconciliationPage() {
 
   const handleReconcile = async (transactionId) => {
     try {
-      await reconcileTransaction(transactionId, `${reconcileDate}T00:00:00.000Z`);
+      await reconcileTransaction(transactionId, reconcileDate);
       await loadTransactions();
     } catch {
       setError(t("common.genericSaveError"));

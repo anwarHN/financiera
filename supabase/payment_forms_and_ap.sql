@@ -68,7 +68,7 @@ alter table public.transactions
 add column if not exists "isReconciled" boolean not null default false;
 
 alter table public.transactions
-add column if not exists "reconciledAt" timestamptz;
+add column if not exists "reconciledAt" date;
 
 alter table public.concepts
 add column if not exists "isAccountPayableConcept" boolean not null default false;
