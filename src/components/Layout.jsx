@@ -79,6 +79,7 @@ const navGroups = [
     items: [
       { path: "/payment-forms", key: "nav.paymentForms", icon: FiCreditCard },
       { path: "/bank-deposits", key: "nav.bankDeposits", icon: FiDollarSign },
+      { path: "/bank-transfers", key: "nav.bankTransfers", icon: FiShare2 },
       { path: "/internal-obligations", key: "nav.internalObligations", icon: FiFileText },
       { path: "/bank-reconciliation", key: "nav.bankReconciliation", icon: FiGitMerge }
     ]
@@ -280,6 +281,9 @@ function Layout() {
     }
     if (pathname.startsWith("/bank-deposits")) {
       return { createPath: "/bank-deposits/new", createLabel: t("actions.newBankDeposit") };
+    }
+    if (pathname.startsWith("/bank-transfers")) {
+      return { createPath: "/bank-transfers/new", createLabel: t("actions.newBankTransfer") };
     }
     if (pathname.startsWith("/internal-obligations")) {
       return { createPath: "/internal-obligations/new", createLabel: t("actions.newInternalObligation") };

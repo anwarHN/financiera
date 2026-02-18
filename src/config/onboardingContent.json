@@ -78,6 +78,7 @@
       "appMenuOptions": [
         { "name": "Cuentas y tarjetas", "description": "Mantenimiento de cuentas y tarjetas." },
         { "name": "Depósitos bancarios", "description": "Registro de depósitos entre formas de pago." },
+        { "name": "Traslados bancarios", "description": "Traslado entre cuentas bancarias con registro de doble detalle." },
         { "name": "Obligaciones internas", "description": "Control de obligaciones internas." },
         { "name": "Conciliación bancaria", "description": "Conciliación y saldos por fecha de corte." }
       ]
@@ -190,6 +191,7 @@
       "appMenuOptions": [
         { "name": "Accounts and cards", "description": "Maintain bank accounts and cards." },
         { "name": "Bank deposits", "description": "Record deposits between payment forms." },
+        { "name": "Bank transfers", "description": "Transfer between bank accounts with two-detail registration." },
         { "name": "Internal obligations", "description": "Track internal obligations." },
         { "name": "Bank reconciliation", "description": "Reconcile balances by cutoff date." }
       ]

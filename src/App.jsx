@@ -28,6 +28,8 @@ import InternalAccountPayablesPage from "./pages/InternalAccountPayablesPage";
 import InternalAccountPayableFormPage from "./pages/InternalAccountPayableFormPage";
 import BankDepositsPage from "./pages/BankDepositsPage";
 import BankDepositFormPage from "./pages/BankDepositFormPage";
+import BankTransfersPage from "./pages/BankTransfersPage";
+import BankTransferFormPage from "./pages/BankTransferFormPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ProjectFormPage from "./pages/ProjectFormPage";
 import ProjectDetailPage from "./pages/ProjectDetailPage";
@@ -197,6 +199,8 @@ function App() {
         <Route path="payment-forms/:id/edit" element={<AccountPaymentFormPage />} />
         <Route path="bank-deposits" element={<BankDepositsPage />} />
         <Route path="bank-deposits/new" element={<BankDepositFormPage />} />
+        <Route path="bank-transfers" element={<BankTransfersPage />} />
+        <Route path="bank-transfers/new" element={<BankTransferFormPage />} />
         <Route path="internal-obligations" element={<InternalAccountPayablesPage />} />
         <Route path="internal-obligations/new" element={<InternalAccountPayableFormPage />} />
         <Route path="internal-obligations/:id/edit" element={<InternalAccountPayableFormPage />} />

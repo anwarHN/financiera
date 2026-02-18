@@ -104,6 +104,7 @@ export const translations = {
       newIncomingPayment: "Nuevo pago entrante",
       newPaymentForm: "Nueva cuenta/tarjeta",
       newBankDeposit: "Nuevo depósito",
+      newBankTransfer: "Nuevo traslado",
       newInternalObligation: "Nueva obligación interna",
       newPayableConcept: "Nuevo concepto de cuentas por pagar",
       newProject: "Nuevo proyecto",
@@ -148,6 +149,7 @@ export const translations = {
       paymentForms: "Cuentas y tarjetas",
       internalObligations: "Obligaciones internas",
       bankDeposits: "Depósitos bancarios",
+      bankTransfers: "Traslados bancarios",
       bankReconciliation: "Conciliación bancaria",
       payableConcepts: "Conceptos CxP",
       reports: "Reportes",
@@ -221,6 +223,13 @@ export const translations = {
       fromCash: "Caja origen",
       toBankAccount: "Cuenta bancaria destino",
       saved: "Depósito registrado correctamente."
+    },
+    bankTransfers: {
+      title: "Registrar traslado bancario",
+      fromBankAccount: "Cuenta bancaria origen",
+      toBankAccount: "Cuenta bancaria destino",
+      sameAccountError: "La cuenta origen y destino deben ser diferentes.",
+      saved: "Traslado registrado correctamente."
     },
     reports: {
       title: "Reportes",
@@ -551,6 +560,7 @@ export const translations = {
       newIncomingPayment: "New incoming payment",
       newPaymentForm: "New bank/card account",
       newBankDeposit: "New bank deposit",
+      newBankTransfer: "New transfer",
       newInternalObligation: "New internal obligation",
       newPayableConcept: "New accounts payable concept",
       newProject: "New project",
@@ -594,6 +604,7 @@ export const translations = {
       paymentForms: "Bank accounts & cards",
       internalObligations: "Internal obligations",
       bankDeposits: "Bank deposits",
+      bankTransfers: "Bank transfers",
       bankReconciliation: "Bank reconciliation",
       payableConcepts: "AP concepts",
       reports: "Reports",
@@ -667,6 +678,13 @@ export const translations = {
       fromCash: "Source cashbox",
       toBankAccount: "Destination bank account",
       saved: "Deposit registered successfully."
+    },
+    bankTransfers: {
+      title: "Register bank transfer",
+      fromBankAccount: "Source bank account",
+      toBankAccount: "Destination bank account",
+      sameAccountError: "Source and destination accounts must be different.",
+      saved: "Transfer registered successfully."
     },
     reports: {
       title: "Reports",
