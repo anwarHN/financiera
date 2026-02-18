@@ -526,45 +526,50 @@ export async function createBankTransfer({
     throw inTxError;
   }
 
-  const details = [
-    {
-      transactionId: outTxRow.id,
-      conceptId: Number(outgoingConceptId),
-      quantity: 1,
-      price: -safeAmount,
-      net: -safeAmount,
-      taxPercentage: 0,
-      tax: 0,
-      discountPercentage: 0,
-      discount: 0,
-      total: -safeAmount,
-      additionalCharges: 0,
-      createdById: userId,
-      sellerId: null,
-      transactionPaidId: null
-    },
-    {
-      transactionId: inTxRow.id,
-      conceptId: Number(incomingConceptId),
-      quantity: 1,
-      price: safeAmount,
-      net: safeAmount,
-      taxPercentage: 0,
-      tax: 0,
-      discountPercentage: 0,
-      discount: 0,
-      total: safeAmount,
-      additionalCharges: 0,
-      createdById: userId,
-      sellerId: null,
-      transactionPaidId: null
-    }
-  ];
+  const outgoingDetail = {
+    transactionId: outTxRow.id,
+    conceptId: Number(outgoingConceptId),
+    quantity: 1,
+    price: -safeAmount,
+    net: -safeAmount,
+    taxPercentage: 0,
+    tax: 0,
+    discountPercentage: 0,
+    discount: 0,
+    total: -safeAmount,
+    additionalCharges: 0,
+    createdById: userId,
+    sellerId: null,
+    transactionPaidId: null
+  };
 
-  const { error: detailError } = await supabase.from("transactionDetails").insert(details);
-  if (detailError) {
+  const incomingDetail = {
+    transactionId: inTxRow.id,
+    conceptId: Number(incomingConceptId),
+    quantity: 1,
+    price: safeAmount,
+    net: safeAmount,
+    taxPercentage: 0,
+    tax: 0,
+    discountPercentage: 0,
+    discount: 0,
+    total: safeAmount,
+    additionalCharges: 0,
+    createdById: userId,
+    sellerId: null,
+    transactionPaidId: null
+  };
+
+  const { error: outgoingDetailError } = await supabase.from("transactionDetails").insert(outgoingDetail);
+  if (outgoingDetailError) {
     await supabase.from("transactions").delete().in("id", [outTxRow.id, inTxRow.id]);
-    throw detailError;
+    throw outgoingDetailError;
+  }
+
+  const { error: incomingDetailError } = await supabase.from("transactionDetails").insert(incomingDetail);
+  if (incomingDetailError) {
+    await supabase.from("transactions").delete().in("id", [outTxRow.id, inTxRow.id]);
+    throw incomingDetailError;
   }
 }
 
