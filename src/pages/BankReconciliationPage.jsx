@@ -64,22 +64,24 @@ function BankReconciliationPage() {
     }
   };
 
+  const activeTransactions = useMemo(() => transactions.filter((row) => row.isActive !== false), [transactions]);
+
   const periodMovementsSum = useMemo(() => {
     const from = new Date(`${dateFrom}T00:00:00.000Z`);
     const until = new Date(`${dateTo}T23:59:59.999Z`);
-    return transactions
+    return activeTransactions
       .filter((row) => {
         const txDate = new Date(`${row.date}T00:00:00.000Z`);
         return txDate >= from && txDate <= until;
       })
       .reduce((acc, row) => acc + transactionAmount(row), 0);
-  }, [transactions, dateFrom, dateTo]);
+  }, [activeTransactions, dateFrom, dateTo]);
 
   const previousBalance = useMemo(() => {
-    return transactions
+    return activeTransactions
       .filter((row) => row.isReconciled && row.reconciledAt && row.reconciledAt < dateFrom)
       .reduce((acc, row) => acc + transactionAmount(row), 0);
-  }, [transactions, dateFrom]);
+  }, [activeTransactions, dateFrom]);
 
   const currentBalance = useMemo(
     () => previousBalance + periodMovementsSum,
@@ -89,11 +91,11 @@ function BankReconciliationPage() {
   const transactionsInRange = useMemo(() => {
     const from = new Date(`${dateFrom}T00:00:00.000Z`);
     const until = new Date(`${dateTo}T23:59:59.999Z`);
-    return transactions.filter((row) => {
+    return activeTransactions.filter((row) => {
       const txDate = new Date(`${row.date}T00:00:00.000Z`);
       return txDate >= from && txDate <= until;
     });
-  }, [transactions, dateFrom, dateTo]);
+  }, [activeTransactions, dateFrom, dateTo]);
 
   const handleReconcile = async (transactionId) => {
     try {
