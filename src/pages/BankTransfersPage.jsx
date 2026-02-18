@@ -64,6 +64,7 @@ function BankTransfersPage() {
             <thead>
               <tr>
                 <th>ID</th>
+                <th>{t("bankTransfers.sourceTransactionId")}</th>
                 <th>{t("transactions.date")}</th>
                 <th>{t("common.name")}</th>
                 <th>{t("bankTransfers.fromBankAccount")}</th>
@@ -77,6 +78,7 @@ function BankTransfersPage() {
               {paginatedItems.map((item) => (
                 <tr key={item.id}>
                   <td>{item.id}</td>
+                  <td>{item.sourceTransactionId || "-"}</td>
                   <td>{formatDate(item.date, language)}</td>
                   <td>{item.name || "-"}</td>
                   <td>{item.deliverTo || "-"}</td>

@@ -158,7 +158,15 @@ export const translations = {
     },
     dashboard: {
       title: "Panel principal",
-      subtitle: "Base inicial lista. Continúa con módulos de negocio."
+      subtitle: "Base inicial lista. Continúa con módulos de negocio.",
+      bankBalances: "Cuentas bancarias y saldos",
+      salesMonthBar: "Ventas del mes",
+      expensesByConceptDonut: "Gastos por concepto",
+      incomesByConceptDonut: "Ingresos por concepto",
+      incomeVsExpenseLine: "Ingresos vs gastos",
+      internalObligationsByPaymentForm: "Obligaciones internas por forma de pago",
+      incomesLine: "Ingresos",
+      expensesLine: "Gastos"
     },
     persons: {
       title: "Clientes y proveedores",
@@ -226,6 +234,7 @@ export const translations = {
     },
     bankTransfers: {
       title: "Registrar traslado bancario",
+      sourceTransactionId: "ID transacción origen",
       fromBankAccount: "Cuenta bancaria origen",
       toBankAccount: "Cuenta bancaria destino",
       sameAccountError: "La cuenta origen y destino deben ser diferentes.",
@@ -613,7 +622,15 @@ export const translations = {
     },
     dashboard: {
       title: "Main dashboard",
-      subtitle: "Initial foundation is ready. Continue building business modules."
+      subtitle: "Initial foundation is ready. Continue building business modules.",
+      bankBalances: "Bank accounts and balances",
+      salesMonthBar: "Monthly sales",
+      expensesByConceptDonut: "Expenses by concept",
+      incomesByConceptDonut: "Incomes by concept",
+      incomeVsExpenseLine: "Income vs expenses",
+      internalObligationsByPaymentForm: "Internal obligations by payment form",
+      incomesLine: "Incomes",
+      expensesLine: "Expenses"
     },
     persons: {
       title: "Clients and suppliers",
@@ -681,6 +698,7 @@ export const translations = {
     },
     bankTransfers: {
       title: "Register bank transfer",
+      sourceTransactionId: "Source transaction ID",
       fromBankAccount: "Source bank account",
       toBankAccount: "Destination bank account",
       sameAccountError: "Source and destination accounts must be different.",

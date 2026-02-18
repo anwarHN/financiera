@@ -463,44 +463,72 @@ export async function createBankTransfer({
   if (Number(fromBankFormId) === Number(toBankFormId)) throw new Error("Source and destination must be different.");
 
   const baseName = description?.trim() || "Traslado entre cuentas";
-  const txPayload = {
+  const common = {
     accountId,
     personId: null,
     date,
-    type: TRANSACTION_TYPES.outgoingPayment,
-    name: baseName,
-    deliverTo: fromBankLabel || null,
-    deliveryAddress: toBankLabel || null,
     referenceNumber: referenceNumber?.trim() || null,
     status: 1,
     createdById: userId,
-    net: safeAmount,
+    net: 0,
     discounts: 0,
     taxes: 0,
     additionalCharges: 0,
-    total: safeAmount,
+    total: 0,
     isAccountPayable: false,
     isAccountReceivable: false,
     isIncomingPayment: false,
     isOutcomingPayment: false,
     balance: 0,
-    payments: safeAmount,
+    payments: 0,
     isActive: true,
     currencyId: Number(currencyId),
     paymentMethodId: Number(transferPaymentMethodId),
-    accountPaymentFormId: Number(toBankFormId),
     isInternalObligation: false,
-    sourceTransactionId: null,
     isInternalTransfer: true,
     isDeposit: false
   };
 
-  const { data: txRow, error: txError } = await supabase.from("transactions").insert(txPayload).select("id").single();
-  if (txError) throw txError;
+  const outgoingTx = {
+    ...common,
+    type: TRANSACTION_TYPES.outgoingPayment,
+    name: `${baseName} (salida)`,
+    deliverTo: fromBankLabel || null,
+    deliveryAddress: toBankLabel || null,
+    net: -safeAmount,
+    total: -safeAmount,
+    isOutcomingPayment: true,
+    payments: -safeAmount,
+    accountPaymentFormId: Number(fromBankFormId),
+    sourceTransactionId: null
+  };
+
+  const { data: outTxRow, error: outTxError } = await supabase.from("transactions").insert(outgoingTx).select("id").single();
+  if (outTxError) throw outTxError;
+
+  const incomingTx = {
+    ...common,
+    type: TRANSACTION_TYPES.incomingPayment,
+    name: `${baseName} (entrada)`,
+    deliverTo: fromBankLabel || null,
+    deliveryAddress: toBankLabel || null,
+    net: safeAmount,
+    total: safeAmount,
+    isIncomingPayment: true,
+    payments: safeAmount,
+    accountPaymentFormId: Number(toBankFormId),
+    sourceTransactionId: outTxRow.id
+  };
+
+  const { data: inTxRow, error: inTxError } = await supabase.from("transactions").insert(incomingTx).select("id").single();
+  if (inTxError) {
+    await supabase.from("transactions").delete().eq("id", outTxRow.id);
+    throw inTxError;
+  }
 
   const details = [
     {
-      transactionId: txRow.id,
+      transactionId: outTxRow.id,
       conceptId: Number(outgoingConceptId),
       quantity: 1,
       price: -safeAmount,
@@ -516,7 +544,7 @@ export async function createBankTransfer({
       transactionPaidId: null
     },
     {
-      transactionId: txRow.id,
+      transactionId: inTxRow.id,
       conceptId: Number(incomingConceptId),
       quantity: 1,
       price: safeAmount,
@@ -535,7 +563,7 @@ export async function createBankTransfer({
 
   const { error: detailError } = await supabase.from("transactionDetails").insert(details);
   if (detailError) {
-    await supabase.from("transactions").delete().eq("id", txRow.id);
+    await supabase.from("transactions").delete().in("id", [outTxRow.id, inTxRow.id]);
     throw detailError;
   }
 }
@@ -571,17 +599,28 @@ export async function deactivateBankDepositGroup(incomingDepositId) {
 export async function listBankTransfers(accountId) {
   const { data, error } = await supabase
     .from("transactions")
-    .select('id, date, name, total, "referenceNumber", deliverTo, "deliveryAddress", isActive, account_payment_forms(name)')
+    .select('id, date, name, total, "referenceNumber", "sourceTransactionId", deliverTo, "deliveryAddress", isActive, account_payment_forms(name)')
     .eq("accountId", accountId)
     .eq("isInternalTransfer", true)
     .eq("isDeposit", false)
+    .eq("isIncomingPayment", true)
     .eq("isActive", true)
     .order("id", { ascending: false });
   if (error) throw error;
   return data ?? [];
 }
 
-export async function deactivateBankTransfer(id) {
-  const { error } = await supabase.from("transactions").update({ isActive: false }).eq("id", id);
+export async function deactivateBankTransfer(incomingTransferId) {
+  const { data: incomingTx, error: incomingError } = await supabase
+    .from("transactions")
+    .select('id, "sourceTransactionId"')
+    .eq("id", incomingTransferId)
+    .single();
+  if (incomingError) throw incomingError;
+
+  const ids = [incomingTx.id];
+  if (incomingTx.sourceTransactionId) ids.push(incomingTx.sourceTransactionId);
+
+  const { error } = await supabase.from("transactions").update({ isActive: false }).in("id", ids);
   if (error) throw error;
 }
