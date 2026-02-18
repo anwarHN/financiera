@@ -11,6 +11,7 @@ import {
   listTransactions,
   TRANSACTION_TYPES
 } from "../services/transactionsService";
+import { formatDate } from "../utils/dateFormat";
 import { formatNumber } from "../utils/numberFormat";
 
 const moduleConfig = {
@@ -43,7 +44,7 @@ const moduleConfig = {
 const pageSize = 10;
 
 function TransactionsPage({ moduleType }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { account } = useAuth();
   const config = moduleConfig[moduleType];
   const supportsTableFilters = ["sale", "purchase", "expense", "income"].includes(moduleType);
@@ -242,7 +243,7 @@ function TransactionsPage({ moduleType }) {
                       item.id
                     )}
                   </td>
-                  <td>{item.date}</td>
+                  <td>{formatDate(item.date, language)}</td>
                   <td>{item.name ?? "-"}</td>
                   {(moduleType === "income" || moduleType === "expense") && <td>{item.conceptName ?? "-"}</td>}
                   <td>{item.persons?.name ?? "-"}</td>

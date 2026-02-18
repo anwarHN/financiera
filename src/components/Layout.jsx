@@ -29,6 +29,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { searchGlobalByAccount } from "../services/globalSearchService";
 import { listPendingInvitationsForCurrentUser } from "../services/invitationsService";
+import { formatDate } from "../utils/dateFormat";
 import ModuleOnboarding from "./ModuleOnboarding";
 
 const navGroups = [
@@ -342,7 +343,7 @@ function Layout() {
         rows: (searchResults.transactions ?? []).map((row) => ({
           id: `tx-${row.id}`,
           title: row.name || `${t("sidebar.transactions")} #${row.id}`,
-          subtitle: `${row.date || "-"} · ${row.referenceNumber || "-"}`,
+          subtitle: `${formatDate(row.date, language)} · ${row.referenceNumber || "-"}`,
           to: resolveTransactionSearchTarget(row)
         }))
       },
@@ -392,12 +393,12 @@ function Layout() {
         rows: (searchResults.deposits ?? []).map((row) => ({
           id: `deposit-${row.id}`,
           title: row.name || `${t("nav.bankDeposits")} #${row.id}`,
-          subtitle: `${row.date || "-"} · ${row.referenceNumber || "-"}`,
+          subtitle: `${formatDate(row.date, language)} · ${row.referenceNumber || "-"}`,
           to: "/bank-deposits"
         }))
       }
     ],
-    [searchResults, t]
+    [searchResults, t, language]
   );
   const totalSearchRows = useMemo(
     () => searchGroups.reduce((sum, group) => sum + group.rows.length, 0),

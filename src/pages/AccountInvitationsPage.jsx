@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { listPendingInvitationsForCurrentUser, markInvitationAccepted } from "../services/invitationsService";
+import { formatDateTime } from "../utils/dateFormat";
 
 function AccountInvitationsPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { refreshAccounts, switchAccount } = useAuth();
   const [invitations, setInvitations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,13 +45,6 @@ function AccountInvitationsPage() {
     }
   };
 
-  const formatDateTime = (value) => {
-    if (!value) return "-";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "-";
-    return date.toLocaleString();
-  };
-
   return (
     <div className="module-page">
       <h1>{t("accountManage.pendingInvitationsTitle")}</h1>
@@ -79,7 +73,7 @@ function AccountInvitationsPage() {
                 <tr key={inv.id}>
                   <td>{inv.accounts?.name ?? `${t("topbar.currentAccount")} #${inv.accountId}`}</td>
                   <td>{inv.account_profiles?.name ?? "-"}</td>
-                  <td>{formatDateTime(inv.expiresAt)}</td>
+                  <td>{formatDateTime(inv.expiresAt, language)}</td>
                   <td>
                     <button type="button" className="button-link-primary" onClick={() => handleAcceptInvitation(inv.id, inv.email)}>
                       {t("accountManage.acceptInvitation")}

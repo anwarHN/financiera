@@ -5,10 +5,11 @@ import { useI18n } from "../contexts/I18nContext";
 import { getProjectExecutionReport } from "../services/budgetsService";
 import { getProjectById } from "../services/projectsService";
 import { listTransactionsByProject } from "../services/transactionsService";
+import { formatDate } from "../utils/dateFormat";
 import { formatNumber } from "../utils/numberFormat";
 
 function ProjectDetailPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { account } = useAuth();
   const { id } = useParams();
   const [project, setProject] = useState(null);
@@ -73,8 +74,8 @@ function ProjectDetailPage() {
               <strong>{t("common.name")}:</strong> {project?.name || "-"}
             </p>
             <p>
-              <strong>{t("projects.startDate")}:</strong> {project?.startDate || "-"} | <strong>{t("projects.endDate")}:</strong>{" "}
-              {project?.endDate || "-"}
+              <strong>{t("projects.startDate")}:</strong> {formatDate(project?.startDate, language)} | <strong>{t("projects.endDate")}:</strong>{" "}
+              {formatDate(project?.endDate, language)}
             </p>
             <p>
               {t("budgets.totalBudget")}: {formatNumber(totals.budgeted)} | {t("reports.executed")}: {formatNumber(totals.executed)} |{" "}
@@ -134,7 +135,7 @@ function ProjectDetailPage() {
                   transactions.map((tx) => (
                     <tr key={tx.id}>
                       <td>{tx.id}</td>
-                      <td>{tx.date}</td>
+                      <td>{formatDate(tx.date, language)}</td>
                       <td>{tx.name || "-"}</td>
                       <td>{formatNumber(tx.total)}</td>
                     </tr>

@@ -3,10 +3,11 @@ import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { getBudgetById, getBudgetExecutionReport } from "../services/budgetsService";
+import { formatDate } from "../utils/dateFormat";
 import { formatNumber } from "../utils/numberFormat";
 
 function BudgetDetailPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { account } = useAuth();
   const { id } = useParams();
 
@@ -72,8 +73,8 @@ function BudgetDetailPage() {
               <strong>{t("budgets.periodType")}:</strong> {budget?.periodType ? t(`budgets.periods.${budget.periodType}`) : "-"}
             </p>
             <p>
-              <strong>{t("reports.dateFrom")}:</strong> {budget?.periodStart || "-"} | <strong>{t("reports.dateTo")}:</strong>{" "}
-              {budget?.periodEnd || "-"}
+              <strong>{t("reports.dateFrom")}:</strong> {formatDate(budget?.periodStart, language)} | <strong>{t("reports.dateTo")}:</strong>{" "}
+              {formatDate(budget?.periodEnd, language)}
             </p>
             <p>
               {t("budgets.totalBudget")}: {formatNumber(totals.budgeted)} | {t("reports.executed")}: {formatNumber(totals.executed)} |{" "}

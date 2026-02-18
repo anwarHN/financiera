@@ -4,9 +4,10 @@ import { useI18n } from "../contexts/I18nContext";
 import { deactivateAccountUser, listAccountUsers, listInvitations, resendInvitation, sendInvitation } from "../services/adminService";
 import { assignUserProfile, listProfiles, listUserProfiles } from "../services/profilesService";
 import { syncBillingSeats } from "../services/billingService";
+import { formatDateTime } from "../utils/dateFormat";
 
 function AdminPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { account, user } = useAuth();
   const [users, setUsers] = useState([]);
   const [profiles, setProfiles] = useState([]);
@@ -124,13 +125,6 @@ function AdminPage() {
     }
   };
 
-  const formatDateTime = (value) => {
-    if (!value) return "-";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "-";
-    return date.toLocaleString();
-  };
-
   const handleDeactivateUser = async (targetUserId) => {
     if (!account?.accountId || !targetUserId) return;
     try {
@@ -239,7 +233,7 @@ function AdminPage() {
               <td>{inv.email}</td>
               <td>{inv.account_profiles?.name ?? "-"}</td>
               <td>{inv.status}</td>
-              <td>{formatDateTime(inv.expiresAt)}</td>
+              <td>{formatDateTime(inv.expiresAt, language)}</td>
               <td>
                 {inv.status === "sent" ? (
                   <button type="button" className="button-secondary" onClick={() => handleResendInvitation(inv.id)}>

@@ -3,9 +3,11 @@ import { Link, useParams } from "react-router-dom";
 import PaymentRegisterModal from "../components/PaymentRegisterModal";
 import { useI18n } from "../contexts/I18nContext";
 import { getTransactionById, listPaymentsForTransaction, listTransactionDetails } from "../services/transactionsService";
+import { formatDate } from "../utils/dateFormat";
+import { formatNumber } from "../utils/numberFormat";
 
 function TransactionDetailPage({ moduleType }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { id } = useParams();
   const [transaction, setTransaction] = useState(null);
   const [details, setDetails] = useState([]);
@@ -65,10 +67,10 @@ function TransactionDetailPage({ moduleType }) {
             {t("transactions.person")}: {transaction.persons?.name ?? "-"}
           </p>
           <p>
-            {t("transactions.total")}: {Number(transaction.total || 0).toFixed(2)}
+            {t("transactions.total")}: {formatNumber(transaction.total)}
           </p>
           <p>
-            {t("transactions.balance")}: {Number(transaction.balance || 0).toFixed(2)}
+            {t("transactions.balance")}: {formatNumber(transaction.balance)}
           </p>
           <p>
             {t("transactions.referenceNumber")}: {transaction.referenceNumber || "-"}
@@ -97,8 +99,8 @@ function TransactionDetailPage({ moduleType }) {
                 <tr key={line.id}>
                   <td>{line.concepts?.name ?? "-"}</td>
                   <td>{line.quantity}</td>
-                  <td>{Number(line.price || 0).toFixed(2)}</td>
-                  <td>{Number(line.total || 0).toFixed(2)}</td>
+                  <td>{formatNumber(line.price)}</td>
+                  <td>{formatNumber(line.total)}</td>
                 </tr>
               ))
             )}
@@ -126,9 +128,9 @@ function TransactionDetailPage({ moduleType }) {
               payments.map((payment) => (
                 <tr key={payment.id}>
                   <td>{payment.transactionId}</td>
-                  <td>{payment.transactions?.date ?? "-"}</td>
+                  <td>{formatDate(payment.transactions?.date, language)}</td>
                   <td>{payment.transactions?.referenceNumber ?? "-"}</td>
-                  <td>{Number(payment.total || 0).toFixed(2)}</td>
+                  <td>{formatNumber(payment.total)}</td>
                 </tr>
               ))
             )}

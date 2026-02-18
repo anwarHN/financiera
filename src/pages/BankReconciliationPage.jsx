@@ -8,6 +8,7 @@ import {
   reconcileTransaction,
   unreconcileTransaction
 } from "../services/transactionsService";
+import { formatDate } from "../utils/dateFormat";
 import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
 import { formatNumber } from "../utils/numberFormat";
 
@@ -16,7 +17,7 @@ function transactionAmount(transaction) {
 }
 
 function BankReconciliationPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { account } = useAuth();
   const [forms, setForms] = useState([]);
   const [selectedFormId, setSelectedFormId] = useState("");
@@ -177,10 +178,10 @@ function BankReconciliationPage() {
             transactionsInRange.map((row) => (
               <tr key={row.id}>
                 <td>{row.id}</td>
-                <td>{row.date}</td>
+                <td>{formatDate(row.date, language)}</td>
                 <td>{row.referenceNumber || "-"}</td>
                 <td>{formatNumber(row.total)}</td>
-                <td>{row.isReconciled ? new Date(row.reconciledAt).toLocaleDateString() : "-"}</td>
+                <td>{row.isReconciled ? formatDate(row.reconciledAt, language) : "-"}</td>
                 <td className="table-actions reconciliation-actions">
                   {!row.isReconciled ? (
                     <button type="button" className="button-secondary" onClick={() => handleReconcile(row.id)}>

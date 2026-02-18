@@ -4,11 +4,13 @@ import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { deactivateTransaction, listInternalObligations } from "../services/transactionsService";
+import { formatDate } from "../utils/dateFormat";
+import { formatNumber } from "../utils/numberFormat";
 
 const pageSize = 10;
 
 function InternalAccountPayablesPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { account } = useAuth();
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
@@ -75,12 +77,12 @@ function InternalAccountPayablesPage() {
               {paginatedItems.map((item) => (
                 <tr key={item.id}>
                   <td>{item.id}</td>
-                  <td>{item.date}</td>
+                  <td>{formatDate(item.date, language)}</td>
                   <td>{item.name}</td>
                   <td>{item.account_payment_forms?.name || "-"}</td>
                   <td>{item.referenceNumber || "-"}</td>
-                  <td>{Number(item.total || 0).toFixed(2)}</td>
-                  <td>{Number(item.balance || 0).toFixed(2)}</td>
+                  <td>{formatNumber(item.total)}</td>
+                  <td>{formatNumber(item.balance)}</td>
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[

@@ -8,9 +8,10 @@ import {
   listBillingPaymentMethods,
   setDefaultBillingPaymentMethod
 } from "../services/billingService";
+import { formatDateTime } from "../utils/dateFormat";
 
 function AccountBillingPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { account } = useAuth();
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
@@ -112,7 +113,7 @@ function AccountBillingPage() {
         {t("billing.status")}: <strong>{account?.billingStatus || "-"}</strong>
       </p>
       <p>
-        {t("billing.trialEndsAt")}: <strong>{account?.trialEndsAt ? new Date(account.trialEndsAt).toLocaleString() : "-"}</strong>
+        {t("billing.trialEndsAt")}: <strong>{formatDateTime(account?.trialEndsAt, language)}</strong>
       </p>
       <p>
         {t("billing.trialDaysLeft")}: <strong>{trialDaysLeft}</strong>

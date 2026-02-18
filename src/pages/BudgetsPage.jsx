@@ -5,12 +5,13 @@ import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { deactivateBudget, listBudgets, listBudgetLines } from "../services/budgetsService";
+import { formatDate } from "../utils/dateFormat";
 import { formatNumber } from "../utils/numberFormat";
 
 const pageSize = 10;
 
 function BudgetsPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { account } = useAuth();
   const [items, setItems] = useState([]);
   const [lineTotals, setLineTotals] = useState({});
@@ -90,8 +91,8 @@ function BudgetsPage() {
                     <Link to={`/budgets/${item.id}`}>{item.name}</Link>
                   </td>
                   <td>{t(`budgets.periods.${item.periodType}`)}</td>
-                  <td>{item.periodStart}</td>
-                  <td>{item.periodEnd}</td>
+                  <td>{formatDate(item.periodStart, language)}</td>
+                  <td>{formatDate(item.periodEnd, language)}</td>
                   <td>{item.projects?.name || "-"}</td>
                   <td>{formatNumber(lineTotals[item.id] || 0)}</td>
                   <td className="table-actions">

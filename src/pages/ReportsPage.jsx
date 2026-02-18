@@ -6,6 +6,7 @@ import { listCurrencies } from "../services/currenciesService";
 import { listProjects } from "../services/projectsService";
 import { exportReportXlsx, getTransactionsForReports } from "../services/reportsService";
 import { listInternalObligationsForReport } from "../services/transactionsService";
+import { formatDate } from "../utils/dateFormat";
 import { formatNumber } from "../utils/numberFormat";
 
 const reportCatalog = [
@@ -20,7 +21,7 @@ const reportCatalog = [
 ];
 
 function ReportsPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { account } = useAuth();
   const [selectedReport, setSelectedReport] = useState("sales");
   const [filters, setFilters] = useState({ dateFrom: "", dateTo: "", currencyId: "", budgetId: "", projectId: "" });
@@ -183,13 +184,13 @@ function ReportsPage() {
     const budgetName = budgets.find((b) => String(b.id) === String(filters.budgetId))?.name || "-";
     const projectName = projects.find((p) => String(p.id) === String(filters.projectId))?.name || "-";
     return [
-      `${t("reports.dateFrom")}: ${filters.dateFrom || "-"}`,
-      `${t("reports.dateTo")}: ${filters.dateTo || "-"}`,
+      `${t("reports.dateFrom")}: ${formatDate(filters.dateFrom, language)}`,
+      `${t("reports.dateTo")}: ${formatDate(filters.dateTo, language)}`,
       `${t("reports.currencyFilter")}: ${currencyName}`,
       `${t("reports.budget")}: ${budgetName}`,
       `${t("projects.project")}: ${projectName}`
     ];
-  }, [filters, currencies, budgets, projects, t]);
+  }, [filters, currencies, budgets, projects, t, language]);
 
   const total = useMemo(() => results.reduce((acc, item) => acc + Number(item.total || 0), 0), [results]);
   const balance = useMemo(() => results.reduce((acc, item) => acc + Number(item.balance || 0), 0), [results]);
@@ -401,7 +402,7 @@ function ReportsPage() {
                 rowsWithTypeLabel.map((tx) => (
                   <tr key={`${selectedReport}-${tx.id}-${tx.date}`}>
                     <td>{tx.id}</td>
-                    <td>{tx.date}</td>
+                    <td>{formatDate(tx.date, language)}</td>
                     <td>{tx.typeLabel}</td>
                     <td>{formatNumber(tx.total || 0)}</td>
                     <td>{formatNumber(tx.balance || 0)}</td>
