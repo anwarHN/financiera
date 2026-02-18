@@ -486,7 +486,9 @@ export async function createBankTransfer({
     paymentMethodId: Number(transferPaymentMethodId),
     isInternalObligation: false,
     isInternalTransfer: true,
-    isDeposit: false
+    isDeposit: false,
+    isReconciled: true,
+    reconciledAt: date
   };
 
   const outgoingTx = {
