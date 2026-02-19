@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 function LookupCombobox({
   label,
@@ -138,14 +139,19 @@ function LookupCombobox({
         </div>
       )}
       {renderCreateModal
-        ? renderCreateModal({
-            isOpen: isCreateModalOpen,
-            onClose: () => setIsCreateModalOpen(false),
-            onCreated: (record) => {
-              onCreateRecord?.(record);
-              setIsCreateModalOpen(false);
-            }
-          })
+        ? createPortal(
+            renderCreateModal({
+              isOpen: isCreateModalOpen,
+              onClose: () => setIsCreateModalOpen(false),
+              onCreated: async (record) => {
+                if (onCreateRecord) {
+                  await onCreateRecord(record);
+                }
+                setIsCreateModalOpen(false);
+              }
+            }),
+            document.body
+          )
         : null}
     </div>
   );

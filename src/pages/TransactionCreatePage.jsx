@@ -60,7 +60,8 @@ const initialSimpleForm = {
   paymentMode: "cash",
   paymentMethodId: "",
   accountPaymentFormId: "",
-  projectId: ""
+  projectId: "",
+  employeeId: ""
 };
 
 const initialSaleHeader = {
@@ -399,6 +400,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
     paymentMethodId,
     accountPaymentFormId,
     projectId,
+    employeeId,
     incomingPayment = false
   }) => ({
     accountId: account.accountId,
@@ -425,6 +427,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
     isActive: true,
     currencyId: currencyId ? Number(currencyId) : null,
     projectId: projectId ? Number(projectId) : null,
+    employeeId: employeeId ? Number(employeeId) : null,
     paymentMethodId: paymentMethodId ? Number(paymentMethodId) : null,
     accountPaymentFormId: accountPaymentFormId ? Number(accountPaymentFormId) : null
   });
@@ -481,6 +484,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
       paymentMethodId: shouldPersistPayment ? simpleForm.paymentMethodId : null,
       accountPaymentFormId: shouldPersistPayment ? simpleForm.accountPaymentFormId : null,
       projectId: simpleForm.projectId,
+      employeeId: moduleType === "income" || moduleType === "expense" ? simpleForm.employeeId : null,
       incomingPayment: moduleType === "income"
     });
 
@@ -788,6 +792,19 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                   setSimpleProjectLookup("");
                 }}
               />
+              {(moduleType === "income" || moduleType === "expense") && (
+                <label className="field-block">
+                  <span>{t("transactions.employee")}</span>
+                  <select name="employeeId" value={simpleForm.employeeId} onChange={handleSimpleChange}>
+                    <option value="">{`-- ${t("transactions.optionalSeller")} --`}</option>
+                    {employees.map((employee) => (
+                      <option key={employee.id} value={employee.id}>
+                        {employee.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
           </section>
 
