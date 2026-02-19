@@ -182,7 +182,7 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
             <TextField label={t("common.name")} name="name" placeholder={t("common.name")} value={form.name} onChange={handleChange} required />
 
             {moduleType !== "groups" ? (
-              ["income", "expense", "payable"].includes(moduleType) ? (
+              ["products", "income", "expense", "payable"].includes(moduleType) ? (
                 <LookupCombobox
                   label={t("concepts.group")}
                   value={groupLookup}
@@ -195,8 +195,8 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
                   }}
                   placeholder={`-- ${t("concepts.group")} --`}
                   noResultsText={t("common.empty")}
-                  required
-                  hasError={submitAttempted && !form.parentConceptId}
+                  required={["income", "expense", "payable"].includes(moduleType)}
+                  hasError={["income", "expense", "payable"].includes(moduleType) && submitAttempted && !form.parentConceptId}
                   selectedPillText={groupOptions.find((g) => g.id === Number(form.parentConceptId))?.name || ""}
                   onClearSelection={() => {
                     setForm((prev) => ({ ...prev, parentConceptId: "" }));
