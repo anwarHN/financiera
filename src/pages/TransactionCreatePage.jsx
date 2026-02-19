@@ -15,7 +15,13 @@ import { listEmployees } from "../services/employeesService";
 import { createPaymentMethod, listPaymentMethods } from "../services/paymentMethodsService";
 import { listPersons } from "../services/personsService";
 import { listProjects } from "../services/projectsService";
-import { createTransactionWithDetails, TRANSACTION_TYPES } from "../services/transactionsService";
+import {
+  createTransactionWithDetails,
+  getTransactionById,
+  listTransactionDetails,
+  TRANSACTION_TYPES,
+  updateTransactionWithDetails
+} from "../services/transactionsService";
 import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
 
 const moduleConfig = {
@@ -157,7 +163,7 @@ function PaymentMethodQuickCreate({ t, accountId, onCancel, onCreated }) {
   );
 }
 
-function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreated }) {
+function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreated, itemId = null }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const navigate = useNavigate();
@@ -190,6 +196,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
   const [isSaving, setIsSaving] = useState(false);
   const [simpleSubmitAttempted, setSimpleSubmitAttempted] = useState(false);
   const [saleSubmitAttempted, setSaleSubmitAttempted] = useState(false);
+  const isEdit = Boolean(itemId);
 
   const conceptOptions = useMemo(() => concepts.filter(config.conceptFilter), [concepts, config.conceptFilter]);
   const personOptions = useMemo(() => {
@@ -239,6 +246,11 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
     if (!account?.accountId) return;
     loadDependencies();
   }, [account?.accountId, config.type]);
+
+  useEffect(() => {
+    if (!account?.accountId || !itemId) return;
+    loadEditableTransaction();
+  }, [account?.accountId, itemId]);
 
   useEffect(() => {
     if (!localCurrencyId) return;
@@ -333,6 +345,74 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
     }
   };
 
+  const loadEditableTransaction = async () => {
+    try {
+      setIsLoading(true);
+      const [tx, details] = await Promise.all([getTransactionById(itemId), listTransactionDetails(itemId)]);
+
+      if (moduleType === "sale") {
+        setSaleHeader({
+          date: tx.date || initialSaleHeader.date,
+          paymentMode: tx.isAccountReceivable ? "credit" : "cash",
+          description: tx.name || "",
+          currencyId: tx.currencyId ? String(tx.currencyId) : "",
+          referenceNumber: tx.referenceNumber || "",
+          paymentMethodId: tx.paymentMethodId ? String(tx.paymentMethodId) : "",
+          accountPaymentFormId: tx.accountPaymentFormId ? String(tx.accountPaymentFormId) : "",
+          projectId: tx.projectId ? String(tx.projectId) : ""
+        });
+        setSelectedClient(
+          tx.personId
+            ? {
+                id: tx.personId,
+                name: tx.persons?.name || ""
+              }
+            : null
+        );
+        setSaleLines(
+          (details || []).map((line) => ({
+            rowId: String(line.id || `${Date.now()}-${Math.random()}`),
+            conceptId: Number(line.conceptId),
+            conceptName: line.concepts?.name || "",
+            quantity: Number(line.quantity) || 0,
+            price: Number(line.price) || 0,
+            taxPercentage: Number(line.taxPercentage) || 0,
+            discountPercentage: Number(line.discountPercentage) || 0,
+            additionalCharges: Number(line.additionalCharges) || 0,
+            sellerId: line.sellerId ? String(line.sellerId) : ""
+          }))
+        );
+      } else {
+        const firstDetail = details?.[0] ?? null;
+        const conceptId = firstDetail?.conceptId ? String(firstDetail.conceptId) : "";
+        const amountValue = Number(firstDetail?.price || 0);
+        const txAdditional = Number(firstDetail?.additionalCharges ?? tx.additionalCharges ?? 0);
+        const isExpenseFlow = moduleType === "expense";
+
+        setSimpleForm({
+          date: tx.date || initialSimpleForm.date,
+          personId: tx.personId ? String(tx.personId) : "",
+          conceptId,
+          description: tx.name || "",
+          amount: isExpenseFlow ? Math.abs(amountValue) : amountValue,
+          additionalCharges: isExpenseFlow ? Math.abs(txAdditional) : txAdditional,
+          currencyId: tx.currencyId ? String(tx.currencyId) : "",
+          referenceNumber: tx.referenceNumber || "",
+          paymentMode: moduleType === "purchase" && tx.isAccountPayable ? "credit" : "cash",
+          paymentMethodId: tx.paymentMethodId ? String(tx.paymentMethodId) : "",
+          accountPaymentFormId: tx.accountPaymentFormId ? String(tx.accountPaymentFormId) : "",
+          projectId: tx.projectId ? String(tx.projectId) : "",
+          employeeId: tx.employeeId ? String(tx.employeeId) : ""
+        });
+      }
+      setError("");
+    } catch {
+      setError(t("common.genericLoadError"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSimpleChange = (event) => {
     const { name, value } = event.target;
     if (name === "paymentMode" && value === "credit") {
@@ -416,7 +496,8 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
     accountPaymentFormId,
     projectId,
     employeeId,
-    incomingPayment = false
+    incomingPayment = false,
+    includeCreatedById = true
   }) => ({
     accountId: account.accountId,
     personId: personId || null,
@@ -427,7 +508,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
     deliverTo: null,
     deliveryAddress: null,
     status: 1,
-    createdById: user.id,
+    ...(includeCreatedById ? { createdById: user.id } : {}),
     net: totals.net,
     discounts: totals.discount,
     taxes: totals.tax,
@@ -501,7 +582,8 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
       accountPaymentFormId: shouldPersistPayment ? simpleForm.accountPaymentFormId : null,
       projectId: simpleForm.projectId,
       employeeId: moduleType === "income" || moduleType === "expense" ? simpleForm.employeeId : null,
-      incomingPayment: moduleType === "income"
+      incomingPayment: moduleType === "income",
+      includeCreatedById: !isEdit
     });
 
     const detailPayload = {
@@ -522,9 +604,18 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
 
     try {
       setIsSaving(true);
-      const created = await createTransactionWithDetails({ transaction: transactionPayload, details: [detailPayload] });
+      let saved;
+      if (isEdit) {
+        saved = await updateTransactionWithDetails({
+          transactionId: Number(itemId),
+          transaction: transactionPayload,
+          details: [detailPayload]
+        });
+      } else {
+        saved = await createTransactionWithDetails({ transaction: transactionPayload, details: [detailPayload] });
+      }
       if (embedded) {
-        onCreated?.(created);
+        onCreated?.(saved);
       } else {
         navigate(config.backPath);
       }
@@ -570,7 +661,8 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
       paymentMethodId: isCredit ? null : saleHeader.paymentMethodId,
       accountPaymentFormId: isCredit ? null : saleHeader.accountPaymentFormId,
       projectId: saleHeader.projectId,
-      incomingPayment: false
+      incomingPayment: false,
+      includeCreatedById: !isEdit
     });
 
     const detailPayloads = saleLines.map((line) => {
@@ -594,9 +686,18 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
 
     try {
       setIsSaving(true);
-      const created = await createTransactionWithDetails({ transaction: transactionPayload, details: detailPayloads });
+      let saved;
+      if (isEdit) {
+        saved = await updateTransactionWithDetails({
+          transactionId: Number(itemId),
+          transaction: transactionPayload,
+          details: detailPayloads
+        });
+      } else {
+        saved = await createTransactionWithDetails({ transaction: transactionPayload, details: detailPayloads });
+      }
       if (embedded) {
-        onCreated?.(created);
+        onCreated?.(saved);
       } else {
         navigate(config.backPath);
       }
@@ -619,7 +720,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
           </Link>
         </div>
       ) : (
-        <h3>{t(config.titleKey)}</h3>
+        <h3>{isEdit ? t("common.edit") : t(config.titleKey)}</h3>
       )}
 
       {error && <p className="error-text">{error}</p>}
@@ -1008,7 +1109,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
               </button>
             ) : null}
             <button type="submit" disabled={isSaving} className={isSaving ? "is-saving" : ""}>
-              {t("common.create")}
+              {isEdit ? t("common.update") : t("common.create")}
             </button>
           </div>
         </form>
@@ -1285,7 +1386,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
               </button>
             ) : null}
             <button type="submit" disabled={isSaving} className={isSaving ? "is-saving" : ""}>
-              {t("common.create")}
+              {isEdit ? t("common.update") : t("common.create")}
             </button>
           </div>
         </form>

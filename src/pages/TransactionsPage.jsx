@@ -65,6 +65,8 @@ function TransactionsPage({ moduleType }) {
   });
   const [searchParams, setSearchParams] = useSearchParams();
   const isCreateModalOpen = searchParams.get("create") === "1";
+  const editId = searchParams.get("edit");
+  const isEditModalOpen = Boolean(editId);
 
   useEffect(() => {
     if (!account?.accountId) {
@@ -151,6 +153,13 @@ function TransactionsPage({ moduleType }) {
       minAmount: "",
       maxAmount: ""
     });
+  };
+
+  const closeModal = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("create");
+    next.delete("edit");
+    setSearchParams(next);
   };
 
   return (
@@ -280,6 +289,20 @@ function TransactionsPage({ moduleType }) {
                               }
                             ]
                           : []),
+                        ...(["sale", "purchase", "expense", "income"].includes(moduleType)
+                          ? [
+                              {
+                                key: "edit",
+                                label: t("common.edit"),
+                                onClick: () => {
+                                  const next = new URLSearchParams(searchParams);
+                                  next.set("edit", String(item.id));
+                                  next.delete("create");
+                                  setSearchParams(next);
+                                }
+                              }
+                            ]
+                          : []),
                         {
                           key: "deactivate",
                           label: t("transactions.deactivate"),
@@ -306,29 +329,19 @@ function TransactionsPage({ moduleType }) {
         </>
       )}
 
-      {isCreateModalOpen ? (
+      {isCreateModalOpen || isEditModalOpen ? (
         <div
           className="modal-backdrop"
-          onClick={() => {
-            const next = new URLSearchParams(searchParams);
-            next.delete("create");
-            setSearchParams(next);
-          }}
         >
           <div className={`modal-card ${moduleType === "sale" ? "modal-card-wide" : ""}`} onClick={(event) => event.stopPropagation()}>
             <TransactionCreatePage
               embedded
               moduleType={moduleType}
-              onCancel={() => {
-                const next = new URLSearchParams(searchParams);
-                next.delete("create");
-                setSearchParams(next);
-              }}
+              itemId={isEditModalOpen ? editId : null}
+              onCancel={closeModal}
               onCreated={async () => {
                 await loadData();
-                const next = new URLSearchParams(searchParams);
-                next.delete("create");
-                setSearchParams(next);
+                closeModal();
               }}
             />
           </div>
