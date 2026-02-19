@@ -39,12 +39,13 @@ const initialForm = {
   groupType: "income"
 };
 
-function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = false, onCancel, onCreated }) {
+function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = false, onCancel, onCreated, itemId = null }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
-  const isEdit = !embedded && Boolean(id);
+  const currentId = embedded ? itemId : id;
+  const isEdit = Boolean(currentId);
 
   const [form, setForm] = useState(initialForm);
   const [isSaving, setIsSaving] = useState(false);
@@ -66,7 +67,7 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
       return;
     }
     loadItem();
-  }, [isEdit, id, account?.accountId]);
+  }, [isEdit, currentId, account?.accountId]);
 
   const loadGroups = async () => {
     try {
@@ -80,7 +81,7 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
   const loadItem = async () => {
     try {
       setIsLoading(true);
-      const item = await getConceptById(id);
+      const item = await getConceptById(currentId);
       setForm({
         name: item.name,
         parentConceptId: item.parentConceptId ? String(item.parentConceptId) : "",
@@ -143,7 +144,7 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
       setIsSaving(true);
       let created = null;
       if (isEdit) {
-        created = await updateConcept(id, payload);
+        created = await updateConcept(currentId, payload);
       } else {
         created = await createConcept({ ...payload, createdById: user.id });
       }

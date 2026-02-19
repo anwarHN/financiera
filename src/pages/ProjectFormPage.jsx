@@ -13,12 +13,13 @@ const initialForm = {
   endDate: ""
 };
 
-function ProjectFormPage({ embedded = false, onCancel, onCreated }) {
+function ProjectFormPage({ embedded = false, onCancel, onCreated, itemId = null }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
-  const isEdit = !embedded && Boolean(id);
+  const currentId = embedded ? itemId : id;
+  const isEdit = Boolean(currentId);
 
   const [form, setForm] = useState(initialForm);
   const [isSaving, setIsSaving] = useState(false);
@@ -28,12 +29,12 @@ function ProjectFormPage({ embedded = false, onCancel, onCreated }) {
   useEffect(() => {
     if (!isEdit) return;
     loadItem();
-  }, [isEdit, id]);
+  }, [isEdit, currentId]);
 
   const loadItem = async () => {
     try {
       setIsLoading(true);
-      const item = await getProjectById(id);
+      const item = await getProjectById(currentId);
       setForm({
         name: item.name || "",
         description: item.description || "",
@@ -78,7 +79,7 @@ function ProjectFormPage({ embedded = false, onCancel, onCreated }) {
       setIsSaving(true);
       let created = null;
       if (isEdit) {
-        created = await updateProject(id, payload);
+        created = await updateProject(currentId, payload);
       } else {
         created = await createProject({ ...payload, createdById: user.id });
       }

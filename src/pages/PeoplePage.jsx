@@ -18,6 +18,8 @@ function PeoplePage({ personType, titleKey, basePath }) {
   const [page, setPage] = useState(1);
   const [searchParams, setSearchParams] = useSearchParams();
   const isCreateModalOpen = searchParams.get("create") === "1";
+  const editId = searchParams.get("edit");
+  const isEditModalOpen = Boolean(editId);
 
   useEffect(() => {
     if (!account?.accountId) {
@@ -55,6 +57,13 @@ function PeoplePage({ personType, titleKey, basePath }) {
     }
   };
 
+  const closeModal = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("create");
+    next.delete("edit");
+    setSearchParams(next);
+  };
+
   return (
     <div className="module-page">
       <h1>{t(titleKey)}</h1>
@@ -85,7 +94,16 @@ function PeoplePage({ personType, titleKey, basePath }) {
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[
-                        { key: "edit", label: t("common.edit"), to: `${basePath}/${item.id}/edit` },
+                        {
+                          key: "edit",
+                          label: t("common.edit"),
+                          onClick: () => {
+                            const next = new URLSearchParams(searchParams);
+                            next.set("edit", String(item.id));
+                            next.delete("create");
+                            setSearchParams(next);
+                          }
+                        },
                         { key: "delete", label: t("common.delete"), onClick: () => handleDelete(item.id), danger: true }
                       ]}
                     />
@@ -99,14 +117,10 @@ function PeoplePage({ personType, titleKey, basePath }) {
         </>
       )}
 
-      {isCreateModalOpen ? (
+      {isCreateModalOpen || isEditModalOpen ? (
         <div
           className="modal-backdrop"
-          onClick={() => {
-            const next = new URLSearchParams(searchParams);
-            next.delete("create");
-            setSearchParams(next);
-          }}
+          onClick={closeModal}
         >
           <div className="modal-card" onClick={(event) => event.stopPropagation()}>
             <PeopleFormPage
@@ -114,16 +128,11 @@ function PeoplePage({ personType, titleKey, basePath }) {
               personType={personType}
               titleKey={personType === 1 ? "actions.newClient" : "actions.newProvider"}
               basePath={basePath}
-              onCancel={() => {
-                const next = new URLSearchParams(searchParams);
-                next.delete("create");
-                setSearchParams(next);
-              }}
+              itemId={isEditModalOpen ? editId : null}
+              onCancel={closeModal}
               onCreated={async () => {
                 await loadData();
-                const next = new URLSearchParams(searchParams);
-                next.delete("create");
-                setSearchParams(next);
+                closeModal();
               }}
             />
           </div>

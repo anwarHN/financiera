@@ -18,6 +18,8 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
   const [page, setPage] = useState(1);
   const [searchParams, setSearchParams] = useSearchParams();
   const isCreateModalOpen = searchParams.get("create") === "1";
+  const editId = searchParams.get("edit");
+  const isEditModalOpen = Boolean(editId);
 
   useEffect(() => {
     if (!account?.accountId) {
@@ -55,6 +57,13 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
     }
   };
 
+  const closeModal = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("create");
+    next.delete("edit");
+    setSearchParams(next);
+  };
+
   return (
     <div className="module-page">
       <h1>{t(titleKey)}</h1>
@@ -89,7 +98,20 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[
-                        ...(item.isSystem ? [] : [{ key: "edit", label: t("common.edit"), to: `${basePath}/${item.id}/edit` }]),
+                        ...(item.isSystem
+                          ? []
+                          : [
+                              {
+                                key: "edit",
+                                label: t("common.edit"),
+                                onClick: () => {
+                                  const next = new URLSearchParams(searchParams);
+                                  next.set("edit", String(item.id));
+                                  next.delete("create");
+                                  setSearchParams(next);
+                                }
+                              }
+                            ]),
                         ...(item.isSystem
                           ? []
                           : [{ key: "delete", label: t("common.delete"), onClick: () => handleDelete(item.id), danger: true }])
@@ -105,14 +127,10 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
         </>
       )}
 
-      {isCreateModalOpen ? (
+      {isCreateModalOpen || isEditModalOpen ? (
         <div
           className="modal-backdrop"
-          onClick={() => {
-            const next = new URLSearchParams(searchParams);
-            next.delete("create");
-            setSearchParams(next);
-          }}
+          onClick={closeModal}
         >
           <div className="modal-card" onClick={(event) => event.stopPropagation()}>
             <ConceptModuleFormPage
@@ -130,16 +148,11 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
                         : "actions.newConceptGroup"
               }
               basePath={basePath}
-              onCancel={() => {
-                const next = new URLSearchParams(searchParams);
-                next.delete("create");
-                setSearchParams(next);
-              }}
+              itemId={isEditModalOpen ? editId : null}
+              onCancel={closeModal}
               onCreated={async () => {
                 await loadData();
-                const next = new URLSearchParams(searchParams);
-                next.delete("create");
-                setSearchParams(next);
+                closeModal();
               }}
             />
           </div>

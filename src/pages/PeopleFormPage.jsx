@@ -11,12 +11,13 @@ const initialForm = {
   address: ""
 };
 
-function PeopleFormPage({ personType, titleKey, basePath, embedded = false, onCancel, onCreated }) {
+function PeopleFormPage({ personType, titleKey, basePath, embedded = false, onCancel, onCreated, itemId = null }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
-  const isEdit = !embedded && Boolean(id);
+  const currentId = embedded ? itemId : id;
+  const isEdit = Boolean(currentId);
 
   const [form, setForm] = useState(initialForm);
   const [isSaving, setIsSaving] = useState(false);
@@ -29,12 +30,12 @@ function PeopleFormPage({ personType, titleKey, basePath, embedded = false, onCa
     }
 
     loadItem();
-  }, [isEdit, id]);
+  }, [isEdit, currentId]);
 
   const loadItem = async () => {
     try {
       setIsLoading(true);
-      const item = await getPersonById(id);
+      const item = await getPersonById(currentId);
       setForm({
         name: item.name,
         phone: item.phone ?? "",
@@ -77,7 +78,7 @@ function PeopleFormPage({ personType, titleKey, basePath, embedded = false, onCa
       setIsSaving(true);
       let created = null;
       if (isEdit) {
-        created = await updatePerson(id, payload);
+        created = await updatePerson(currentId, payload);
       } else {
         created = await createPerson({ ...payload, createdById: user.id });
       }

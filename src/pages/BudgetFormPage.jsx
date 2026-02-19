@@ -19,12 +19,13 @@ const initialHeader = {
   projectId: ""
 };
 
-function BudgetFormPage({ embedded = false, onCancel, onCreated }) {
+function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
-  const isEdit = !embedded && Boolean(id);
+  const currentId = embedded ? itemId : id;
+  const isEdit = Boolean(currentId);
 
   const [header, setHeader] = useState(initialHeader);
   const [lines, setLines] = useState([]);
@@ -47,7 +48,7 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated }) {
   useEffect(() => {
     if (!isEdit || !account?.accountId) return;
     loadBudget();
-  }, [isEdit, id, account?.accountId]);
+  }, [isEdit, currentId, account?.accountId]);
 
   const loadDependencies = async () => {
     try {
@@ -64,7 +65,7 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated }) {
   const loadBudget = async () => {
     try {
       setIsLoading(true);
-      const [budget, budgetLines] = await Promise.all([getBudgetById(id), listBudgetLines(id)]);
+      const [budget, budgetLines] = await Promise.all([getBudgetById(currentId), listBudgetLines(currentId)]);
       setHeader({
         name: budget.name || "",
         periodType: budget.periodType || "monthly",
@@ -135,7 +136,7 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated }) {
       setIsSaving(true);
       let created = null;
       if (isEdit) {
-        created = await updateBudgetWithLines(id, { budget: payload, lines: normalizedLines });
+        created = await updateBudgetWithLines(currentId, { budget: payload, lines: normalizedLines });
       } else {
         created = await createBudgetWithLines({ budget: payload, lines: normalizedLines });
       }

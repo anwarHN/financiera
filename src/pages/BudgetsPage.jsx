@@ -22,6 +22,8 @@ function BudgetsPage() {
   const [page, setPage] = useState(1);
   const [searchParams, setSearchParams] = useSearchParams();
   const isCreateModalOpen = searchParams.get("create") === "1";
+  const editId = searchParams.get("edit");
+  const isEditModalOpen = Boolean(editId);
 
   useEffect(() => {
     if (!account?.accountId) return;
@@ -65,6 +67,13 @@ function BudgetsPage() {
     }
   };
 
+  const closeModal = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("create");
+    next.delete("edit");
+    setSearchParams(next);
+  };
+
   return (
     <div className="module-page">
       <h1>{t("budgets.title")}</h1>
@@ -103,7 +112,16 @@ function BudgetsPage() {
                     <RowActionsMenu
                       actions={[
                         { key: "detail", label: t("transactions.viewDetail"), to: `/budgets/${item.id}` },
-                        { key: "edit", label: t("common.edit"), to: `/budgets/${item.id}/edit` },
+                        {
+                          key: "edit",
+                          label: t("common.edit"),
+                          onClick: () => {
+                            const next = new URLSearchParams(searchParams);
+                            next.set("edit", String(item.id));
+                            next.delete("create");
+                            setSearchParams(next);
+                          }
+                        },
                         { key: "deactivate", label: t("transactions.deactivate"), onClick: () => handleDeactivate(item.id), danger: true }
                       ]}
                     />
@@ -116,28 +134,19 @@ function BudgetsPage() {
         </>
       )}
 
-      {isCreateModalOpen ? (
+      {isCreateModalOpen || isEditModalOpen ? (
         <div
           className="modal-backdrop"
-          onClick={() => {
-            const next = new URLSearchParams(searchParams);
-            next.delete("create");
-            setSearchParams(next);
-          }}
+          onClick={closeModal}
         >
           <div className="modal-card" onClick={(event) => event.stopPropagation()}>
             <BudgetFormPage
               embedded
-              onCancel={() => {
-                const next = new URLSearchParams(searchParams);
-                next.delete("create");
-                setSearchParams(next);
-              }}
+              itemId={isEditModalOpen ? editId : null}
+              onCancel={closeModal}
               onCreated={async () => {
                 await loadData();
-                const next = new URLSearchParams(searchParams);
-                next.delete("create");
-                setSearchParams(next);
+                closeModal();
               }}
             />
           </div>

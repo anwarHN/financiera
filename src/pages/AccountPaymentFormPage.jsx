@@ -20,12 +20,13 @@ const initialForm = {
   createInternalPayableOnOutgoingPayment: false
 };
 
-function AccountPaymentFormPage({ embedded = false, onCancel, onCreated }) {
+function AccountPaymentFormPage({ embedded = false, onCancel, onCreated, itemId = null }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
-  const isEdit = !embedded && Boolean(id);
+  const currentId = embedded ? itemId : id;
+  const isEdit = Boolean(currentId);
 
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
@@ -42,7 +43,7 @@ function AccountPaymentFormPage({ embedded = false, onCancel, onCreated }) {
   useEffect(() => {
     if (!isEdit || !account?.accountId) return;
     loadItem();
-  }, [isEdit, id, account?.accountId]);
+  }, [isEdit, currentId, account?.accountId]);
 
   const loadEmployees = async () => {
     try {
@@ -56,7 +57,7 @@ function AccountPaymentFormPage({ embedded = false, onCancel, onCreated }) {
   const loadItem = async () => {
     try {
       setIsLoading(true);
-      const item = await getAccountPaymentFormById(id);
+      const item = await getAccountPaymentFormById(currentId);
       setForm({
         name: item.name || "",
         kind: item.kind || "bank_account",
@@ -109,7 +110,7 @@ function AccountPaymentFormPage({ embedded = false, onCancel, onCreated }) {
       setIsSaving(true);
       let created = null;
       if (isEdit) {
-        created = await updateAccountPaymentForm(id, payload);
+        created = await updateAccountPaymentForm(currentId, payload);
       } else {
         created = await createAccountPaymentForm({ ...payload, createdById: user.id });
       }
