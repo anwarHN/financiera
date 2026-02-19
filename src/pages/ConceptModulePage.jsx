@@ -130,7 +130,6 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
       {isCreateModalOpen || isEditModalOpen ? (
         <div
           className="modal-backdrop"
-          onClick={closeModal}
         >
           <div className="modal-card" onClick={(event) => event.stopPropagation()}>
             <ConceptModuleFormPage

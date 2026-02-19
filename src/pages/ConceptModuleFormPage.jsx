@@ -204,7 +204,7 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
                   }}
                   renderCreateModal={({ isOpen, onClose, onCreated }) =>
                     isOpen ? (
-                      <div className="modal-backdrop" onClick={onClose}>
+                      <div className="modal-backdrop">
                         <div className="modal-card" onClick={(event) => event.stopPropagation()}>
                           <ConceptModuleFormPage
                             embedded

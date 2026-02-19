@@ -125,7 +125,6 @@ function EmployeesPage() {
       {isCreateModalOpen || isEditModalOpen ? (
         <div
           className="modal-backdrop"
-          onClick={closeModal}
         >
           <div className="modal-card" onClick={(event) => event.stopPropagation()}>
             <EmployeeFormPage

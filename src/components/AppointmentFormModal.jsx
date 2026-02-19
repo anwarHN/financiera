@@ -113,7 +113,7 @@ function AppointmentFormModal({ isOpen, appointment, defaultStart, defaultEnd, o
   if (!isOpen) return null;
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop">
       <div className="modal-card modal-card-wide" onClick={(event) => event.stopPropagation()}>
         <form className="crud-form" onSubmit={handleSubmit}>
           <h3>{appointment ? t("appointments.edit") : t("appointments.new")}</h3>

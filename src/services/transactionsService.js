@@ -101,6 +101,42 @@ export async function createTransactionWithDetail({ transaction, detail }) {
   return createTransactionWithDetails({ transaction, details: [detail] });
 }
 
+export async function updateTransaction(id, payload) {
+  const { data, error } = await supabase
+    .from("transactions")
+    .update(payload)
+    .eq("id", id)
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateTransactionWithDetails({ transactionId, transaction, details }) {
+  const { data: updatedTransaction, error: transactionError } = await supabase
+    .from("transactions")
+    .update(transaction)
+    .eq("id", transactionId)
+    .select("id")
+    .single();
+  if (transactionError) throw transactionError;
+
+  const { error: deleteDetailsError } = await supabase.from("transactionDetails").delete().eq("transactionId", transactionId);
+  if (deleteDetailsError) throw deleteDetailsError;
+
+  if (Array.isArray(details) && details.length > 0) {
+    const detailsToInsert = details.map((detail) => ({
+      ...detail,
+      transactionId
+    }));
+    const { error: insertDetailsError } = await supabase.from("transactionDetails").insert(detailsToInsert);
+    if (insertDetailsError) throw insertDetailsError;
+  }
+
+  return updatedTransaction;
+}
+
 export async function deactivateTransaction(id) {
   const { error } = await supabase.from("transactions").update({ isActive: false }).eq("id", id);
 

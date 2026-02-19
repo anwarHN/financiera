@@ -164,7 +164,7 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop">
       <div className="modal-card" onClick={(event) => event.stopPropagation()}>
         <h3>{direction === "incoming" ? t("transactions.newIncomingPayment") : t("transactions.newOutgoingPayment")}</h3>
         {error && <p className="error-text">{error}</p>}

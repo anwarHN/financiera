@@ -664,7 +664,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                     onCreateRecord={handleCreatedPerson}
                     renderCreateModal={({ isOpen, onClose, onCreated }) =>
                       isOpen ? (
-                        <div className="modal-backdrop" onClick={onClose}>
+                        <div className="modal-backdrop">
                           <div className="modal-card" onClick={(event) => event.stopPropagation()}>
                             <PeopleFormPage
                               embedded
@@ -727,7 +727,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                     hasError={simpleSubmitAttempted && !simpleForm.conceptId}
                     renderCreateModal={({ isOpen, onClose, onCreated }) =>
                       isOpen ? (
-                        <div className="modal-backdrop" onClick={onClose}>
+                        <div className="modal-backdrop">
                           <div className="modal-card" onClick={(event) => event.stopPropagation()}>
                             <ConceptModuleFormPage
                               embedded
@@ -795,7 +795,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                 onCreateRecord={handleCreatedProject}
                 renderCreateModal={({ isOpen, onClose, onCreated }) =>
                   isOpen ? (
-                    <div className="modal-backdrop" onClick={onClose}>
+                    <div className="modal-backdrop">
                       <div className="modal-card" onClick={(event) => event.stopPropagation()}>
                         <ProjectFormPage embedded onCancel={onClose} onCreated={onCreated} />
                       </div>
@@ -837,7 +837,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                   onCreateRecord={handleCreatedEmployee}
                   renderCreateModal={({ isOpen, onClose, onCreated }) =>
                     isOpen ? (
-                      <div className="modal-backdrop" onClick={onClose}>
+                      <div className="modal-backdrop">
                         <div className="modal-card" onClick={(event) => event.stopPropagation()}>
                           <EmployeeFormPage embedded onCancel={onClose} onCreated={onCreated} />
                         </div>
@@ -885,7 +885,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                           }}
                           renderCreateModal={({ isOpen, onClose, onCreated }) =>
                             isOpen ? (
-                              <div className="modal-backdrop" onClick={onClose}>
+                              <div className="modal-backdrop">
                                 <div className="modal-card" onClick={(event) => event.stopPropagation()}>
                                   <PaymentMethodQuickCreate
                                     t={t}
@@ -953,7 +953,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                           }}
                           renderCreateModal={({ isOpen, onClose, onCreated }) =>
                             isOpen ? (
-                              <div className="modal-backdrop" onClick={onClose}>
+                              <div className="modal-backdrop">
                                 <div className="modal-card" onClick={(event) => event.stopPropagation()}>
                                   <AccountPaymentFormPage embedded onCancel={onClose} onCreated={onCreated} />
                                 </div>
@@ -1058,7 +1058,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
               hasError={saleSubmitAttempted && !selectedClient}
               renderCreateModal={({ isOpen, onClose, onCreated }) =>
                   isOpen ? (
-                    <div className="modal-backdrop" onClick={onClose}>
+                    <div className="modal-backdrop">
                       <div className="modal-card" onClick={(event) => event.stopPropagation()}>
                         <PeopleFormPage
                           embedded
@@ -1106,7 +1106,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                 onCreateRecord={handleCreatedProject}
                 renderCreateModal={({ isOpen, onClose, onCreated }) =>
                   isOpen ? (
-                    <div className="modal-backdrop" onClick={onClose}>
+                    <div className="modal-backdrop">
                       <div className="modal-card" onClick={(event) => event.stopPropagation()}>
                         <ProjectFormPage embedded onCancel={onClose} onCreated={onCreated} />
                       </div>
@@ -1176,7 +1176,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
               onCreateRecord={handleCreatedConcept}
               renderCreateModal={({ isOpen, onClose, onCreated }) =>
                 isOpen ? (
-                  <div className="modal-backdrop" onClick={onClose}>
+                  <div className="modal-backdrop">
                     <div className="modal-card" onClick={(event) => event.stopPropagation()}>
                       <ConceptModuleFormPage
                         embedded
