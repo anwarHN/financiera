@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import LookupCombobox from "../components/LookupCombobox";
 import AccountPaymentFormPage from "./AccountPaymentFormPage";
 import ConceptModuleFormPage from "./ConceptModuleFormPage";
+import EmployeeFormPage from "./EmployeeFormPage";
 import PeopleFormPage from "./PeopleFormPage";
 import ProjectFormPage from "./ProjectFormPage";
 import { useAuth } from "../contexts/AuthContext";
@@ -179,6 +180,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
   const [selectedClient, setSelectedClient] = useState(null);
   const [clientLookup, setClientLookup] = useState("");
   const [simpleProjectLookup, setSimpleProjectLookup] = useState("");
+  const [simpleEmployeeLookup, setSimpleEmployeeLookup] = useState("");
   const [saleProjectLookup, setSaleProjectLookup] = useState("");
   const [productLookup, setProductLookup] = useState("");
   const [saleLines, setSaleLines] = useState([]);
@@ -313,6 +315,17 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
         setSimpleForm((prev) => ({ ...prev, projectId: String(created.id) }));
         setSimpleProjectLookup("");
       }
+    } catch {
+      setError(t("common.genericLoadError"));
+    }
+  };
+
+  const handleCreatedEmployee = async (created) => {
+    try {
+      const updatedEmployees = await listEmployees(account.accountId);
+      setEmployees(updatedEmployees);
+      setSimpleForm((prev) => ({ ...prev, employeeId: String(created.id) }));
+      setSimpleEmployeeLookup("");
     } catch {
       setError(t("common.genericLoadError"));
     }
@@ -793,17 +806,39 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                 }}
               />
               {(moduleType === "income" || moduleType === "expense") && (
-                <label className="field-block">
-                  <span>{t("transactions.employee")}</span>
-                  <select name="employeeId" value={simpleForm.employeeId} onChange={handleSimpleChange}>
-                    <option value="">{`-- ${t("transactions.optionalSeller")} --`}</option>
-                    {employees.map((employee) => (
-                      <option key={employee.id} value={employee.id}>
-                        {employee.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <LookupCombobox
+                  label={t("transactions.employee")}
+                  value={simpleEmployeeLookup}
+                  onValueChange={(nextValue) => {
+                    setSimpleEmployeeLookup(nextValue);
+                    if (!nextValue) {
+                      setSimpleForm((prev) => ({ ...prev, employeeId: "" }));
+                    }
+                  }}
+                  options={employees}
+                  getOptionLabel={(employee) => employee.name || ""}
+                  onSelect={(employee) => {
+                    setSimpleEmployeeLookup("");
+                    setSimpleForm((prev) => ({ ...prev, employeeId: String(employee.id) }));
+                  }}
+                  placeholder={`-- ${t("transactions.optionalSeller")} --`}
+                  noResultsText={t("common.empty")}
+                  selectedPillText={employees.find((employee) => employee.id === Number(simpleForm.employeeId))?.name || ""}
+                  onClearSelection={() => {
+                    setSimpleForm((prev) => ({ ...prev, employeeId: "" }));
+                    setSimpleEmployeeLookup("");
+                  }}
+                  onCreateRecord={handleCreatedEmployee}
+                  renderCreateModal={({ isOpen, onClose, onCreated }) =>
+                    isOpen ? (
+                      <div className="modal-backdrop" onClick={onClose}>
+                        <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+                          <EmployeeFormPage embedded onCancel={onClose} onCreated={onCreated} />
+                        </div>
+                      </div>
+                    ) : null
+                  }
+                />
               )}
             </div>
           </section>
