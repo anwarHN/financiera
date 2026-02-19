@@ -149,7 +149,7 @@ export async function getTransactionById(id) {
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      'id, accountId, personId, date, type, name, total, balance, payments, "projectId", "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "sourceTransactionId", "isInternalTransfer", "isDeposit", isActive, currencyId, persons(name), projects(name), account_payment_forms(name)'
+      'id, accountId, personId, "employeeId", date, type, name, total, balance, payments, "projectId", "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "sourceTransactionId", "isInternalTransfer", "isDeposit", isActive, currencyId, persons(name), employes(name), projects(name), account_payment_forms(name)'
     )
     .eq("id", id)
     .single();
