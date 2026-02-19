@@ -12,12 +12,12 @@ const initialForm = {
   isPartner: false
 };
 
-function EmployeeFormPage() {
+function EmployeeFormPage({ embedded = false, onCancel, onCreated }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
-  const isEdit = Boolean(id);
+  const isEdit = !embedded && Boolean(id);
 
   const [form, setForm] = useState(initialForm);
   const [isSaving, setIsSaving] = useState(false);
@@ -82,10 +82,15 @@ function EmployeeFormPage() {
 
     try {
       setIsSaving(true);
+      let created = null;
       if (isEdit) {
-        await updateEmployee(id, payload);
+        created = await updateEmployee(id, payload);
       } else {
-        await createEmployee({ ...payload, createdById: user.id });
+        created = await createEmployee({ ...payload, createdById: user.id });
+      }
+      if (embedded) {
+        onCreated?.(created);
+        return;
       }
       navigate("/employees");
     } catch {
@@ -96,13 +101,17 @@ function EmployeeFormPage() {
   };
 
   return (
-    <div className="module-page">
-      <div className="page-header-row">
-        <h1>{isEdit ? t("common.edit") : t("common.create")}</h1>
-        <Link to="/employees" className="button-link-secondary">
-          {t("common.backToList")}
-        </Link>
-      </div>
+    <div className={embedded ? "" : "module-page"}>
+      {!embedded ? (
+        <div className="page-header-row">
+          <h1>{isEdit ? t("common.edit") : t("common.create")}</h1>
+          <Link to="/employees" className="button-link-secondary">
+            {t("common.backToList")}
+          </Link>
+        </div>
+      ) : (
+        <h3>{isEdit ? t("common.edit") : t("actions.newEmployee")}</h3>
+      )}
 
       {error && <p className="error-text">{error}</p>}
       {isLoading ? (
@@ -133,6 +142,11 @@ function EmployeeFormPage() {
           </div>
 
           <div className="crud-form-actions">
+            {embedded ? (
+              <button type="button" className="button-secondary" onClick={() => onCancel?.()}>
+                {t("common.cancel")}
+              </button>
+            ) : null}
             <button type="submit" disabled={isSaving}>
               {isEdit ? t("common.update") : t("common.create")}
             </button>

@@ -10,3 +10,13 @@ export async function listPaymentMethods(accountId) {
   if (error) throw error;
   return data ?? [];
 }
+
+export async function createPaymentMethod(payload) {
+  const { data, error } = await supabase
+    .from("payment_methods")
+    .insert(payload)
+    .select('id, "accountId", code, name, is_active')
+    .single();
+  if (error) throw error;
+  return data;
+}

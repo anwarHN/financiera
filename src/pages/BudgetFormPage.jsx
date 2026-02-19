@@ -19,12 +19,12 @@ const initialHeader = {
   projectId: ""
 };
 
-function BudgetFormPage() {
+function BudgetFormPage({ embedded = false, onCancel, onCreated }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
-  const isEdit = Boolean(id);
+  const isEdit = !embedded && Boolean(id);
 
   const [header, setHeader] = useState(initialHeader);
   const [lines, setLines] = useState([]);
@@ -133,10 +133,15 @@ function BudgetFormPage() {
 
     try {
       setIsSaving(true);
+      let created = null;
       if (isEdit) {
-        await updateBudgetWithLines(id, { budget: payload, lines: normalizedLines });
+        created = await updateBudgetWithLines(id, { budget: payload, lines: normalizedLines });
       } else {
-        await createBudgetWithLines({ budget: payload, lines: normalizedLines });
+        created = await createBudgetWithLines({ budget: payload, lines: normalizedLines });
+      }
+      if (embedded) {
+        onCreated?.(created);
+        return;
       }
       navigate("/budgets");
     } catch {
@@ -147,13 +152,17 @@ function BudgetFormPage() {
   };
 
   return (
-    <div className="module-page">
-      <div className="page-header-row">
-        <h1>{isEdit ? t("common.edit") : t("actions.newBudget")}</h1>
-        <Link to="/budgets" className="button-link-secondary">
-          {t("common.backToList")}
-        </Link>
-      </div>
+    <div className={embedded ? "" : "module-page"}>
+      {!embedded ? (
+        <div className="page-header-row">
+          <h1>{isEdit ? t("common.edit") : t("actions.newBudget")}</h1>
+          <Link to="/budgets" className="button-link-secondary">
+            {t("common.backToList")}
+          </Link>
+        </div>
+      ) : (
+        <h3>{isEdit ? t("common.edit") : t("actions.newBudget")}</h3>
+      )}
       {error && <p className="error-text">{error}</p>}
       {isLoading ? (
         <p>{t("common.loading")}</p>
@@ -261,6 +270,11 @@ function BudgetFormPage() {
           </section>
 
           <div className="crud-form-actions">
+            {embedded ? (
+              <button type="button" className="button-secondary" onClick={() => onCancel?.()}>
+                {t("common.cancel")}
+              </button>
+            ) : null}
             <button type="submit" disabled={isSaving}>
               {isEdit ? t("common.update") : t("common.create")}
             </button>

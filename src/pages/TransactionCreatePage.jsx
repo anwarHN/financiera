@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import LookupCombobox from "../components/LookupCombobox";
+import AccountPaymentFormPage from "./AccountPaymentFormPage";
+import ConceptModuleFormPage from "./ConceptModuleFormPage";
+import PeopleFormPage from "./PeopleFormPage";
+import ProjectFormPage from "./ProjectFormPage";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { listAccountPaymentForms } from "../services/accountPaymentFormsService";
-import { createConcept, listConcepts } from "../services/conceptsService";
+import { listConcepts } from "../services/conceptsService";
 import { listCurrencies } from "../services/currenciesService";
 import { listEmployees } from "../services/employeesService";
-import { listPaymentMethods } from "../services/paymentMethodsService";
-import { createPerson, listPersons } from "../services/personsService";
+import { createPaymentMethod, listPaymentMethods } from "../services/paymentMethodsService";
+import { listPersons } from "../services/personsService";
 import { listProjects } from "../services/projectsService";
 import { createTransactionWithDetails, TRANSACTION_TYPES } from "../services/transactionsService";
 import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
@@ -99,7 +104,58 @@ function aggregateLines(lines) {
   );
 }
 
-function TransactionCreatePage({ moduleType }) {
+function PaymentMethodQuickCreate({ t, accountId, onCancel, onCreated }) {
+  const [name, setName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError("");
+    if (!accountId || !name.trim()) {
+      setError(t("common.requiredFields"));
+      return;
+    }
+    const normalized = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+    const code = `custom_${normalized || "method"}_${Date.now()}`;
+    try {
+      setIsSaving(true);
+      const created = await createPaymentMethod({
+        accountId,
+        code,
+        name: name.trim(),
+        is_active: true,
+        isSystem: false
+      });
+      onCreated?.(created);
+    } catch {
+      setError(t("common.genericSaveError"));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <form className="crud-form" onSubmit={handleSubmit}>
+      <h3>{t("transactions.paymentMethod")}</h3>
+      {error ? <p className="error-text">{error}</p> : null}
+      <label className="field-block">
+        <span>{t("common.name")}</span>
+        <input value={name} onChange={(event) => setName(event.target.value)} required />
+      </label>
+      <div className="crud-form-actions">
+        <button type="button" className="button-secondary" onClick={onCancel}>
+          {t("common.cancel")}
+        </button>
+        <button type="submit" disabled={isSaving}>
+          {t("common.create")}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreated }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const navigate = useNavigate();
@@ -115,40 +171,22 @@ function TransactionCreatePage({ moduleType }) {
 
   const [simpleForm, setSimpleForm] = useState(initialSimpleForm);
   const [saleHeader, setSaleHeader] = useState(initialSaleHeader);
+  const [simplePersonLookup, setSimplePersonLookup] = useState("");
+  const [simpleConceptLookup, setSimpleConceptLookup] = useState("");
+  const [simplePaymentMethodLookup, setSimplePaymentMethodLookup] = useState("");
+  const [simpleAccountFormLookup, setSimpleAccountFormLookup] = useState("");
   const [selectedClient, setSelectedClient] = useState(null);
   const [clientLookup, setClientLookup] = useState("");
+  const [simpleProjectLookup, setSimpleProjectLookup] = useState("");
+  const [saleProjectLookup, setSaleProjectLookup] = useState("");
   const [productLookup, setProductLookup] = useState("");
-  const [showClientSuggestions, setShowClientSuggestions] = useState(false);
-  const [showProductSuggestions, setShowProductSuggestions] = useState(false);
   const [saleLines, setSaleLines] = useState([]);
 
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isConceptModalOpen, setIsConceptModalOpen] = useState(false);
-  const [conceptModalForm, setConceptModalForm] = useState({
-    name: "",
-    parentConceptId: "",
-    price: 0,
-    additionalCharges: 0,
-    taxPercentage: 0
-  });
-  const [isConceptSaving, setIsConceptSaving] = useState(false);
-  const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
-  const [personModalForm, setPersonModalForm] = useState({
-    name: "",
-    phone: "",
-    address: "",
-    type: moduleType === "purchase" ? 2 : 1
-  });
-  const [isPersonSaving, setIsPersonSaving] = useState(false);
 
   const conceptOptions = useMemo(() => concepts.filter(config.conceptFilter), [concepts, config.conceptFilter]);
-  const conceptGroupOptions = useMemo(() => {
-    if (moduleType === "income" || moduleType === "sale") return concepts.filter((item) => item.isGroup && item.isIncome);
-    if (moduleType === "expense" || moduleType === "purchase") return concepts.filter((item) => item.isGroup && item.isExpense);
-    return concepts.filter((item) => item.isGroup);
-  }, [concepts, moduleType]);
   const personOptions = useMemo(() => {
     if (!config.personFilter) return persons;
     return persons.filter((item) => item.type === config.personFilter);
@@ -189,18 +227,6 @@ function TransactionCreatePage({ moduleType }) {
     if (saleHeader.paymentMode !== "cash") return false;
     return selectedSalePaymentMethod?.code === "card" || selectedSalePaymentMethod?.code === "bank_transfer";
   }, [saleHeader.paymentMode, selectedSalePaymentMethod]);
-
-  const clientMatches = useMemo(() => {
-    if (moduleType !== "sale" || !clientLookup.trim()) return [];
-    const query = clientLookup.toLowerCase();
-    return personOptions.filter((person) => person.name.toLowerCase().includes(query)).slice(0, 8);
-  }, [moduleType, clientLookup, personOptions]);
-
-  const productMatches = useMemo(() => {
-    if (moduleType !== "sale" || !productLookup.trim()) return [];
-    const query = productLookup.toLowerCase();
-    return conceptOptions.filter((concept) => concept.name.toLowerCase().includes(query)).slice(0, 8);
-  }, [moduleType, productLookup, conceptOptions]);
 
   const saleTotals = useMemo(() => aggregateLines(saleLines), [saleLines]);
 
@@ -243,66 +269,23 @@ function TransactionCreatePage({ moduleType }) {
     }
   };
 
-  const openConceptModal = () => {
-    setError("");
-    setConceptModalForm({
-      name: "",
-      parentConceptId: "",
-      price: 0,
-      additionalCharges: 0,
-      taxPercentage: 0
-    });
-    setIsConceptModalOpen(true);
-  };
-
-  const openPersonModal = () => {
-    setError("");
-    setPersonModalForm({
-      name: "",
-      phone: "",
-      address: "",
-      type: moduleType === "purchase" ? 2 : 1
-    });
-    setIsPersonModalOpen(true);
-  };
-
-  const handleCreateConceptFromModal = async (event) => {
-    event.preventDefault();
-    if (!account?.accountId || !user?.id || !conceptModalForm.name.trim()) {
-      setError(t("common.requiredFields"));
-      return;
-    }
-
-    let moduleFlags = {
-      isGroup: false,
-      isIncome: false,
-      isExpense: false,
-      isProduct: false,
-      isPaymentForm: false,
-      isAccountPayableConcept: false
-    };
-
-    if (moduleType === "income") moduleFlags = { ...moduleFlags, isIncome: true };
-    if (moduleType === "sale") moduleFlags = { ...moduleFlags, isIncome: true, isProduct: true };
-    if (moduleType === "expense") moduleFlags = { ...moduleFlags, isExpense: true };
-    if (moduleType === "purchase") moduleFlags = { ...moduleFlags, isExpense: true, isAccountPayableConcept: true };
-
+  const handleCreatedPerson = async (created) => {
     try {
-      setIsConceptSaving(true);
-      const created = await createConcept({
-        accountId: account.accountId,
-        name: conceptModalForm.name.trim(),
-        parentConceptId: conceptModalForm.parentConceptId ? Number(conceptModalForm.parentConceptId) : null,
-        taxPercentage: moduleType === "sale" ? Number(conceptModalForm.taxPercentage || 0) : 0,
-        price: moduleType === "sale" ? Number(conceptModalForm.price || 0) : 0,
-        additionalCharges: moduleType === "sale" ? Number(conceptModalForm.additionalCharges || 0) : 0,
-        isIncomingPaymentConcept: false,
-        isOutgoingPaymentConcept: false,
-        isSystem: false,
-        ...moduleFlags,
-        createdById: user.id
-      });
+      const updatedPersons = await listPersons(account.accountId);
+      setPersons(updatedPersons);
+      if (moduleType === "sale") {
+        setSelectedClient(created);
+        setClientLookup("");
+      } else {
+        setSimpleForm((prev) => ({ ...prev, personId: String(created.id) }));
+      }
+    } catch {
+      setError(t("common.genericLoadError"));
+    }
+  };
 
+  const handleCreatedConcept = async (created) => {
+    try {
       const updatedConcepts = await listConcepts(account.accountId);
       setConcepts(updatedConcepts);
       setSimpleForm((prev) => ({
@@ -313,44 +296,24 @@ function TransactionCreatePage({ moduleType }) {
       if (moduleType === "sale") {
         addSaleLine(created);
       }
-      setIsConceptModalOpen(false);
     } catch {
-      setError(t("common.genericSaveError"));
-    } finally {
-      setIsConceptSaving(false);
+      setError(t("common.genericLoadError"));
     }
   };
 
-  const handleCreatePersonFromModal = async (event) => {
-    event.preventDefault();
-    if (!account?.accountId || !user?.id || !personModalForm.name.trim()) {
-      setError(t("common.requiredFields"));
-      return;
-    }
-
+  const handleCreatedProject = async (created) => {
     try {
-      setIsPersonSaving(true);
-      const created = await createPerson({
-        accountId: account.accountId,
-        name: personModalForm.name.trim(),
-        phone: personModalForm.phone.trim() || null,
-        address: personModalForm.address.trim() || null,
-        type: moduleType === "purchase" ? 2 : Number(personModalForm.type || 1),
-        createdById: user.id
-      });
-      const updatedPersons = await listPersons(account.accountId);
-      setPersons(updatedPersons);
+      const updatedProjects = await listProjects(account.accountId);
+      setProjects(updatedProjects);
       if (moduleType === "sale") {
-        setSelectedClient(created);
-        setClientLookup(created.name || "");
+        setSaleHeader((prev) => ({ ...prev, projectId: String(created.id) }));
+        setSaleProjectLookup("");
       } else {
-        setSimpleForm((prev) => ({ ...prev, personId: String(created.id) }));
+        setSimpleForm((prev) => ({ ...prev, projectId: String(created.id) }));
+        setSimpleProjectLookup("");
       }
-      setIsPersonModalOpen(false);
     } catch {
-      setError(t("common.genericSaveError"));
-    } finally {
-      setIsPersonSaving(false);
+      setError(t("common.genericLoadError"));
     }
   };
 
@@ -415,7 +378,6 @@ function TransactionCreatePage({ moduleType }) {
       }
     ]);
     setProductLookup("");
-    setShowProductSuggestions(false);
   };
 
   const updateSaleLine = (rowId, field, value) => {
@@ -540,8 +502,12 @@ function TransactionCreatePage({ moduleType }) {
 
     try {
       setIsSaving(true);
-      await createTransactionWithDetails({ transaction: transactionPayload, details: [detailPayload] });
-      navigate(config.backPath);
+      const created = await createTransactionWithDetails({ transaction: transactionPayload, details: [detailPayload] });
+      if (embedded) {
+        onCreated?.(created);
+      } else {
+        navigate(config.backPath);
+      }
     } catch {
       setError(t("common.genericSaveError"));
     } finally {
@@ -607,8 +573,12 @@ function TransactionCreatePage({ moduleType }) {
 
     try {
       setIsSaving(true);
-      await createTransactionWithDetails({ transaction: transactionPayload, details: detailPayloads });
-      navigate(config.backPath);
+      const created = await createTransactionWithDetails({ transaction: transactionPayload, details: detailPayloads });
+      if (embedded) {
+        onCreated?.(created);
+      } else {
+        navigate(config.backPath);
+      }
     } catch {
       setError(t("common.genericSaveError"));
     } finally {
@@ -619,13 +589,17 @@ function TransactionCreatePage({ moduleType }) {
   if (isLoading) return <p>{t("common.loading")}</p>;
 
   return (
-    <div className="module-page">
-      <div className="page-header-row">
-        <h1>{t(config.titleKey)}</h1>
-        <Link to={config.backPath} className="button-link-secondary">
-          {t("common.backToList")}
-        </Link>
-      </div>
+    <div className={embedded ? "" : "module-page"}>
+      {!embedded ? (
+        <div className="page-header-row">
+          <h1>{t(config.titleKey)}</h1>
+          <Link to={config.backPath} className="button-link-secondary">
+            {t("common.backToList")}
+          </Link>
+        </div>
+      ) : (
+        <h3>{t(config.titleKey)}</h3>
+      )}
 
       {error && <p className="error-text">{error}</p>}
 
@@ -651,39 +625,125 @@ function TransactionCreatePage({ moduleType }) {
               </label>
               <label className="field-block">
                 <span>{t("transactions.person")}</span>
-                <div className="field-select-with-action">
-                  <select name="personId" value={simpleForm.personId} onChange={handleSimpleChange} required={moduleType === "purchase"}>
-                    <option value="">
-                      {moduleType === "purchase"
-                        ? `-- ${t("transactions.selectProvider")} --`
-                        : `-- ${t("transactions.optionalPerson")} --`}
-                    </option>
-                    {personOptions.map((person) => (
-                      <option key={person.id} value={person.id}>
-                        {person.name}
+                {moduleType === "income" || moduleType === "expense" ? (
+                  <LookupCombobox
+                    label=""
+                    value={simplePersonLookup}
+                    onValueChange={setSimplePersonLookup}
+                    options={personOptions}
+                    getOptionLabel={(person) => person.name || ""}
+                    onSelect={(person) => setSimpleForm((prev) => ({ ...prev, personId: String(person.id) }))}
+                    placeholder={`-- ${moduleType === "expense" ? t("transactions.selectProvider") : t("transactions.optionalPerson")} --`}
+                    noResultsText={t("common.empty")}
+                    selectedPillText={personOptions.find((person) => person.id === Number(simpleForm.personId))?.name || ""}
+                    onClearSelection={() => {
+                      setSimpleForm((prev) => ({ ...prev, personId: "" }));
+                      setSimplePersonLookup("");
+                    }}
+                    onCreateRecord={handleCreatedPerson}
+                    renderCreateModal={({ isOpen, onClose, onCreated }) =>
+                      isOpen ? (
+                        <div className="modal-backdrop" onClick={onClose}>
+                          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+                            <PeopleFormPage
+                              embedded
+                              personType={moduleType === "expense" ? 2 : 1}
+                              titleKey={moduleType === "expense" ? "actions.newProvider" : "actions.newClient"}
+                              basePath={moduleType === "expense" ? "/providers" : "/clients"}
+                              onCancel={onClose}
+                              onCreated={onCreated}
+                            />
+                          </div>
+                        </div>
+                      ) : null
+                    }
+                  />
+                ) : (
+                  <div className="field-select-with-action">
+                    <select name="personId" value={simpleForm.personId} onChange={handleSimpleChange} required={moduleType === "purchase"}>
+                      <option value="">
+                        {moduleType === "purchase"
+                          ? `-- ${t("transactions.selectProvider")} --`
+                          : `-- ${t("transactions.optionalPerson")} --`}
                       </option>
-                    ))}
-                  </select>
-                  <button type="button" className="button-secondary" onClick={openPersonModal} title={t("actions.newPerson")}>
-                    +
-                  </button>
-                </div>
+                      {personOptions.map((person) => (
+                        <option key={person.id} value={person.id}>
+                          {person.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Link to={moduleType === "purchase" ? "/providers/new" : "/clients/new"} className="button-secondary" title={t("actions.newPerson")}>
+                      +
+                    </Link>
+                  </div>
+                )}
               </label>
               <label className="field-block">
                 <span>{t("transactions.concept")}</span>
-                <div className="field-select-with-action">
-                  <select name="conceptId" value={simpleForm.conceptId} onChange={handleSimpleChange} required>
-                    <option value="">{`-- ${t("transactions.selectConcept")} --`}</option>
-                    {conceptOptions.map((concept) => (
-                      <option key={concept.id} value={concept.id}>
-                        {concept.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button type="button" className="button-secondary" onClick={openConceptModal} title={t("actions.newConcept")}>
-                    +
-                  </button>
-                </div>
+                {moduleType === "income" || moduleType === "expense" ? (
+                  <LookupCombobox
+                    label=""
+                    value={simpleConceptLookup}
+                    onValueChange={setSimpleConceptLookup}
+                    options={conceptOptions}
+                    getOptionLabel={(concept) => concept.name || ""}
+                    onSelect={(concept) =>
+                      setSimpleForm((prev) => ({
+                        ...prev,
+                        conceptId: String(concept.id),
+                        additionalCharges: concept.additionalCharges ?? prev.additionalCharges
+                      }))
+                    }
+                    placeholder={`-- ${t("transactions.selectConcept")} --`}
+                    noResultsText={t("common.empty")}
+                    selectedPillText={conceptOptions.find((concept) => concept.id === Number(simpleForm.conceptId))?.name || ""}
+                    onClearSelection={() => {
+                      setSimpleForm((prev) => ({ ...prev, conceptId: "", additionalCharges: 0 }));
+                      setSimpleConceptLookup("");
+                    }}
+                    onCreateRecord={handleCreatedConcept}
+                    renderCreateModal={({ isOpen, onClose, onCreated }) =>
+                      isOpen ? (
+                        <div className="modal-backdrop" onClick={onClose}>
+                          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+                            <ConceptModuleFormPage
+                              embedded
+                              moduleType={moduleType === "expense" ? "expense" : "income"}
+                              titleKey={moduleType === "expense" ? "actions.newExpenseConcept" : "actions.newIncomeConcept"}
+                              basePath={moduleType === "expense" ? "/expense-concepts" : "/income-concepts"}
+                              onCancel={onClose}
+                              onCreated={onCreated}
+                            />
+                          </div>
+                        </div>
+                      ) : null
+                    }
+                  />
+                ) : (
+                  <div className="field-select-with-action">
+                    <select name="conceptId" value={simpleForm.conceptId} onChange={handleSimpleChange} required>
+                      <option value="">{`-- ${t("transactions.selectConcept")} --`}</option>
+                      {conceptOptions.map((concept) => (
+                        <option key={concept.id} value={concept.id}>
+                          {concept.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Link
+                      to={
+                        moduleType === "purchase"
+                          ? "/payable-concepts/new"
+                          : moduleType === "expense"
+                            ? "/expense-concepts/new"
+                            : "/income-concepts/new"
+                      }
+                      className="button-secondary"
+                      title={t("actions.newConcept")}
+                    >
+                      +
+                    </Link>
+                  </div>
+                )}
               </label>
               <label className="field-block form-span-2">
                 <span>{t("transactions.description")}</span>
@@ -693,17 +753,41 @@ function TransactionCreatePage({ moduleType }) {
                 <span>{t("transactions.referenceNumber")}</span>
                 <input name="referenceNumber" value={simpleForm.referenceNumber} onChange={handleSimpleChange} />
               </label>
-              <label className="field-block">
-                <span>{t("projects.project")}</span>
-                <select name="projectId" value={simpleForm.projectId} onChange={handleSimpleChange}>
-                  <option value="">{`-- ${t("projects.optionalProject")} --`}</option>
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <LookupCombobox
+                label={t("projects.project")}
+                value={simpleProjectLookup}
+                onValueChange={(nextValue) => {
+                  setSimpleProjectLookup(nextValue);
+                  if (!nextValue) {
+                    setSimpleForm((prev) => ({ ...prev, projectId: "" }));
+                  }
+                }}
+                options={projects}
+                getOptionLabel={(project) => project.name || ""}
+                onSelect={(project) => {
+                  setSimpleProjectLookup("");
+                  setSimpleForm((prev) => ({ ...prev, projectId: String(project.id) }));
+                }}
+                placeholder={`-- ${t("projects.optionalProject")} --`}
+                onCreateRecord={handleCreatedProject}
+                renderCreateModal={({ isOpen, onClose, onCreated }) =>
+                  isOpen ? (
+                    <div className="modal-backdrop" onClick={onClose}>
+                      <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+                        <ProjectFormPage embedded onCancel={onClose} onCreated={onCreated} />
+                      </div>
+                    </div>
+                  ) : null
+                }
+                noResultsText={t("common.empty")}
+                selectedPillText={
+                  projects.find((project) => project.id === Number(simpleForm.projectId))?.name || ""
+                }
+                onClearSelection={() => {
+                  setSimpleForm((prev) => ({ ...prev, projectId: "" }));
+                  setSimpleProjectLookup("");
+                }}
+              />
             </div>
           </section>
 
@@ -724,35 +808,112 @@ function TransactionCreatePage({ moduleType }) {
                   <>
                     <label className="field-block">
                       <span>{t("transactions.paymentMethod")}</span>
-                      <select
-                        name="paymentMethodId"
-                        value={simpleForm.paymentMethodId}
-                        onChange={handleSimpleChange}
-                        required={moduleType !== "purchase" || simpleForm.paymentMode === "cash"}
-                      >
-                        <option value="">{`-- ${t("transactions.selectPaymentMethod")} --`}</option>
-                        {paymentMethods.map((method) => (
-                          <option key={method.id} value={method.id}>
-                            {method.name}
-                          </option>
-                        ))}
-                      </select>
+                      {moduleType === "income" || moduleType === "expense" ? (
+                        <LookupCombobox
+                          label=""
+                          value={simplePaymentMethodLookup}
+                          onValueChange={setSimplePaymentMethodLookup}
+                          options={paymentMethods}
+                          getOptionLabel={(method) => method.name || ""}
+                          onSelect={(method) => setSimpleForm((prev) => ({ ...prev, paymentMethodId: String(method.id), accountPaymentFormId: "" }))}
+                          placeholder={`-- ${t("transactions.selectPaymentMethod")} --`}
+                          noResultsText={t("common.empty")}
+                          selectedPillText={paymentMethods.find((method) => method.id === Number(simpleForm.paymentMethodId))?.name || ""}
+                          onClearSelection={() => {
+                            setSimpleForm((prev) => ({ ...prev, paymentMethodId: "", accountPaymentFormId: "" }));
+                            setSimplePaymentMethodLookup("");
+                          }}
+                          renderCreateModal={({ isOpen, onClose, onCreated }) =>
+                            isOpen ? (
+                              <div className="modal-backdrop" onClick={onClose}>
+                                <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+                                  <PaymentMethodQuickCreate
+                                    t={t}
+                                    accountId={account?.accountId}
+                                    onCancel={onClose}
+                                    onCreated={onCreated}
+                                  />
+                                </div>
+                              </div>
+                            ) : null
+                          }
+                          onCreateRecord={async (createdMethod) => {
+                            const updatedMethods = await listPaymentMethods(account.accountId);
+                            setPaymentMethods(updatedMethods);
+                            setSimpleForm((prev) => ({ ...prev, paymentMethodId: String(createdMethod.id), accountPaymentFormId: "" }));
+                            setSimplePaymentMethodLookup("");
+                          }}
+                        />
+                      ) : (
+                        <select
+                          name="paymentMethodId"
+                          value={simpleForm.paymentMethodId}
+                          onChange={handleSimpleChange}
+                          required={moduleType !== "purchase" || simpleForm.paymentMode === "cash"}
+                        >
+                          <option value="">{`-- ${t("transactions.selectPaymentMethod")} --`}</option>
+                          {paymentMethods.map((method) => (
+                            <option key={method.id} value={method.id}>
+                              {method.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </label>
                     <label className="field-block">
                       <span>{t("transactions.accountPaymentForm")}</span>
-                      <select
-                        name="accountPaymentFormId"
-                        value={simpleForm.accountPaymentFormId}
-                        onChange={handleSimpleChange}
-                        required={simpleRequiresAccountPaymentForm}
-                      >
-                        <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
-                        {simpleFilteredAccountPaymentForms.map((form) => (
-                          <option key={form.id} value={form.id}>
-                            {formatPaymentFormLabel(form)}
-                          </option>
-                        ))}
-                      </select>
+                      {moduleType === "income" || moduleType === "expense" ? (
+                        <LookupCombobox
+                          label=""
+                          value={simpleAccountFormLookup}
+                          onValueChange={setSimpleAccountFormLookup}
+                          options={simpleFilteredAccountPaymentForms}
+                          getOptionLabel={(row) => formatPaymentFormLabel(row)}
+                          onSelect={(row) => setSimpleForm((prev) => ({ ...prev, accountPaymentFormId: String(row.id) }))}
+                          placeholder={`-- ${t("transactions.selectAccountPaymentForm")} --`}
+                          noResultsText={t("common.empty")}
+                          selectedPillText={
+                            simpleFilteredAccountPaymentForms.find((row) => row.id === Number(simpleForm.accountPaymentFormId))
+                              ? formatPaymentFormLabel(
+                                  simpleFilteredAccountPaymentForms.find((row) => row.id === Number(simpleForm.accountPaymentFormId))
+                                )
+                              : ""
+                          }
+                          onClearSelection={() => {
+                            setSimpleForm((prev) => ({ ...prev, accountPaymentFormId: "" }));
+                            setSimpleAccountFormLookup("");
+                          }}
+                          onCreateRecord={async (createdForm) => {
+                            const updated = await listAccountPaymentForms(account.accountId);
+                            setAccountPaymentForms(updated);
+                            setSimpleForm((prev) => ({ ...prev, accountPaymentFormId: String(createdForm.id) }));
+                            setSimpleAccountFormLookup("");
+                          }}
+                          renderCreateModal={({ isOpen, onClose, onCreated }) =>
+                            isOpen ? (
+                              <div className="modal-backdrop" onClick={onClose}>
+                                <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+                                  <AccountPaymentFormPage embedded onCancel={onClose} onCreated={onCreated} />
+                                </div>
+                              </div>
+                            ) : null
+                          }
+                        />
+                      ) : (
+                        <select
+                          name="accountPaymentFormId"
+                          value={simpleForm.accountPaymentFormId}
+                          onChange={handleSimpleChange}
+                          required={simpleRequiresAccountPaymentForm}
+                        >
+                          <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
+                          {simpleFilteredAccountPaymentForms.map((form) => (
+                            <option key={form.id} value={form.id}>
+                              {formatPaymentFormLabel(form)}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </label>
                   </>
                 )}
@@ -779,6 +940,11 @@ function TransactionCreatePage({ moduleType }) {
           </p>
 
           <div className="crud-form-actions">
+            {embedded ? (
+              <button type="button" className="button-secondary" onClick={() => onCancel?.()}>
+                {t("common.cancel")}
+              </button>
+            ) : null}
             <button type="submit" disabled={isSaving}>
               {t("common.create")}
             </button>
@@ -811,43 +977,44 @@ function TransactionCreatePage({ moduleType }) {
                   <option value="credit">{t("transactions.credit")}</option>
                 </select>
               </label>
-              <div className="lookup-wrap">
-                <div className="lookup-header">
-                  <label>{t("transactions.clientLookup")}</label>
-                  <button type="button" className="button-secondary lookup-add-button" onClick={openPersonModal} title={t("actions.newClient")}>
-                    +
-                  </button>
-                </div>
-                <input
-                  value={clientLookup}
-                  onChange={(event) => {
-                    setClientLookup(event.target.value);
-                    setShowClientSuggestions(true);
-                    if (!event.target.value) setSelectedClient(null);
-                  }}
-                  onFocus={() => setShowClientSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowClientSuggestions(false), 120)}
-                  placeholder={t("transactions.lookupPlaceholder")}
-                />
-                {showClientSuggestions && clientMatches.length > 0 && (
-                  <div className="lookup-results">
-                    {clientMatches.map((client) => (
-                      <button
-                        key={client.id}
-                        type="button"
-                        className="lookup-item"
-                        onClick={() => {
-                          setSelectedClient(client);
-                          setClientLookup(client.name);
-                          setShowClientSuggestions(false);
-                        }}
-                      >
-                        {client.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <LookupCombobox
+                label={t("transactions.clientLookup")}
+                value={clientLookup}
+                onValueChange={(nextValue) => {
+                  setClientLookup(nextValue);
+                  if (!nextValue) setSelectedClient(null);
+                }}
+                options={personOptions}
+                getOptionLabel={(client) => client.name || ""}
+                onSelect={(client) => {
+                  setSelectedClient(client);
+                  setClientLookup("");
+                }}
+                placeholder={t("transactions.lookupPlaceholder")}
+                onCreateRecord={handleCreatedPerson}
+                renderCreateModal={({ isOpen, onClose, onCreated }) =>
+                  isOpen ? (
+                    <div className="modal-backdrop" onClick={onClose}>
+                      <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+                        <PeopleFormPage
+                          embedded
+                          personType={1}
+                          titleKey="actions.newClient"
+                          basePath="/clients"
+                          onCancel={onClose}
+                          onCreated={onCreated}
+                        />
+                      </div>
+                    </div>
+                  ) : null
+                }
+                noResultsText={t("common.empty")}
+                selectedPillText={selectedClient?.name || ""}
+                onClearSelection={() => {
+                  setSelectedClient(null);
+                  setClientLookup("");
+                }}
+              />
               <label className="field-block form-span-2">
                 <span>{t("transactions.description")}</span>
                 <input name="description" value={saleHeader.description} onChange={handleSaleHeaderChange} />
@@ -856,17 +1023,41 @@ function TransactionCreatePage({ moduleType }) {
                 <span>{t("transactions.referenceNumber")}</span>
                 <input name="referenceNumber" value={saleHeader.referenceNumber} onChange={handleSaleHeaderChange} />
               </label>
-              <label className="field-block">
-                <span>{t("projects.project")}</span>
-                <select name="projectId" value={saleHeader.projectId} onChange={handleSaleHeaderChange}>
-                  <option value="">{`-- ${t("projects.optionalProject")} --`}</option>
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <LookupCombobox
+                label={t("projects.project")}
+                value={saleProjectLookup}
+                onValueChange={(nextValue) => {
+                  setSaleProjectLookup(nextValue);
+                  if (!nextValue) {
+                    setSaleHeader((prev) => ({ ...prev, projectId: "" }));
+                  }
+                }}
+                options={projects}
+                getOptionLabel={(project) => project.name || ""}
+                onSelect={(project) => {
+                  setSaleProjectLookup("");
+                  setSaleHeader((prev) => ({ ...prev, projectId: String(project.id) }));
+                }}
+                placeholder={`-- ${t("projects.optionalProject")} --`}
+                onCreateRecord={handleCreatedProject}
+                renderCreateModal={({ isOpen, onClose, onCreated }) =>
+                  isOpen ? (
+                    <div className="modal-backdrop" onClick={onClose}>
+                      <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+                        <ProjectFormPage embedded onCancel={onClose} onCreated={onCreated} />
+                      </div>
+                    </div>
+                  ) : null
+                }
+                noResultsText={t("common.empty")}
+                selectedPillText={
+                  projects.find((project) => project.id === Number(saleHeader.projectId))?.name || ""
+                }
+                onClearSelection={() => {
+                  setSaleHeader((prev) => ({ ...prev, projectId: "" }));
+                  setSaleProjectLookup("");
+                }}
+              />
             </div>
           </section>
 
@@ -907,33 +1098,36 @@ function TransactionCreatePage({ moduleType }) {
 
           <section className="crud-form-section">
             <h2 className="crud-form-section-title">{t("transactions.sectionDetail")}</h2>
-            <div className="lookup-wrap">
-              <div className="lookup-header">
-                <label>{t("transactions.productLookup")}</label>
-                <button type="button" className="button-secondary lookup-add-button" onClick={openConceptModal} title={t("actions.newProduct")}>
-                  +
-                </button>
-              </div>
-              <input
-                value={productLookup}
-                onChange={(event) => {
-                  setProductLookup(event.target.value);
-                  setShowProductSuggestions(true);
-                }}
-                onFocus={() => setShowProductSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowProductSuggestions(false), 120)}
-                placeholder={t("transactions.productLookupPlaceholder")}
-              />
-              {showProductSuggestions && productMatches.length > 0 && (
-                <div className="lookup-results">
-                  {productMatches.map((product) => (
-                    <button key={product.id} type="button" className="lookup-item" onClick={() => addSaleLine(product)}>
-                      {product.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <LookupCombobox
+              label={t("transactions.productLookup")}
+              value={productLookup}
+              onValueChange={setProductLookup}
+              options={conceptOptions}
+              getOptionLabel={(product) => product.name || ""}
+              onSelect={(product) => {
+                addSaleLine(product);
+                setProductLookup("");
+              }}
+              placeholder={t("transactions.productLookupPlaceholder")}
+              onCreateRecord={handleCreatedConcept}
+              renderCreateModal={({ isOpen, onClose, onCreated }) =>
+                isOpen ? (
+                  <div className="modal-backdrop" onClick={onClose}>
+                    <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+                      <ConceptModuleFormPage
+                        embedded
+                        moduleType="products"
+                        titleKey="actions.newProduct"
+                        basePath="/products"
+                        onCancel={onClose}
+                        onCreated={onCreated}
+                      />
+                    </div>
+                  </div>
+                ) : null
+              }
+              noResultsText={t("common.empty")}
+            />
           </section>
 
           <table className="crud-table invoice-lines-table">
@@ -1021,6 +1215,11 @@ function TransactionCreatePage({ moduleType }) {
           </p>
 
           <div className="crud-form-actions">
+            {embedded ? (
+              <button type="button" className="button-secondary" onClick={() => onCancel?.()}>
+                {t("common.cancel")}
+              </button>
+            ) : null}
             <button type="submit" disabled={isSaving}>
               {t("common.create")}
             </button>
@@ -1028,134 +1227,6 @@ function TransactionCreatePage({ moduleType }) {
         </form>
       )}
 
-      {isConceptModalOpen && (
-        <div className="modal-backdrop" onClick={() => setIsConceptModalOpen(false)}>
-          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
-            <h3>{moduleType === "sale" ? t("actions.newProduct") : t("actions.newConcept")}</h3>
-            <form className="crud-form" onSubmit={handleCreateConceptFromModal}>
-              <div className="form-grid-2">
-                <label className="field-block">
-                  <span>{t("common.name")}</span>
-                  <input
-                    value={conceptModalForm.name}
-                    onChange={(event) => setConceptModalForm((prev) => ({ ...prev, name: event.target.value }))}
-                    required
-                  />
-                </label>
-                <label className="field-block">
-                  <span>{t("concepts.group")}</span>
-                  <select
-                    value={conceptModalForm.parentConceptId}
-                    onChange={(event) => setConceptModalForm((prev) => ({ ...prev, parentConceptId: event.target.value }))}
-                  >
-                    <option value="">{`-- ${t("concepts.noGroup")} --`}</option>
-                    {conceptGroupOptions.map((group) => (
-                      <option key={group.id} value={group.id}>
-                        {group.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {moduleType === "sale" && (
-                  <>
-                    <label className="field-block">
-                      <span>{t("transactions.price")}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={conceptModalForm.price}
-                        onChange={(event) => setConceptModalForm((prev) => ({ ...prev, price: event.target.value }))}
-                      />
-                    </label>
-                    <label className="field-block">
-                      <span>{t("concepts.taxPercentage")}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={conceptModalForm.taxPercentage}
-                        onChange={(event) => setConceptModalForm((prev) => ({ ...prev, taxPercentage: event.target.value }))}
-                      />
-                    </label>
-                    <label className="field-block">
-                      <span>{t("transactions.additionalCharges")}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={conceptModalForm.additionalCharges}
-                        onChange={(event) => setConceptModalForm((prev) => ({ ...prev, additionalCharges: event.target.value }))}
-                      />
-                    </label>
-                  </>
-                )}
-              </div>
-              <div className="crud-form-actions">
-                <button type="button" className="button-secondary" onClick={() => setIsConceptModalOpen(false)}>
-                  {t("common.cancel")}
-                </button>
-                <button type="submit" disabled={isConceptSaving}>
-                  {t("common.create")}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {isPersonModalOpen && (
-        <div className="modal-backdrop" onClick={() => setIsPersonModalOpen(false)}>
-          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
-            <h3>{moduleType === "purchase" ? t("actions.newProvider") : t("actions.newClient")}</h3>
-            <form className="crud-form" onSubmit={handleCreatePersonFromModal}>
-              <div className="form-grid-2">
-                <label className="field-block">
-                  <span>{t("common.name")}</span>
-                  <input
-                    value={personModalForm.name}
-                    onChange={(event) => setPersonModalForm((prev) => ({ ...prev, name: event.target.value }))}
-                    required
-                  />
-                </label>
-                <label className="field-block">
-                  <span>{t("persons.type")}</span>
-                  <select
-                    value={personModalForm.type}
-                    onChange={(event) => setPersonModalForm((prev) => ({ ...prev, type: Number(event.target.value) }))}
-                    disabled={moduleType === "purchase" || moduleType === "sale"}
-                  >
-                    <option value={1}>{t("persons.client")}</option>
-                    <option value={2}>{t("persons.supplier")}</option>
-                  </select>
-                </label>
-                <label className="field-block">
-                  <span>{t("common.phone")}</span>
-                  <input
-                    value={personModalForm.phone}
-                    onChange={(event) => setPersonModalForm((prev) => ({ ...prev, phone: event.target.value }))}
-                  />
-                </label>
-                <label className="field-block">
-                  <span>{t("common.address")}</span>
-                  <input
-                    value={personModalForm.address}
-                    onChange={(event) => setPersonModalForm((prev) => ({ ...prev, address: event.target.value }))}
-                  />
-                </label>
-              </div>
-              <div className="crud-form-actions">
-                <button type="button" className="button-secondary" onClick={() => setIsPersonModalOpen(false)}>
-                  {t("common.cancel")}
-                </button>
-                <button type="submit" disabled={isPersonSaving}>
-                  {t("common.create")}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

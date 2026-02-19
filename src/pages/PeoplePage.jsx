@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import Pagination from "../components/Pagination";
+import PeopleFormPage from "./PeopleFormPage";
 import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
@@ -14,6 +16,8 @@ function PeoplePage({ personType, titleKey, basePath }) {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isCreateModalOpen = searchParams.get("create") === "1";
 
   useEffect(() => {
     if (!account?.accountId) {
@@ -94,6 +98,37 @@ function PeoplePage({ personType, titleKey, basePath }) {
           <Pagination page={page} pageSize={pageSize} totalItems={items.length} onPageChange={setPage} />
         </>
       )}
+
+      {isCreateModalOpen ? (
+        <div
+          className="modal-backdrop"
+          onClick={() => {
+            const next = new URLSearchParams(searchParams);
+            next.delete("create");
+            setSearchParams(next);
+          }}
+        >
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <PeopleFormPage
+              embedded
+              personType={personType}
+              titleKey={personType === 1 ? "actions.newClient" : "actions.newProvider"}
+              basePath={basePath}
+              onCancel={() => {
+                const next = new URLSearchParams(searchParams);
+                next.delete("create");
+                setSearchParams(next);
+              }}
+              onCreated={async () => {
+                await loadData();
+                const next = new URLSearchParams(searchParams);
+                next.delete("create");
+                setSearchParams(next);
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

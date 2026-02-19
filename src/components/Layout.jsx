@@ -5,6 +5,7 @@ import {
   FiBarChart2,
   FiBox,
   FiChevronDown,
+  FiChevronLeft,
   FiChevronRight,
   FiCreditCard,
   FiDollarSign,
@@ -268,44 +269,44 @@ function Layout() {
   const isAccountRoute = pathname.startsWith("/account");
 
   const actionsConfig = useMemo(() => {
-    if (pathname.startsWith("/clients")) return { createPath: "/clients/new", createLabel: t("actions.newClient") };
+    if (pathname.startsWith("/clients")) return { createPath: "/clients?create=1", createLabel: t("actions.newClient") };
     if (pathname.startsWith("/providers")) {
-      return { createPath: "/providers/new", createLabel: t("actions.newProvider") };
+      return { createPath: "/providers?create=1", createLabel: t("actions.newProvider") };
     }
     if (pathname.startsWith("/employees")) {
-      return { createPath: "/employees/new", createLabel: t("actions.newEmployee") };
+      return { createPath: "/employees?create=1", createLabel: t("actions.newEmployee") };
     }
-    if (pathname.startsWith("/products")) return { createPath: "/products/new", createLabel: t("actions.newProduct") };
+    if (pathname.startsWith("/products")) return { createPath: "/products?create=1", createLabel: t("actions.newProduct") };
     if (pathname.startsWith("/payment-forms")) {
-      return { createPath: "/payment-forms/new", createLabel: t("actions.newPaymentForm") };
+      return { createPath: "/payment-forms?create=1", createLabel: t("actions.newPaymentForm") };
     }
     if (pathname.startsWith("/bank-deposits")) {
-      return { createPath: "/bank-deposits/new", createLabel: t("actions.newBankDeposit") };
+      return { createPath: "/bank-deposits?create=1", createLabel: t("actions.newBankDeposit") };
     }
     if (pathname.startsWith("/bank-transfers")) {
-      return { createPath: "/bank-transfers/new", createLabel: t("actions.newBankTransfer") };
+      return { createPath: "/bank-transfers?create=1", createLabel: t("actions.newBankTransfer") };
     }
     if (pathname.startsWith("/internal-obligations")) {
-      return { createPath: "/internal-obligations/new", createLabel: t("actions.newInternalObligation") };
+      return { createPath: "/internal-obligations?create=1", createLabel: t("actions.newInternalObligation") };
     }
     if (pathname.startsWith("/income-concepts")) {
-      return { createPath: "/income-concepts/new", createLabel: t("actions.newIncomeConcept") };
+      return { createPath: "/income-concepts?create=1", createLabel: t("actions.newIncomeConcept") };
     }
     if (pathname.startsWith("/expense-concepts")) {
-      return { createPath: "/expense-concepts/new", createLabel: t("actions.newExpenseConcept") };
+      return { createPath: "/expense-concepts?create=1", createLabel: t("actions.newExpenseConcept") };
     }
     if (pathname.startsWith("/payable-concepts")) {
-      return { createPath: "/payable-concepts/new", createLabel: t("actions.newPayableConcept") };
+      return { createPath: "/payable-concepts?create=1", createLabel: t("actions.newPayableConcept") };
     }
     if (pathname.startsWith("/concept-groups")) {
-      return { createPath: "/concept-groups/new", createLabel: t("actions.newConceptGroup") };
+      return { createPath: "/concept-groups?create=1", createLabel: t("actions.newConceptGroup") };
     }
     if (pathname.startsWith("/sales")) return { createPath: "/sales/new", createLabel: t("actions.newSale") };
-    if (pathname.startsWith("/purchases")) return { createPath: "/purchases/new", createLabel: t("actions.newPurchase") };
-    if (pathname.startsWith("/expenses")) return { createPath: "/expenses/new", createLabel: t("actions.newExpense") };
-    if (pathname.startsWith("/incomes")) return { createPath: "/incomes/new", createLabel: t("actions.newIncome") };
-    if (pathname.startsWith("/projects")) return { createPath: "/projects/new", createLabel: t("actions.newProject") };
-    if (pathname.startsWith("/budgets")) return { createPath: "/budgets/new", createLabel: t("actions.newBudget") };
+    if (pathname.startsWith("/purchases")) return { createPath: "/purchases?create=1", createLabel: t("actions.newPurchase") };
+    if (pathname.startsWith("/expenses")) return { createPath: "/expenses?create=1", createLabel: t("actions.newExpense") };
+    if (pathname.startsWith("/incomes")) return { createPath: "/incomes?create=1", createLabel: t("actions.newIncome") };
+    if (pathname.startsWith("/projects")) return { createPath: "/projects?create=1", createLabel: t("actions.newProject") };
+    if (pathname.startsWith("/budgets")) return { createPath: "/budgets?create=1", createLabel: t("actions.newBudget") };
     if (pathname.startsWith("/account")) return { createPath: null, createLabel: null };
     if (pathname.startsWith("/reports")) return { createPath: null, createLabel: null };
 
@@ -637,18 +638,20 @@ function Layout() {
         onClick={(event) => event.stopPropagation()}
       >
         <h3>{t("common.searchPlaceholder")}</h3>
-        <label className="search-wrap search-wrap-panel" htmlFor="global-search-mobile">
-          <span className="search-icon">
-            <FiSearch />
-          </span>
-          <input
-            id="global-search-mobile"
-            type="text"
-            placeholder={t("common.searchPlaceholder")}
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-          />
-        </label>
+        {isMobile980 ? (
+          <label className="search-wrap search-wrap-panel" htmlFor="global-search-mobile">
+            <span className="search-icon">
+              <FiSearch />
+            </span>
+            <input
+              id="global-search-mobile"
+              type="text"
+              placeholder={t("common.searchPlaceholder")}
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+          </label>
+        ) : null}
         <div className="search-results-content">
           {!hasSearchTerm ? (
             <p className="search-empty-state">{t("common.searchTypeToStart")}</p>
@@ -817,34 +820,36 @@ function Layout() {
           <aside
             className={`sidebar-icons ${isSidebarForcedCollapsed ? "force-collapsed" : ""}`}
             data-tour="sidebar-icons"
-            onMouseEnter={() => {
-              if (isSidebarForcedCollapsed) {
-                setIsSidebarForcedCollapsed(false);
-              }
-            }}
           >
+            <button
+              type="button"
+              className="sidebar-collapse-btn"
+              onClick={() => setIsSidebarForcedCollapsed((prev) => !prev)}
+              aria-label={isSidebarForcedCollapsed ? t("common.expand") : t("common.collapse")}
+              title={isSidebarForcedCollapsed ? t("common.expand") : t("common.collapse")}
+            >
+              <span className="side-icon-glyph">{isSidebarForcedCollapsed ? <FiChevronRight /> : <FiChevronLeft />}</span>
+              <span className="side-icon-label">{isSidebarForcedCollapsed ? t("common.expand") : t("common.collapse")}</span>
+            </button>
             {navGroups.map((group) => {
               const isActiveGroup = selectedGroupId === group.id;
+              const firstPath = group.items?.[0]?.path ?? "/";
 
               return (
                 <div key={group.id} className="sidebar-group">
-                  <button
-                    type="button"
+                  <NavLink
+                    to={firstPath}
+                    end={firstPath === "/"}
                     className={`side-icon group-root ${isActiveGroup ? "active" : ""}`}
                     onClick={() => {
                       setSelectedGroupId(group.id);
-                      setIsSidebarForcedCollapsed(true);
-                      const firstPath = group.items?.[0]?.path;
-                      if (firstPath && pathname !== firstPath) {
-                        navigate(firstPath);
-                      }
                     }}
                   >
                     <span className="side-icon-glyph">
                       <group.icon />
                     </span>
                     <span className="side-icon-label">{t(group.titleKey)}</span>
-                  </button>
+                  </NavLink>
                 </div>
               );
             })}

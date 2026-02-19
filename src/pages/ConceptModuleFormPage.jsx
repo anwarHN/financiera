@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import LookupCombobox from "../components/LookupCombobox";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { createConcept, getConceptById, listConceptsByModule, updateConcept } from "../services/conceptsService";
@@ -35,18 +36,19 @@ const initialForm = {
   groupType: "income"
 };
 
-function ConceptModuleFormPage({ moduleType, titleKey, basePath }) {
+function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = false, onCancel, onCreated }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
-  const isEdit = Boolean(id);
+  const isEdit = !embedded && Boolean(id);
 
   const [form, setForm] = useState(initialForm);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(isEdit);
   const [error, setError] = useState("");
   const [groupOptions, setGroupOptions] = useState([]);
+  const [groupLookup, setGroupLookup] = useState("");
 
   useEffect(() => {
     if (!account?.accountId) {
@@ -83,6 +85,8 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath }) {
         additionalCharges: item.additionalCharges ?? 0,
         groupType: item.isExpense ? "expense" : "income"
       });
+      const selectedGroup = item.parentConceptId ? groupOptions.find((g) => g.id === Number(item.parentConceptId)) : null;
+      setGroupLookup(selectedGroup?.name || "");
     } catch {
       setError(t("common.genericLoadError"));
     } finally {
@@ -110,12 +114,16 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath }) {
       setError(t("common.requiredFields"));
       return;
     }
+    if (["income", "expense", "payable"].includes(moduleType) && !form.parentConceptId) {
+      setError(t("common.requiredFields"));
+      return;
+    }
 
     const payload = {
       accountId: account.accountId,
       name: form.name.trim(),
       parentConceptId: moduleType === "groups" ? null : form.parentConceptId ? Number(form.parentConceptId) : null,
-      taxPercentage: ["income", "expense", "payable"].includes(moduleType) ? 0 : Number(form.taxPercentage) || 0,
+      taxPercentage: moduleType === "products" ? Number(form.taxPercentage) || 0 : 0,
       price: Number(form.price) || 0,
       additionalCharges: Number(form.additionalCharges) || 0,
       ...moduleFlags[moduleType]
@@ -128,10 +136,15 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath }) {
 
     try {
       setIsSaving(true);
+      let created = null;
       if (isEdit) {
-        await updateConcept(id, payload);
+        created = await updateConcept(id, payload);
       } else {
-        await createConcept({ ...payload, createdById: user.id });
+        created = await createConcept({ ...payload, createdById: user.id });
+      }
+      if (embedded) {
+        onCreated?.(created);
+        return;
       }
       navigate(basePath);
     } catch {
@@ -142,13 +155,17 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath }) {
   };
 
   return (
-    <div className="module-page">
-      <div className="page-header-row">
-        <h1>{isEdit ? t("common.edit") : t(titleKey)}</h1>
-        <Link to={basePath} className="button-link-secondary">
-          {t("common.backToList")}
-        </Link>
-      </div>
+    <div className={embedded ? "" : "module-page"}>
+      {!embedded ? (
+        <div className="page-header-row">
+          <h1>{isEdit ? t("common.edit") : t(titleKey)}</h1>
+          <Link to={basePath} className="button-link-secondary">
+            {t("common.backToList")}
+          </Link>
+        </div>
+      ) : (
+        <h3>{isEdit ? t("common.edit") : t(titleKey)}</h3>
+      )}
 
       {error && <p className="error-text">{error}</p>}
       {isLoading ? (
@@ -162,17 +179,60 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath }) {
             </label>
 
             {moduleType !== "groups" ? (
-              <label className="field-block">
-                <span>{t("concepts.group")}</span>
-                <select name="parentConceptId" value={form.parentConceptId} onChange={handleChange}>
-                  <option value="">{`-- ${t("concepts.noGroup")} --`}</option>
-                  {groupOptions.map((group) => (
-                    <option key={group.id} value={group.id}>
-                      {group.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              ["income", "expense", "payable"].includes(moduleType) ? (
+                <LookupCombobox
+                  label={t("concepts.group")}
+                  value={groupLookup}
+                  onValueChange={setGroupLookup}
+                  options={groupOptions}
+                  getOptionLabel={(group) => group.name || ""}
+                  onSelect={(group) => {
+                    setForm((prev) => ({ ...prev, parentConceptId: String(group.id) }));
+                    setGroupLookup("");
+                  }}
+                  placeholder={`-- ${t("concepts.group")} --`}
+                  noResultsText={t("common.empty")}
+                  selectedPillText={groupOptions.find((g) => g.id === Number(form.parentConceptId))?.name || ""}
+                  onClearSelection={() => {
+                    setForm((prev) => ({ ...prev, parentConceptId: "" }));
+                    setGroupLookup("");
+                  }}
+                  renderCreateModal={({ isOpen, onClose, onCreated }) =>
+                    isOpen ? (
+                      <div className="modal-backdrop" onClick={onClose}>
+                        <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+                          <ConceptModuleFormPage
+                            embedded
+                            moduleType="groups"
+                            titleKey="actions.newConceptGroup"
+                            basePath="/concept-groups"
+                            onCancel={onClose}
+                            onCreated={onCreated}
+                          />
+                        </div>
+                      </div>
+                    ) : null
+                  }
+                  onCreateRecord={async (createdGroup) => {
+                    const groups = await listConceptsByModule(account.accountId, "groups");
+                    setGroupOptions(groups);
+                    setForm((prev) => ({ ...prev, parentConceptId: String(createdGroup.id) }));
+                    setGroupLookup("");
+                  }}
+                />
+              ) : (
+                <label className="field-block">
+                  <span>{t("concepts.group")}</span>
+                  <select name="parentConceptId" value={form.parentConceptId} onChange={handleChange}>
+                    <option value="">{`-- ${t("concepts.noGroup")} --`}</option>
+                    {groupOptions.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )
             ) : (
               <label className="field-block">
                 <span>{t("concepts.groupType")}</span>
@@ -183,7 +243,7 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath }) {
               </label>
             )}
 
-            {!["income", "expense", "payable"].includes(moduleType) ? (
+            {moduleType === "products" ? (
               <label className="field-block">
                 <span>{t("concepts.taxPercentage")}</span>
                 <input
@@ -232,6 +292,11 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath }) {
           </div>
 
           <div className="crud-form-actions">
+            {embedded ? (
+              <button type="button" className="button-secondary" onClick={() => onCancel?.()}>
+                {t("common.cancel")}
+              </button>
+            ) : null}
             <button type="submit" disabled={isSaving}>
               {isEdit ? t("common.update") : t("common.create")}
             </button>

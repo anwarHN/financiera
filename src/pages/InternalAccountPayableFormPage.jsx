@@ -16,12 +16,12 @@ const initialForm = {
   total: 0
 };
 
-function InternalAccountPayableFormPage() {
+function InternalAccountPayableFormPage({ embedded = false, onCancel, onCreated }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
-  const isEdit = Boolean(id);
+  const isEdit = !embedded && Boolean(id);
 
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
@@ -122,10 +122,15 @@ function InternalAccountPayableFormPage() {
 
     try {
       setIsSaving(true);
+      let created = null;
       if (isEdit) {
-        await updateInternalObligation(id, payload);
+        created = await updateInternalObligation(id, payload);
       } else {
-        await createInternalObligation({ ...payload, userId: user.id });
+        created = await createInternalObligation({ ...payload, userId: user.id });
+      }
+      if (embedded) {
+        onCreated?.(created);
+        return;
       }
       navigate("/internal-obligations");
     } catch {
@@ -136,13 +141,17 @@ function InternalAccountPayableFormPage() {
   };
 
   return (
-    <div className="module-page">
-      <div className="page-header-row">
-        <h1>{isEdit ? t("common.edit") : t("actions.newInternalObligation")}</h1>
-        <Link to="/internal-obligations" className="button-link-secondary">
-          {t("common.backToList")}
-        </Link>
-      </div>
+    <div className={embedded ? "" : "module-page"}>
+      {!embedded ? (
+        <div className="page-header-row">
+          <h1>{isEdit ? t("common.edit") : t("actions.newInternalObligation")}</h1>
+          <Link to="/internal-obligations" className="button-link-secondary">
+            {t("common.backToList")}
+          </Link>
+        </div>
+      ) : (
+        <h3>{isEdit ? t("common.edit") : t("actions.newInternalObligation")}</h3>
+      )}
       {error && <p className="error-text">{error}</p>}
       {isLoading ? (
         <p>{t("common.loading")}</p>
@@ -190,6 +199,11 @@ function InternalAccountPayableFormPage() {
           </div>
 
           <div className="crud-form-actions">
+            {embedded ? (
+              <button type="button" className="button-secondary" onClick={() => onCancel?.()}>
+                {t("common.cancel")}
+              </button>
+            ) : null}
             <button type="submit" disabled={isSaving}>
               {isEdit ? t("common.update") : t("common.create")}
             </button>

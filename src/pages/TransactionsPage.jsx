@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import Pagination from "../components/Pagination";
 import PaymentRegisterModal from "../components/PaymentRegisterModal";
 import RowActionsMenu from "../components/RowActionsMenu";
+import TransactionCreatePage from "./TransactionCreatePage";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import {
@@ -61,6 +63,8 @@ function TransactionsPage({ moduleType }) {
     minAmount: "",
     maxAmount: ""
   });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isCreateModalOpen = searchParams.get("create") === "1";
 
   useEffect(() => {
     if (!account?.accountId) {
@@ -301,6 +305,35 @@ function TransactionsPage({ moduleType }) {
           />
         </>
       )}
+
+      {moduleType !== "sale" && isCreateModalOpen ? (
+        <div
+          className="modal-backdrop"
+          onClick={() => {
+            const next = new URLSearchParams(searchParams);
+            next.delete("create");
+            setSearchParams(next);
+          }}
+        >
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <TransactionCreatePage
+              embedded
+              moduleType={moduleType}
+              onCancel={() => {
+                const next = new URLSearchParams(searchParams);
+                next.delete("create");
+                setSearchParams(next);
+              }}
+              onCreated={async () => {
+                await loadData();
+                const next = new URLSearchParams(searchParams);
+                next.delete("create");
+                setSearchParams(next);
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -11,12 +11,12 @@ const initialForm = {
   endDate: ""
 };
 
-function ProjectFormPage() {
+function ProjectFormPage({ embedded = false, onCancel, onCreated }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
-  const isEdit = Boolean(id);
+  const isEdit = !embedded && Boolean(id);
 
   const [form, setForm] = useState(initialForm);
   const [isSaving, setIsSaving] = useState(false);
@@ -74,10 +74,15 @@ function ProjectFormPage() {
 
     try {
       setIsSaving(true);
+      let created = null;
       if (isEdit) {
-        await updateProject(id, payload);
+        created = await updateProject(id, payload);
       } else {
-        await createProject({ ...payload, createdById: user.id });
+        created = await createProject({ ...payload, createdById: user.id });
+      }
+      if (embedded) {
+        onCreated?.(created);
+        return;
       }
       navigate("/projects");
     } catch {
@@ -88,13 +93,17 @@ function ProjectFormPage() {
   };
 
   return (
-    <div className="module-page">
-      <div className="page-header-row">
-        <h1>{isEdit ? t("common.edit") : t("actions.newProject")}</h1>
-        <Link to="/projects" className="button-link-secondary">
-          {t("common.backToList")}
-        </Link>
-      </div>
+    <div className={embedded ? "" : "module-page"}>
+      {!embedded ? (
+        <div className="page-header-row">
+          <h1>{isEdit ? t("common.edit") : t("actions.newProject")}</h1>
+          <Link to="/projects" className="button-link-secondary">
+            {t("common.backToList")}
+          </Link>
+        </div>
+      ) : (
+        <h3>{isEdit ? t("common.edit") : t("actions.newProject")}</h3>
+      )}
       {error && <p className="error-text">{error}</p>}
       {isLoading ? (
         <p>{t("common.loading")}</p>
@@ -119,6 +128,11 @@ function ProjectFormPage() {
             </label>
           </div>
           <div className="crud-form-actions">
+            {embedded ? (
+              <button type="button" className="button-secondary" onClick={() => onCancel?.()}>
+                {t("common.cancel")}
+              </button>
+            ) : null}
             <button type="submit" disabled={isSaving}>
               {isEdit ? t("common.update") : t("common.create")}
             </button>

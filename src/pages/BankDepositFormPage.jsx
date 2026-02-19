@@ -19,7 +19,7 @@ const initialForm = {
   description: ""
 };
 
-function BankDepositFormPage() {
+function BankDepositFormPage({ embedded = false, onCancel, onCreated }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const navigate = useNavigate();
@@ -94,7 +94,7 @@ function BankDepositFormPage() {
 
     try {
       setIsSaving(true);
-      await createBankDeposit({
+      const created = await createBankDeposit({
         accountId: account.accountId,
         userId: user.id,
         date: form.date,
@@ -109,7 +109,11 @@ function BankDepositFormPage() {
         outgoingConceptId: outgoingConcept.id,
         incomingConceptId: incomingConcept.id
       });
-      navigate("/bank-deposits");
+      if (embedded) {
+        onCreated?.(created);
+      } else {
+        navigate("/bank-deposits");
+      }
     } catch (err) {
       setError(err?.message || t("common.genericSaveError"));
     } finally {
@@ -118,13 +122,17 @@ function BankDepositFormPage() {
   };
 
   return (
-    <div className="module-page">
-      <div className="page-header-row">
-        <h1>{t("bankDeposits.title")}</h1>
-        <Link to="/bank-deposits" className="button-link-secondary">
-          {t("common.backToList")}
-        </Link>
-      </div>
+    <div className={embedded ? "" : "module-page"}>
+      {!embedded ? (
+        <div className="page-header-row">
+          <h1>{t("bankDeposits.title")}</h1>
+          <Link to="/bank-deposits" className="button-link-secondary">
+            {t("common.backToList")}
+          </Link>
+        </div>
+      ) : (
+        <h3>{t("actions.newBankDeposit")}</h3>
+      )}
       {error && <p className="error-text">{error}</p>}
 
       <form className="crud-form" onSubmit={handleSubmit}>
@@ -181,6 +189,11 @@ function BankDepositFormPage() {
         </div>
 
         <div className="crud-form-actions">
+          {embedded ? (
+            <button type="button" className="button-secondary" onClick={() => onCancel?.()}>
+              {t("common.cancel")}
+            </button>
+          ) : null}
           <button type="submit" disabled={isSaving}>
             {t("common.create")}
           </button>
