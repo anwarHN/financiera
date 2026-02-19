@@ -48,12 +48,28 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
 
   const { data: details, error: detailsError } = await supabase
     .from("transactionDetails")
-    .select(
-      "transactionId, total, conceptId, concepts(id, name, parentConceptId, parentConcept:concepts!concepts_parentConceptId_fkey(id, name))"
-    )
+    .select("transactionId, total, conceptId, concepts(id, name, parentConceptId)")
     .in("transactionId", txIds);
 
   if (detailsError) throw detailsError;
+
+  const parentConceptIds = Array.from(
+    new Set(
+      (details ?? [])
+        .map((detail) => Number(detail.concepts?.parentConceptId || 0))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    )
+  );
+
+  let groupNameById = new Map();
+  if (parentConceptIds.length > 0) {
+    const { data: groupConcepts, error: groupsError } = await supabase
+      .from("concepts")
+      .select("id, name")
+      .in("id", parentConceptIds);
+    if (groupsError) throw groupsError;
+    groupNameById = new Map((groupConcepts ?? []).map((row) => [Number(row.id), row.name || "-"]));
+  }
 
   const grouped = new Map();
 
@@ -63,7 +79,8 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
 
     const flowType = txType === 3 ? "income" : "expense";
     const conceptName = detail.concepts?.name || "-";
-    const groupName = detail.concepts?.parentConcept?.name || tbdGroupName(flowType);
+    const parentConceptId = Number(detail.concepts?.parentConceptId || 0);
+    const groupName = groupNameById.get(parentConceptId) || tbdGroupName(flowType);
     const amount = Number(detail.total || 0);
     const normalizedAmount = txType === 3 ? Math.abs(amount) : -Math.abs(amount);
     const key = `${flowType}::${groupName}::${conceptName}`;
