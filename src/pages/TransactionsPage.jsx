@@ -238,6 +238,7 @@ function TransactionsPage({ moduleType }) {
                 <th>{t("common.name")}</th>
                 {(moduleType === "income" || moduleType === "expense") && <th>{t("transactions.concept")}</th>}
                 <th>{t("transactions.person")}</th>
+                {(moduleType === "income" || moduleType === "expense") && <th>{t("transactions.employee")}</th>}
                 <th>{t("projects.project")}</th>
                 <th>{t("transactions.total")}</th>
                 <th>{t("transactions.balance")}</th>
@@ -260,6 +261,7 @@ function TransactionsPage({ moduleType }) {
                   <td>{item.name ?? "-"}</td>
                   {(moduleType === "income" || moduleType === "expense") && <td>{item.conceptName ?? "-"}</td>}
                   <td>{item.persons?.name ?? "-"}</td>
+                  {(moduleType === "income" || moduleType === "expense") && <td>{item.employes?.name ?? "-"}</td>}
                   <td>{item.projects?.name ?? "-"}</td>
                   <td>{formatNumber(item.total)}</td>
                   <td>{formatNumber(item.balance)}</td>

@@ -13,7 +13,7 @@ export async function listTransactions({ accountId, type, excludeInternalObligat
   let query = supabase
     .from("transactions")
     .select(
-      'id, personId, date, type, status, total, balance, payments, name, currencyId, "projectId", "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "sourceTransactionId", "isInternalTransfer", "isDeposit", isActive, persons(name), projects(name), account_payment_forms(name)'
+      'id, personId, "employeeId", date, type, status, total, balance, payments, name, currencyId, "projectId", "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "sourceTransactionId", "isInternalTransfer", "isDeposit", isActive, persons(name), employes(name), projects(name), account_payment_forms(name)'
     )
     .eq("accountId", accountId)
     .eq("type", type);

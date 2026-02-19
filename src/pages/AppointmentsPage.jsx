@@ -7,8 +7,6 @@ import { useSearchParams } from "react-router-dom";
 import Pagination from "../components/Pagination";
 import AppointmentFormModal from "../components/AppointmentFormModal";
 import RowActionsMenu from "../components/RowActionsMenu";
-import DateField from "../components/form/DateField";
-import SelectField from "../components/form/SelectField";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { createAppointment, listAppointments, updateAppointment } from "../services/appointmentsService";
@@ -143,7 +141,6 @@ function AppointmentsSchedule({
   onNext,
   onViewChange,
   onSelectDate,
-  onChangeRangeMode,
   onChangeResourceFilter,
   resourceFilter
 }) {
@@ -161,32 +158,6 @@ function AppointmentsSchedule({
           bgColor: statusColor(item.status)
         })),
     [appointments]
-  );
-
-  const leftCustomHeader = (
-    <div className="appointments-scheduler-header appointments-scheduler-header-left">
-      <button
-        type="button"
-        className={`button-secondary ${rangeMode === "day" ? "active" : ""}`}
-        onClick={() => onChangeRangeMode("day")}
-      >
-        {t("appointments.rangeDay")}
-      </button>
-      <button
-        type="button"
-        className={`button-secondary ${rangeMode === "week" ? "active" : ""}`}
-        onClick={() => onChangeRangeMode("week")}
-      >
-        {t("appointments.rangeWeek")}
-      </button>
-      <button
-        type="button"
-        className={`button-secondary ${rangeMode === "month" ? "active" : ""}`}
-        onClick={() => onChangeRangeMode("month")}
-      >
-        {t("appointments.rangeMonth")}
-      </button>
-    </div>
   );
 
   const rightCustomHeader = (
@@ -224,7 +195,6 @@ function AppointmentsSchedule({
         nextClick={onNext}
         onViewChange={onViewChange}
         onSelectDate={onSelectDate}
-        leftCustomHeader={leftCustomHeader}
         rightCustomHeader={rightCustomHeader}
         eventItemClick={onEdit}
         moveEvent={onMove}
@@ -308,14 +278,6 @@ function AppointmentsPage({ mode = "calendar" }) {
     if (!value) next.delete(key);
     else next.set(key, value);
     setSearchParams(next);
-  };
-
-  const goRelative = (direction) => {
-    const base = new Date(anchorDate);
-    if (rangeMode === "day") base.setDate(base.getDate() + direction);
-    if (rangeMode === "week") base.setDate(base.getDate() + direction * 7);
-    if (rangeMode === "month") base.setMonth(base.getMonth() + direction);
-    setParam("date", dateToInput(base));
   };
 
   const closeCreate = () => {
@@ -428,33 +390,6 @@ function AppointmentsPage({ mode = "calendar" }) {
       {error ? <p className="error-text">{error}</p> : null}
 
       <div className="appointments-layout">
-        <aside className="appointments-filters-pane">
-          <div className="crud-form appointments-filters-form">
-            <SelectField label={t("appointments.range")} value={rangeMode} onChange={(e) => setParam("range", e.target.value)}>
-              <option value="day">{t("appointments.rangeDay")}</option>
-              <option value="week">{t("appointments.rangeWeek")}</option>
-              <option value="month">{t("appointments.rangeMonth")}</option>
-            </SelectField>
-            <SelectField label={t("appointments.resourceFilter")} value={resourceFilter} onChange={(e) => setParam("employeeId", e.target.value)}>
-              <option value="">{`-- ${t("appointments.allResources")} --`}</option>
-              {employees.map((employee) => (
-                <option key={employee.id} value={employee.id}>
-                  {employee.name}
-                </option>
-              ))}
-            </SelectField>
-            <DateField label={t("appointments.anchorDate")} value={anchorDate} onChange={(e) => setParam("date", e.target.value)} />
-            <div className="crud-form-actions">
-              <button type="button" className="button-secondary" onClick={() => goRelative(-1)}>
-                {t("common.previous")}
-              </button>
-              <button type="button" className="button-secondary" onClick={() => goRelative(1)}>
-                {t("common.next")}
-              </button>
-            </div>
-          </div>
-        </aside>
-
         <section className="appointments-content-pane">
           {loading ? (
             <p>{t("common.loading")}</p>
@@ -532,7 +467,6 @@ function AppointmentsPage({ mode = "calendar" }) {
                     onNext={handleSchedulerNext}
                     onViewChange={handleSchedulerViewChange}
                     onSelectDate={handleSchedulerSelectDate}
-                    onChangeRangeMode={(value) => setParam("range", value)}
                     onChangeResourceFilter={(value) => setParam("employeeId", value)}
                     resourceFilter={resourceFilter}
                   />
@@ -562,7 +496,6 @@ function AppointmentsPage({ mode = "calendar" }) {
               onNext={handleSchedulerNext}
               onViewChange={handleSchedulerViewChange}
               onSelectDate={handleSchedulerSelectDate}
-              onChangeRangeMode={(value) => setParam("range", value)}
               onChangeResourceFilter={(value) => setParam("employeeId", value)}
               resourceFilter={resourceFilter}
             />
