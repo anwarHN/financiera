@@ -25,6 +25,64 @@ export async function getTransactionsForReports(accountId, { dateFrom, dateTo } 
   return data ?? [];
 }
 
+export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, currencyId } = {}) {
+  let txQuery = supabase
+    .from("transactions")
+    .select("id, type, currencyId, isActive")
+    .eq("accountId", accountId)
+    .eq("isActive", true)
+    .in("type", [2, 3]);
+
+  if (dateFrom) txQuery = txQuery.gte("date", dateFrom);
+  if (dateTo) txQuery = txQuery.lte("date", dateTo);
+  if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
+
+  const { data: transactions, error: txError } = await txQuery;
+  if (txError) throw txError;
+
+  const validTransactions = transactions ?? [];
+  if (validTransactions.length === 0) return [];
+
+  const typeByTxId = new Map(validTransactions.map((tx) => [Number(tx.id), Number(tx.type)]));
+  const txIds = validTransactions.map((tx) => Number(tx.id));
+
+  const { data: details, error: detailsError } = await supabase
+    .from("transactionDetails")
+    .select(
+      "transactionId, total, conceptId, concepts(id, name, parentConceptId, parentConcept:concepts!concepts_parentConceptId_fkey(id, name))"
+    )
+    .in("transactionId", txIds);
+
+  if (detailsError) throw detailsError;
+
+  const grouped = new Map();
+
+  for (const detail of details ?? []) {
+    const txType = typeByTxId.get(Number(detail.transactionId));
+    if (txType !== 2 && txType !== 3) continue;
+
+    const flowType = txType === 3 ? "income" : "expense";
+    const conceptName = detail.concepts?.name || "-";
+    const groupName = detail.concepts?.parentConcept?.name || tbdGroupName(flowType);
+    const amount = Number(detail.total || 0);
+    const normalizedAmount = txType === 3 ? Math.abs(amount) : -Math.abs(amount);
+    const key = `${flowType}::${groupName}::${conceptName}`;
+
+    grouped.set(key, {
+      flowType,
+      groupName,
+      conceptName,
+      total: Number(grouped.get(key)?.total || 0) + normalizedAmount
+    });
+  }
+
+  return Array.from(grouped.values());
+}
+
+function tbdGroupName(flowType) {
+  return flowType === "income" ? "Sin grupo (ingresos)" : "Sin grupo (gastos)";
+}
+
 export async function exportReportXlsx({
   accountId,
   reportId,

@@ -1601,6 +1601,15 @@ button:disabled,
   font-weight: 700;
 }
 
+.report-section-row td {
+  font-weight: 700;
+  background: var(--bg-muted);
+}
+
+.report-group-row td {
+  font-weight: 600;
+}
+
 @media (max-width: 980px) {
   .content {
     grid-template-columns: 1fr;

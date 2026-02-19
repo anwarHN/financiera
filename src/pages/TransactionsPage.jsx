@@ -60,6 +60,7 @@ function TransactionsPage({ moduleType }) {
     dateFrom: "",
     dateTo: "",
     person: "",
+    employeeId: "",
     minAmount: "",
     maxAmount: ""
   });
@@ -88,11 +89,23 @@ function TransactionsPage({ moduleType }) {
         const personName = (item.persons?.name || "").toLowerCase();
         if (!personName.includes(personQuery)) return false;
       }
+      if ((moduleType === "income" || moduleType === "expense") && filters.employeeId) {
+        if (String(item.employeeId ?? "") !== filters.employeeId) return false;
+      }
       if (Number.isFinite(minAmount) && Number(item.total || 0) < minAmount) return false;
       if (Number.isFinite(maxAmount) && Number(item.total || 0) > maxAmount) return false;
       return true;
     });
-  }, [items, filters]);
+  }, [items, filters, moduleType]);
+
+  const employeeFilterOptions = useMemo(() => {
+    const unique = new Map();
+    items.forEach((item) => {
+      if (!item.employeeId) return;
+      unique.set(String(item.employeeId), item.employes?.name || `#${item.employeeId}`);
+    });
+    return Array.from(unique.entries()).map(([id, name]) => ({ id, name }));
+  }, [items]);
 
   const paginatedItems = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -150,6 +163,7 @@ function TransactionsPage({ moduleType }) {
       dateFrom: "",
       dateTo: "",
       person: "",
+      employeeId: "",
       minAmount: "",
       maxAmount: ""
     });
@@ -188,6 +202,19 @@ function TransactionsPage({ moduleType }) {
                   placeholder={`-- ${t("transactions.person")} --`}
                 />
               </label>
+              {(moduleType === "income" || moduleType === "expense") && (
+                <label className="field-block">
+                  <span>{t("transactions.employee")}</span>
+                  <select name="employeeId" value={filters.employeeId} onChange={handleFilterChange}>
+                    <option value="">{`-- ${t("common.all")} --`}</option>
+                    {employeeFilterOptions.map((employee) => (
+                      <option key={employee.id} value={employee.id}>
+                        {employee.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label className="field-block">
                 <span>{t("transactions.minAmount")}</span>
                 <input

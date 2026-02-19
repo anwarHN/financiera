@@ -4,7 +4,7 @@ import { useI18n } from "../contexts/I18nContext";
 import { getBudgetExecutionReport, getProjectExecutionReport, listBudgets } from "../services/budgetsService";
 import { listCurrencies } from "../services/currenciesService";
 import { listProjects } from "../services/projectsService";
-import { exportReportXlsx, getTransactionsForReports } from "../services/reportsService";
+import { exportReportXlsx, getCashflowConceptTotals, getTransactionsForReports } from "../services/reportsService";
 import { listInternalObligationsForReport } from "../services/transactionsService";
 import { formatDate } from "../utils/dateFormat";
 import { formatNumber } from "../utils/numberFormat";
@@ -71,18 +71,43 @@ function ReportsPage() {
     if (reportId === "receivable") return transactions.filter((tx) => tx.isAccountReceivable && Number(tx.balance || 0) > 0);
     if (reportId === "payable") return transactions.filter((tx) => tx.isAccountPayable && Number(tx.balance || 0) > 0);
     if (reportId === "cashflow") {
-      const grouped = new Map();
-      transactions.forEach((tx) => {
-        if (!tx.accountPaymentFormId) return;
-        if (!(tx.isIncomingPayment || tx.isOutcomingPayment || tx.type === 2)) return;
-        const key = String(tx.accountPaymentFormId);
-        const label = tx.account_payment_forms?.name || `#${tx.accountPaymentFormId}`;
-        const signedAmount = tx.isIncomingPayment ? Math.abs(Number(tx.total || 0)) : -Math.abs(Number(tx.total || 0));
-        const item = grouped.get(key) || { id: key, date: "-", typeLabel: label, total: 0, balance: 0 };
-        item.total += signedAmount;
-        grouped.set(key, item);
+      const rows = Array.isArray(transactions) ? transactions : [];
+      const byFlow = new Map();
+      rows.forEach((row) => {
+        const flowKey = row.flowType === "income" ? "income" : "expense";
+        const groupKey = row.groupName || "-";
+        const conceptKey = row.conceptName || "-";
+
+        if (!byFlow.has(flowKey)) byFlow.set(flowKey, new Map());
+        const byGroup = byFlow.get(flowKey);
+        if (!byGroup.has(groupKey)) {
+          byGroup.set(groupKey, { groupName: groupKey, total: 0, concepts: new Map() });
+        }
+        const groupItem = byGroup.get(groupKey);
+        groupItem.total += Number(row.total || 0);
+
+        const existingConcept = groupItem.concepts.get(conceptKey) || { conceptName: conceptKey, total: 0 };
+        existingConcept.total += Number(row.total || 0);
+        groupItem.concepts.set(conceptKey, existingConcept);
       });
-      return Array.from(grouped.values());
+
+      const sectionOrder = ["income", "expense"];
+      return sectionOrder.map((flow) => {
+        const flowGroups = Array.from(byFlow.get(flow)?.values() || [])
+          .map((group) => ({
+            groupName: group.groupName,
+            total: group.total,
+            concepts: Array.from(group.concepts.values()).sort((a, b) => a.conceptName.localeCompare(b.conceptName))
+          }))
+          .sort((a, b) => a.groupName.localeCompare(b.groupName));
+
+        return {
+          flow,
+          flowLabel: flow === "income" ? t("reports.incomes") : t("reports.expenses"),
+          groups: flowGroups,
+          total: flowGroups.reduce((acc, group) => acc + Number(group.total || 0), 0)
+        };
+      });
     }
     return transactions;
   };
@@ -124,6 +149,13 @@ function ReportsPage() {
           currencyId: filters.currencyId ? Number(filters.currencyId) : undefined
         });
         setResults(buildResults(internalRows, selectedReport));
+      } else if (selectedReport === "cashflow") {
+        const rows = await getCashflowConceptTotals(account.accountId, {
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined,
+          currencyId: filters.currencyId || undefined
+        });
+        setResults(buildResults(rows, selectedReport));
       } else {
         const transactions = await getTransactionsForReports(account.accountId, {
           dateFrom: filters.dateFrom || undefined,
@@ -179,6 +211,15 @@ function ReportsPage() {
   }, [results, selectedReport]);
   const canExportCurrentReport = !["budget_execution", "project_execution"].includes(selectedReport);
 
+  const cashflowRowCount = useMemo(() => {
+    if (selectedReport !== "cashflow") return 0;
+    return results.reduce((acc, section) => {
+      const groupCount = section.groups?.length || 0;
+      const conceptCount = (section.groups || []).reduce((innerAcc, group) => innerAcc + (group.concepts?.length || 0), 0);
+      return acc + groupCount + conceptCount;
+    }, 0);
+  }, [results, selectedReport]);
+
   const appliedFilters = useMemo(() => {
     const currencyName = currencies.find((c) => String(c.id) === String(filters.currencyId))?.name || t("reports.currencyFilterHint");
     const budgetName = budgets.find((b) => String(b.id) === String(filters.budgetId))?.name || "-";
@@ -192,7 +233,12 @@ function ReportsPage() {
     ];
   }, [filters, currencies, budgets, projects, t, language]);
 
-  const total = useMemo(() => results.reduce((acc, item) => acc + Number(item.total || 0), 0), [results]);
+  const total = useMemo(() => {
+    if (selectedReport === "cashflow") {
+      return results.reduce((acc, section) => acc + Number(section.total || 0), 0);
+    }
+    return results.reduce((acc, item) => acc + Number(item.total || 0), 0);
+  }, [results, selectedReport]);
   const balance = useMemo(() => results.reduce((acc, item) => acc + Number(item.balance || 0), 0), [results]);
   const salesAdditionalChargesTotal = useMemo(() => {
     if (selectedReport !== "sales") return 0;
@@ -337,7 +383,10 @@ function ReportsPage() {
           ))}
           <p>
             {t("reports.totalRecords")}:{" "}
-            {formatNumber(results.length, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            {formatNumber(selectedReport === "cashflow" ? cashflowRowCount : results.length, {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0
+            })}
           </p>
 
           {budgetExecutionTotals ? (
@@ -356,8 +405,7 @@ function ReportsPage() {
               ) : null}
               {(selectedReport === "receivable" ||
                 selectedReport === "payable" ||
-                selectedReport === "internal_obligations" ||
-                selectedReport === "cashflow") && (
+                selectedReport === "internal_obligations") && (
                 <p>
                   {t("transactions.balance")}: {formatNumber(balance)}
                 </p>
@@ -374,6 +422,13 @@ function ReportsPage() {
                   <th>{t("reports.executed")}</th>
                   <th>{t("reports.variance")}</th>
                 </tr>
+              ) : selectedReport === "cashflow" ? (
+                <tr>
+                  <th>{t("common.type")}</th>
+                  <th>{t("concepts.group")}</th>
+                  <th>{t("transactions.concept")}</th>
+                  <th>{t("transactions.total")}</th>
+                </tr>
               ) : (
                 <tr>
                   <th>ID</th>
@@ -385,9 +440,9 @@ function ReportsPage() {
               )}
             </thead>
             <tbody>
-              {rowsWithTypeLabel.length === 0 ? (
+              {(selectedReport === "cashflow" ? cashflowRowCount === 0 : rowsWithTypeLabel.length === 0) ? (
                 <tr>
-                  <td colSpan={budgetExecutionTotals ? 4 : 5}>{t("common.empty")}</td>
+                  <td colSpan={budgetExecutionTotals ? 4 : selectedReport === "cashflow" ? 4 : 5}>{t("common.empty")}</td>
                 </tr>
               ) : budgetExecutionTotals ? (
                 rowsWithTypeLabel.map((tx) => (
@@ -398,6 +453,33 @@ function ReportsPage() {
                     <td>{formatNumber(tx.variance || 0)}</td>
                   </tr>
                 ))
+              ) : selectedReport === "cashflow" ? (
+                results.flatMap((section) => [
+                  <tr key={`cashflow-section-${section.flow}`} className="report-section-row">
+                    <td>{section.flowLabel}</td>
+                    <td colSpan={2}>-</td>
+                    <td>{formatNumber(section.total || 0)}</td>
+                  </tr>,
+                  ...(section.groups || []).flatMap((group) => [
+                    <tr key={`cashflow-group-${section.flow}-${group.groupName}`} className="report-group-row">
+                      <td>{section.flowLabel}</td>
+                      <td>{group.groupName}</td>
+                      <td>-</td>
+                      <td>{formatNumber(group.total || 0)}</td>
+                    </tr>,
+                    ...(group.concepts || []).map((concept) => (
+                      <tr
+                        key={`cashflow-concept-${section.flow}-${group.groupName}-${concept.conceptName}`}
+                        className="report-concept-row"
+                      >
+                        <td>{section.flowLabel}</td>
+                        <td>{group.groupName}</td>
+                        <td>{concept.conceptName}</td>
+                        <td>{formatNumber(concept.total || 0)}</td>
+                      </tr>
+                    ))
+                  ])
+                ])
               ) : (
                 rowsWithTypeLabel.map((tx) => (
                   <tr key={`${selectedReport}-${tx.id}-${tx.date}`}>
