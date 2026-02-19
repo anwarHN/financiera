@@ -115,7 +115,7 @@ function PersonFormPage() {
           </select>
 
           <div className="crud-form-actions">
-            <button type="submit" disabled={isSaving}>
+            <button type="submit" disabled={isSaving} className={isSaving ? "is-saving" : ""}>
               {isEdit ? t("common.update") : t("common.create")}
             </button>
           </div>

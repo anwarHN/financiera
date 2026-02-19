@@ -215,7 +215,7 @@ function TransactionPaymentPage({ direction }) {
           <TextField label={t("transactions.description")} name="description" value={form.description} onChange={handleChange} className="form-span-2" />
         </div>
         <div className="crud-form-actions">
-          <button type="submit" disabled={isSaving}>
+          <button type="submit" disabled={isSaving} className={isSaving ? "is-saving" : ""}>
             {t("common.create")}
           </button>
         </div>

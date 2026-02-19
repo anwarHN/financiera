@@ -218,7 +218,7 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
             <button type="button" className="button-secondary" onClick={onClose}>
               {t("common.cancel")}
             </button>
-            <button type="submit" disabled={isSaving}>
+            <button type="submit" disabled={isSaving} className={isSaving ? "is-saving" : ""}>
               {t("common.create")}
             </button>
           </div>

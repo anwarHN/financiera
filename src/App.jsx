@@ -36,6 +36,7 @@ import ProjectDetailPage from "./pages/ProjectDetailPage";
 import BudgetsPage from "./pages/BudgetsPage";
 import BudgetFormPage from "./pages/BudgetFormPage";
 import BudgetDetailPage from "./pages/BudgetDetailPage";
+import AppointmentsPage from "./pages/AppointmentsPage";
 
 function App() {
   return (
@@ -145,30 +146,6 @@ function App() {
           }
         />
         <Route
-          path="payable-concepts"
-          element={<ConceptModulePage moduleType="payable" titleKey="conceptModules.payable" basePath="/payable-concepts" />}
-        />
-        <Route
-          path="payable-concepts/new"
-          element={
-            <ConceptModuleFormPage
-              moduleType="payable"
-              titleKey="actions.newPayableConcept"
-              basePath="/payable-concepts"
-            />
-          }
-        />
-        <Route
-          path="payable-concepts/:id/edit"
-          element={
-            <ConceptModuleFormPage
-              moduleType="payable"
-              titleKey="actions.newPayableConcept"
-              basePath="/payable-concepts"
-            />
-          }
-        />
-        <Route
           path="concept-groups"
           element={<ConceptModulePage moduleType="groups" titleKey="conceptModules.groups" basePath="/concept-groups" />}
         />
@@ -185,8 +162,11 @@ function App() {
           }
         />
         <Route path="sales" element={<TransactionsPage moduleType="sale" />} />
-        <Route path="sales/new" element={<TransactionCreatePage moduleType="sale" />} />
         <Route path="sales/:id" element={<TransactionDetailPage moduleType="sale" />} />
+        <Route path="appointments" element={<Navigate to="/appointments/calendar" replace />} />
+        <Route path="appointments/calendar" element={<AppointmentsPage mode="calendar" />} />
+        <Route path="appointments/by-employee" element={<AppointmentsPage mode="by-employee" />} />
+        <Route path="appointments/table" element={<AppointmentsPage mode="table" />} />
         <Route path="expenses" element={<TransactionsPage moduleType="expense" />} />
         <Route path="expenses/new" element={<TransactionCreatePage moduleType="expense" />} />
         <Route path="incomes" element={<TransactionsPage moduleType="income" />} />

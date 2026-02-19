@@ -30,7 +30,7 @@ const moduleConfig = {
     type: TRANSACTION_TYPES.purchase,
     titleKey: "transactions.purchasesCreateTitle",
     personFilter: 2,
-    conceptFilter: (item) => Boolean(item.isExpense) && !Boolean(item.isOutgoingPaymentConcept),
+    conceptFilter: (item) => Boolean(item.isExpense) && !Boolean(item.isGroup) && !Boolean(item.isOutgoingPaymentConcept),
     backPath: "/purchases"
   },
   expense: {
@@ -149,7 +149,7 @@ function PaymentMethodQuickCreate({ t, accountId, onCancel, onCreated }) {
         <button type="button" className="button-secondary" onClick={onCancel}>
           {t("common.cancel")}
         </button>
-        <button type="submit" disabled={isSaving}>
+        <button type="submit" disabled={isSaving} className={isSaving ? "is-saving" : ""}>
           {t("common.create")}
         </button>
       </div>
@@ -1007,7 +1007,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                 {t("common.cancel")}
               </button>
             ) : null}
-            <button type="submit" disabled={isSaving}>
+            <button type="submit" disabled={isSaving} className={isSaving ? "is-saving" : ""}>
               {t("common.create")}
             </button>
           </div>
@@ -1284,7 +1284,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                 {t("common.cancel")}
               </button>
             ) : null}
-            <button type="submit" disabled={isSaving}>
+            <button type="submit" disabled={isSaving} className={isSaving ? "is-saving" : ""}>
               {t("common.create")}
             </button>
           </div>

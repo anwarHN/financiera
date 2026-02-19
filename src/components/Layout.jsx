@@ -4,6 +4,7 @@ import {
   FiBell,
   FiBarChart2,
   FiBox,
+  FiCalendar,
   FiChevronDown,
   FiChevronLeft,
   FiChevronRight,
@@ -44,6 +45,16 @@ const navGroups = [
       { path: "/clients", key: "nav.clients", icon: FiUsers },
       { path: "/providers", key: "nav.providers", icon: FiPackage },
       { path: "/employees", key: "nav.employees", icon: FiUserCheck }
+    ]
+  },
+  {
+    id: "appointments",
+    titleKey: "nav.appointments",
+    icon: FiCalendar,
+    items: [
+      { path: "/appointments/calendar", key: "nav.appointmentsCalendar", icon: FiCalendar },
+      { path: "/appointments/by-employee", key: "nav.appointmentsByEmployee", icon: FiUsers },
+      { path: "/appointments/table", key: "nav.appointmentsTable", icon: FiList }
     ]
   },
   {
@@ -275,6 +286,9 @@ function Layout() {
     }
     if (pathname.startsWith("/employees")) {
       return { createPath: "/employees?create=1", createLabel: t("actions.newEmployee") };
+    }
+    if (pathname.startsWith("/appointments")) {
+      return { createPath: `${pathname}?create=1`, createLabel: t("actions.newAppointment") };
     }
     if (pathname.startsWith("/products")) return { createPath: "/products?create=1", createLabel: t("actions.newProduct") };
     if (pathname.startsWith("/payment-forms")) {

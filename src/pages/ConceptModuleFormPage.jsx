@@ -286,7 +286,7 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
                 {t("common.cancel")}
               </button>
             ) : null}
-            <button type="submit" disabled={isSaving}>
+            <button type="submit" disabled={isSaving} className={isSaving ? "is-saving" : ""}>
               {isEdit ? t("common.update") : t("common.create")}
             </button>
           </div>
