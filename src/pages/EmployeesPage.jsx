@@ -5,7 +5,7 @@ import EmployeeFormPage from "./EmployeeFormPage";
 import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
-import { deleteEmployee, listEmployees } from "../services/employeesService";
+import { deactivateEmployee, listEmployees } from "../services/employeesService";
 
 const pageSize = 10;
 
@@ -37,7 +37,7 @@ function EmployeesPage() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const data = await listEmployees(account.accountId);
+      const data = await listEmployees(account.accountId, { includeInactive: true });
       setItems(data);
       setError("");
       setPage(1);
@@ -48,9 +48,9 @@ function EmployeesPage() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDeactivate = async (id) => {
     try {
-      await deleteEmployee(id);
+      await deactivateEmployee(id);
       await loadData();
     } catch {
       setError(t("common.genericSaveError"));
@@ -85,6 +85,7 @@ function EmployeesPage() {
                 <th>{t("common.email")}</th>
                 <th>{t("common.address")}</th>
                 <th>{t("employees.isPartner")}</th>
+                <th>{t("common.status")}</th>
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
@@ -96,6 +97,7 @@ function EmployeesPage() {
                   <td>{item.email ?? "-"}</td>
                   <td>{item.address ?? "-"}</td>
                   <td>{item.isPartner ? t("common.yes") : t("common.no")}</td>
+                  <td>{item.isActive ? t("common.active") : t("common.inactive")}</td>
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[
@@ -109,7 +111,13 @@ function EmployeesPage() {
                             setSearchParams(next);
                           }
                         },
-                        { key: "delete", label: t("common.delete"), onClick: () => handleDelete(item.id), danger: true }
+                        {
+                          key: "deactivate",
+                          label: t("common.deactivate"),
+                          onClick: () => handleDeactivate(item.id),
+                          disabled: !item.isActive,
+                          danger: true
+                        }
                       ]}
                     />
                   </td>

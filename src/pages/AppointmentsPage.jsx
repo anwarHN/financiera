@@ -16,7 +16,6 @@ import { listEmployees } from "../services/employeesService";
 import { formatDateTime } from "../utils/dateFormat";
 
 const pageSize = 10;
-const UNASSIGNED_RESOURCE_ID = "unassigned";
 const SchedulerWithDnD = wrapperFun(Scheduler);
 
 function startOfWeek(date) {
@@ -110,7 +109,7 @@ function buildSchedulerData({ t, language, rangeMode, anchorDate, resources, eve
   const schedulerData = new SchedulerData(anchorDate, viewType, false, false, {
     schedulerWidth: "100%",
     schedulerContentHeight: "430px",
-    headerEnabled: false,
+    headerEnabled: true,
     creatable: false,
     checkConflict: false,
     views: [
@@ -134,6 +133,7 @@ function AppointmentsSchedule({
   rangeMode,
   anchorDate,
   resources,
+  headerResources,
   appointments,
   onEdit,
   onMove,
@@ -142,21 +142,65 @@ function AppointmentsSchedule({
   onPrev,
   onNext,
   onViewChange,
-  onSelectDate
+  onSelectDate,
+  onChangeRangeMode,
+  onChangeResourceFilter,
+  resourceFilter
 }) {
   const schedulerEvents = useMemo(
     () =>
       [...appointments]
+        .filter((item) => Boolean(item.employeeId))
         .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
         .map((item) => ({
           id: item.id,
           start: dayjs(item.startsAt).format("YYYY-MM-DD HH:mm:ss"),
           end: dayjs(item.endsAt).format("YYYY-MM-DD HH:mm:ss"),
-          resourceId: item.employeeId ? `emp-${item.employeeId}` : UNASSIGNED_RESOURCE_ID,
+          resourceId: `emp-${item.employeeId}`,
           title: `${item.persons?.name || "-"} | ${item.title}`,
           bgColor: statusColor(item.status)
         })),
     [appointments]
+  );
+
+  const leftCustomHeader = (
+    <div className="appointments-scheduler-header appointments-scheduler-header-left">
+      <button
+        type="button"
+        className={`button-secondary ${rangeMode === "day" ? "active" : ""}`}
+        onClick={() => onChangeRangeMode("day")}
+      >
+        {t("appointments.rangeDay")}
+      </button>
+      <button
+        type="button"
+        className={`button-secondary ${rangeMode === "week" ? "active" : ""}`}
+        onClick={() => onChangeRangeMode("week")}
+      >
+        {t("appointments.rangeWeek")}
+      </button>
+      <button
+        type="button"
+        className={`button-secondary ${rangeMode === "month" ? "active" : ""}`}
+        onClick={() => onChangeRangeMode("month")}
+      >
+        {t("appointments.rangeMonth")}
+      </button>
+    </div>
+  );
+
+  const rightCustomHeader = (
+    <div className="appointments-scheduler-header appointments-scheduler-header-right">
+      <span>{t("appointments.resourceFilter")}</span>
+      <select value={resourceFilter} onChange={(event) => onChangeResourceFilter(event.target.value)}>
+        <option value="">{`-- ${t("appointments.allResources")} --`}</option>
+        {headerResources.map((resource) => (
+          <option key={resource.id} value={resource.employeeId}>
+            {resource.name}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 
   const schedulerData = useMemo(
@@ -180,6 +224,8 @@ function AppointmentsSchedule({
         nextClick={onNext}
         onViewChange={onViewChange}
         onSelectDate={onSelectDate}
+        leftCustomHeader={leftCustomHeader}
+        rightCustomHeader={rightCustomHeader}
         eventItemClick={onEdit}
         moveEvent={onMove}
         updateEventStart={onResizeStart}
@@ -207,20 +253,18 @@ function AppointmentsPage({ mode = "calendar" }) {
   const resourceFilter = searchParams.get("employeeId") || "";
 
   const range = useMemo(() => buildRange(anchorDate, rangeMode), [anchorDate, rangeMode]);
+  const allEmployeeResources = useMemo(
+    () => employees.map((item) => ({ id: `emp-${item.id}`, name: item.name, employeeId: item.id })),
+    [employees]
+  );
 
   const resources = useMemo(() => {
-    const base = employees.map((item) => ({ id: `emp-${item.id}`, name: item.name, employeeId: item.id }));
-    const all = [{ id: UNASSIGNED_RESOURCE_ID, name: t("appointments.unassigned"), employeeId: null }, ...base];
-    if (!resourceFilter) return all;
-    if (resourceFilter === UNASSIGNED_RESOURCE_ID) {
-      return all.filter((item) => item.id === UNASSIGNED_RESOURCE_ID);
-    }
-    return all.filter((item) => item.employeeId === Number(resourceFilter));
-  }, [employees, resourceFilter, t]);
+    if (!resourceFilter) return allEmployeeResources;
+    return allEmployeeResources.filter((item) => item.employeeId === Number(resourceFilter));
+  }, [allEmployeeResources, resourceFilter]);
 
   const filteredAppointments = useMemo(() => {
     if (!resourceFilter) return appointments;
-    if (resourceFilter === UNASSIGNED_RESOURCE_ID) return appointments.filter((item) => !item.employeeId);
     return appointments.filter((item) => Number(item.employeeId) === Number(resourceFilter));
   }, [appointments, resourceFilter]);
 
@@ -274,12 +318,6 @@ function AppointmentsPage({ mode = "calendar" }) {
     setParam("date", dateToInput(base));
   };
 
-  const openCreate = () => {
-    const next = new URLSearchParams(searchParams);
-    next.set("create", "1");
-    setSearchParams(next);
-  };
-
   const closeCreate = () => {
     const next = new URLSearchParams(searchParams);
     next.delete("create");
@@ -322,11 +360,7 @@ function AppointmentsPage({ mode = "calendar" }) {
     const row = findAppointmentByEvent(event);
     if (!row) return;
 
-    const employeeId = slotId === undefined
-      ? row.employeeId
-      : slotId === UNASSIGNED_RESOURCE_ID
-      ? null
-      : Number(String(slotId).replace("emp-", ""));
+    const employeeId = slotId === undefined ? row.employeeId : Number(String(slotId).replace("emp-", ""));
 
     const payload = {
       employeeId,
@@ -403,7 +437,6 @@ function AppointmentsPage({ mode = "calendar" }) {
             </SelectField>
             <SelectField label={t("appointments.resourceFilter")} value={resourceFilter} onChange={(e) => setParam("employeeId", e.target.value)}>
               <option value="">{`-- ${t("appointments.allResources")} --`}</option>
-              <option value={UNASSIGNED_RESOURCE_ID}>{t("appointments.unassigned")}</option>
               {employees.map((employee) => (
                 <option key={employee.id} value={employee.id}>
                   {employee.name}
@@ -417,9 +450,6 @@ function AppointmentsPage({ mode = "calendar" }) {
               </button>
               <button type="button" className="button-secondary" onClick={() => goRelative(1)}>
                 {t("common.next")}
-              </button>
-              <button type="button" className="action-btn main" onClick={openCreate}>
-                + {t("actions.newAppointment")}
               </button>
             </div>
           </div>
@@ -448,7 +478,7 @@ function AppointmentsPage({ mode = "calendar" }) {
                       <td>{formatDateTime(row.startsAt, language)}</td>
                       <td>{formatDateTime(row.endsAt, language)}</td>
                       <td>{row.persons?.name || "-"}</td>
-                      <td>{row.employes?.name || t("appointments.unassigned")}</td>
+                      <td>{row.employes?.name || "-"}</td>
                       <td>{row.title}</td>
                       <td>
                         <span className={`status-pill ${statusClass(row.status)}`}>{statusLabel(t, row.status)}</span>
@@ -486,6 +516,7 @@ function AppointmentsPage({ mode = "calendar" }) {
                     rangeMode={rangeMode}
                     anchorDate={anchorDate}
                     resources={[resource]}
+                    headerResources={allEmployeeResources}
                     appointments={filteredAppointments}
                     onEdit={handleEditFromScheduler}
                     onMove={(schedulerData, event, slotId, _slotName, newStart, newEnd) =>
@@ -501,6 +532,9 @@ function AppointmentsPage({ mode = "calendar" }) {
                     onNext={handleSchedulerNext}
                     onViewChange={handleSchedulerViewChange}
                     onSelectDate={handleSchedulerSelectDate}
+                    onChangeRangeMode={(value) => setParam("range", value)}
+                    onChangeResourceFilter={(value) => setParam("employeeId", value)}
+                    resourceFilter={resourceFilter}
                   />
                 </section>
               ))}
@@ -512,6 +546,7 @@ function AppointmentsPage({ mode = "calendar" }) {
               rangeMode={rangeMode}
               anchorDate={anchorDate}
               resources={resources}
+              headerResources={allEmployeeResources}
               appointments={filteredAppointments}
               onEdit={handleEditFromScheduler}
               onMove={(schedulerData, event, slotId, _slotName, newStart, newEnd) =>
@@ -527,6 +562,9 @@ function AppointmentsPage({ mode = "calendar" }) {
               onNext={handleSchedulerNext}
               onViewChange={handleSchedulerViewChange}
               onSelectDate={handleSchedulerSelectDate}
+              onChangeRangeMode={(value) => setParam("range", value)}
+              onChangeResourceFilter={(value) => setParam("employeeId", value)}
+              resourceFilter={resourceFilter}
             />
           )}
         </section>

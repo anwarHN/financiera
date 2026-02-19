@@ -88,7 +88,7 @@ function EmployeeFormPage({ embedded = false, onCancel, onCreated, itemId = null
       if (isEdit) {
         created = await updateEmployee(currentId, payload);
       } else {
-        created = await createEmployee({ ...payload, createdById: user.id });
+        created = await createEmployee({ ...payload, createdById: user.id, isActive: true });
       }
       if (embedded) {
         onCreated?.(created);

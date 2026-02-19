@@ -1142,6 +1142,27 @@ button:disabled,
   overflow-x: auto;
 }
 
+.appointments-scheduler-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.appointments-scheduler-header-left .button-secondary.active {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.appointments-scheduler-header-right span {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.appointments-scheduler-header-right select {
+  min-width: 190px;
+}
+
 .appointments-layout {
   display: grid;
   grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);

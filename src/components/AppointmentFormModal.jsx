@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import DateField from "./form/DateField";
+import LookupCombobox from "./LookupCombobox";
 import SelectField from "./form/SelectField";
 import TextField from "./form/TextField";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import EmployeeFormPage from "../pages/EmployeeFormPage";
 import { listEmployees } from "../services/employeesService";
 import { listPersons } from "../services/personsService";
 
@@ -36,6 +38,7 @@ function AppointmentFormModal({ isOpen, appointment, defaultStart, defaultEnd, o
   const [form, setForm] = useState(initialForm);
   const [persons, setPersons] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [employeeLookupValue, setEmployeeLookupValue] = useState("");
   const [error, setError] = useState("");
 
   const clientOptions = useMemo(() => persons.filter((item) => item.type === 1), [persons]);
@@ -48,6 +51,7 @@ function AppointmentFormModal({ isOpen, appointment, defaultStart, defaultEnd, o
   useEffect(() => {
     if (!isOpen) return;
     if (appointment) {
+      const employeeName = appointment.employes?.name || "";
       setForm({
         personId: appointment.personId ? String(appointment.personId) : "",
         employeeId: appointment.employeeId ? String(appointment.employeeId) : "",
@@ -57,12 +61,14 @@ function AppointmentFormModal({ isOpen, appointment, defaultStart, defaultEnd, o
         endsAt: toLocalInput(appointment.endsAt),
         status: appointment.status || "pending"
       });
+      setEmployeeLookupValue(employeeName);
     } else {
       setForm({
         ...initialForm,
         startsAt: toLocalInput(defaultStart),
         endsAt: toLocalInput(defaultEnd)
       });
+      setEmployeeLookupValue("");
     }
     setError("");
   }, [isOpen, appointment, defaultStart, defaultEnd]);
@@ -112,6 +118,8 @@ function AppointmentFormModal({ isOpen, appointment, defaultStart, defaultEnd, o
 
   if (!isOpen) return null;
 
+  const selectedEmployee = form.employeeId ? employees.find((item) => Number(item.id) === Number(form.employeeId)) ?? null : null;
+
   return (
     <div className="modal-backdrop">
       <div className="modal-card modal-card-wide" onClick={(event) => event.stopPropagation()}>
@@ -135,19 +143,48 @@ function AppointmentFormModal({ isOpen, appointment, defaultStart, defaultEnd, o
               ))}
             </SelectField>
 
-            <SelectField
+            <LookupCombobox
               label={t("appointments.employee")}
-              name="employeeId"
-              value={form.employeeId}
-              onChange={handleChange}
-            >
-              <option value="">{`-- ${t("appointments.unassigned")} --`}</option>
-              {employees.map((employee) => (
-                <option key={employee.id} value={employee.id}>
-                  {employee.name}
-                </option>
-              ))}
-            </SelectField>
+              value={employeeLookupValue}
+              onValueChange={(nextValue) => {
+                setEmployeeLookupValue(nextValue);
+                if (form.employeeId) {
+                  setForm((prev) => ({ ...prev, employeeId: "" }));
+                }
+              }}
+              options={employees}
+              getOptionLabel={(item) => item.name}
+              onSelect={(item) => {
+                setForm((prev) => ({ ...prev, employeeId: String(item.id) }));
+                setEmployeeLookupValue(item.name);
+              }}
+              placeholder={`-- ${t("appointments.employee")} --`}
+              noResultsText={t("common.empty")}
+              selectedPillText={selectedEmployee?.name || ""}
+              onClearSelection={() => {
+                setForm((prev) => ({ ...prev, employeeId: "" }));
+                setEmployeeLookupValue("");
+              }}
+              renderCreateModal={({ isOpen: isCreateModalOpen, onClose, onCreated }) =>
+                isCreateModalOpen ? (
+                  <div className="modal-backdrop">
+                    <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+                      <EmployeeFormPage
+                        embedded
+                        onCancel={onClose}
+                        onCreated={(record) => onCreated(record)}
+                      />
+                    </div>
+                  </div>
+                ) : null
+              }
+              onCreateRecord={async (record) => {
+                if (!record) return;
+                await loadOptions();
+                setForm((prev) => ({ ...prev, employeeId: String(record.id) }));
+                setEmployeeLookupValue(record.name || "");
+              }}
+            />
 
             <TextField label={t("appointments.reason")} name="title" value={form.title} onChange={handleChange} required className="form-span-2" />
             <TextField label={t("appointments.notes")} name="notes" value={form.notes} onChange={handleChange} className="form-span-2" />
@@ -176,4 +213,3 @@ function AppointmentFormModal({ isOpen, appointment, defaultStart, defaultEnd, o
 }
 
 export default AppointmentFormModal;
-

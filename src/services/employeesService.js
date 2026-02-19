@@ -1,13 +1,15 @@
 import { supabase } from "../lib/supabase";
 
-const selectColumns = "id, name, phone, email, address, isPartner";
+const selectColumns = "id, name, phone, email, address, isPartner, isActive";
 
-export async function listEmployees(accountId) {
-  const { data, error } = await supabase
-    .from("employes")
-    .select(selectColumns)
-    .eq("accountId", accountId)
-    .order("id", { ascending: false });
+export async function listEmployees(accountId, { includeInactive = false } = {}) {
+  let query = supabase.from("employes").select(selectColumns).eq("accountId", accountId).order("id", { ascending: false });
+
+  if (!includeInactive) {
+    query = query.eq("isActive", true);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw error;
@@ -51,10 +53,12 @@ export async function updateEmployee(id, payload) {
   return data;
 }
 
-export async function deleteEmployee(id) {
-  const { error } = await supabase.from("employes").delete().eq("id", id);
+export async function deactivateEmployee(id) {
+  const { data, error } = await supabase.from("employes").update({ isActive: false }).eq("id", id).select(selectColumns).single();
 
   if (error) {
     throw error;
   }
+
+  return data;
 }
