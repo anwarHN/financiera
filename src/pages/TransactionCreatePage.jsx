@@ -30,7 +30,7 @@ const moduleConfig = {
     type: TRANSACTION_TYPES.purchase,
     titleKey: "transactions.purchasesCreateTitle",
     personFilter: 2,
-    conceptFilter: (item) => Boolean(item.isAccountPayableConcept),
+    conceptFilter: (item) => Boolean(item.isExpense) && !Boolean(item.isOutgoingPaymentConcept),
     backPath: "/purchases"
   },
   expense: {
@@ -188,6 +188,8 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [simpleSubmitAttempted, setSimpleSubmitAttempted] = useState(false);
+  const [saleSubmitAttempted, setSaleSubmitAttempted] = useState(false);
 
   const conceptOptions = useMemo(() => concepts.filter(config.conceptFilter), [concepts, config.conceptFilter]);
   const personOptions = useMemo(() => {
@@ -447,6 +449,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
 
   const handleSubmitSimple = async (event) => {
     event.preventDefault();
+    setSimpleSubmitAttempted(true);
     setError("");
     if (!event.currentTarget.checkValidity()) {
       event.currentTarget.reportValidity();
@@ -534,6 +537,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
 
   const handleSubmitSale = async (event) => {
     event.preventDefault();
+    setSaleSubmitAttempted(true);
     setError("");
     if (!event.currentTarget.checkValidity()) {
       event.currentTarget.reportValidity();
@@ -640,7 +644,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                   ))}
                 </select>
               </label>
-              <label className="field-block">
+              <div className="field-block">
                 <span>{t("transactions.person")}</span>
                 {moduleType === "income" || moduleType === "expense" ? (
                   <LookupCombobox
@@ -694,8 +698,8 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                     </Link>
                   </div>
                 )}
-              </label>
-              <label className="field-block">
+              </div>
+              <div className={`field-block required ${simpleSubmitAttempted && !simpleForm.conceptId ? "field-error" : ""}`}>
                 <span>{t("transactions.concept")}</span>
                 {moduleType === "income" || moduleType === "expense" ? (
                   <LookupCombobox
@@ -719,6 +723,8 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                       setSimpleConceptLookup("");
                     }}
                     onCreateRecord={handleCreatedConcept}
+                    required
+                    hasError={simpleSubmitAttempted && !simpleForm.conceptId}
                     renderCreateModal={({ isOpen, onClose, onCreated }) =>
                       isOpen ? (
                         <div className="modal-backdrop" onClick={onClose}>
@@ -749,7 +755,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                     <Link
                       to={
                         moduleType === "purchase"
-                          ? "/payable-concepts/new"
+                          ? "/expense-concepts/new"
                           : moduleType === "expense"
                             ? "/expense-concepts/new"
                             : "/income-concepts/new"
@@ -761,7 +767,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                     </Link>
                   </div>
                 )}
-              </label>
+              </div>
               <label className="field-block form-span-2">
                 <span>{t("transactions.description")}</span>
                 <input name="description" value={simpleForm.description} onChange={handleSimpleChange} />
@@ -858,7 +864,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                 )}
                 {(moduleType !== "purchase" || simpleForm.paymentMode === "cash") && (
                   <>
-                    <label className="field-block">
+                    <div className="field-block required">
                       <span>{t("transactions.paymentMethod")}</span>
                       {moduleType === "income" || moduleType === "expense" ? (
                         <LookupCombobox
@@ -870,6 +876,8 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                           onSelect={(method) => setSimpleForm((prev) => ({ ...prev, paymentMethodId: String(method.id), accountPaymentFormId: "" }))}
                           placeholder={`-- ${t("transactions.selectPaymentMethod")} --`}
                           noResultsText={t("common.empty")}
+                          required
+                          hasError={simpleSubmitAttempted && !simpleForm.paymentMethodId}
                           selectedPillText={paymentMethods.find((method) => method.id === Number(simpleForm.paymentMethodId))?.name || ""}
                           onClearSelection={() => {
                             setSimpleForm((prev) => ({ ...prev, paymentMethodId: "", accountPaymentFormId: "" }));
@@ -911,8 +919,8 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                           ))}
                         </select>
                       )}
-                    </label>
-                    <label className="field-block">
+                    </div>
+                    <div className={`field-block ${simpleRequiresAccountPaymentForm ? "required" : ""}`}>
                       <span>{t("transactions.accountPaymentForm")}</span>
                       {moduleType === "income" || moduleType === "expense" ? (
                         <LookupCombobox
@@ -924,6 +932,8 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                           onSelect={(row) => setSimpleForm((prev) => ({ ...prev, accountPaymentFormId: String(row.id) }))}
                           placeholder={`-- ${t("transactions.selectAccountPaymentForm")} --`}
                           noResultsText={t("common.empty")}
+                          required={simpleRequiresAccountPaymentForm}
+                          hasError={simpleSubmitAttempted && simpleRequiresAccountPaymentForm && !simpleForm.accountPaymentFormId}
                           selectedPillText={
                             simpleFilteredAccountPaymentForms.find((row) => row.id === Number(simpleForm.accountPaymentFormId))
                               ? formatPaymentFormLabel(
@@ -966,7 +976,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                           ))}
                         </select>
                       )}
-                    </label>
+                    </div>
                   </>
                 )}
               </div>
@@ -976,7 +986,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
           <section className="crud-form-section">
             <h2 className="crud-form-section-title">{t("transactions.sectionAmounts")}</h2>
             <div className="form-grid-2">
-            <label className="field-block">
+            <label className={`field-block ${simpleSubmitAttempted && !(Number(simpleForm.amount) > 0) ? "field-error" : ""}`}>
               <span>{t("transactions.amount")}</span>
               <input name="amount" type="number" min="0" step="0.01" value={simpleForm.amount} onChange={handleSimpleChange} required />
             </label>
@@ -1029,8 +1039,8 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                   <option value="credit">{t("transactions.credit")}</option>
                 </select>
               </label>
-              <LookupCombobox
-                label={t("transactions.clientLookup")}
+            <LookupCombobox
+              label={t("transactions.clientLookup")}
                 value={clientLookup}
                 onValueChange={(nextValue) => {
                   setClientLookup(nextValue);
@@ -1043,8 +1053,10 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                   setClientLookup("");
                 }}
                 placeholder={t("transactions.lookupPlaceholder")}
-                onCreateRecord={handleCreatedPerson}
-                renderCreateModal={({ isOpen, onClose, onCreated }) =>
+              onCreateRecord={handleCreatedPerson}
+              required
+              hasError={saleSubmitAttempted && !selectedClient}
+              renderCreateModal={({ isOpen, onClose, onCreated }) =>
                   isOpen ? (
                     <div className="modal-backdrop" onClick={onClose}>
                       <div className="modal-card" onClick={(event) => event.stopPropagation()}>

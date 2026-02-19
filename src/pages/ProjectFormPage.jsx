@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import DateField from "../components/form/DateField";
+import TextField from "../components/form/TextField";
 import { createProject, getProjectById, updateProject } from "../services/projectsService";
 
 const initialForm = {
@@ -110,22 +112,10 @@ function ProjectFormPage({ embedded = false, onCancel, onCreated }) {
       ) : (
         <form className="crud-form" onSubmit={handleSubmit}>
           <div className="form-grid-2">
-            <label className="field-block">
-              <span>{t("common.name")}</span>
-              <input name="name" value={form.name} onChange={handleChange} required />
-            </label>
-            <label className="field-block">
-              <span>{t("transactions.description")}</span>
-              <input name="description" value={form.description} onChange={handleChange} />
-            </label>
-            <label className="field-block">
-              <span>{t("projects.startDate")}</span>
-              <input type="date" name="startDate" value={form.startDate} onChange={handleChange} />
-            </label>
-            <label className="field-block">
-              <span>{t("projects.endDate")}</span>
-              <input type="date" name="endDate" value={form.endDate} onChange={handleChange} />
-            </label>
+            <TextField label={t("common.name")} name="name" value={form.name} onChange={handleChange} required />
+            <TextField label={t("transactions.description")} name="description" value={form.description} onChange={handleChange} />
+            <DateField label={t("projects.startDate")} name="startDate" value={form.startDate} onChange={handleChange} />
+            <DateField label={t("projects.endDate")} name="endDate" value={form.endDate} onChange={handleChange} />
           </div>
           <div className="crud-form-actions">
             {embedded ? (

@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import FormField from "../components/form/FormField";
+import TextField from "../components/form/TextField";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { getAccountById, updateAccount } from "../services/accountService";
@@ -100,27 +102,14 @@ function AccountSettingsPage() {
 
       <form className="crud-form" onSubmit={handleSubmit}>
         <div className="form-grid-2">
-          <label className="field-block">
-            <span>{t("common.name")}</span>
-            <input name="name" value={form.name} onChange={handleChange} disabled={!isSystemAdmin} required />
-          </label>
-          <label className="field-block">
-            <span>{t("common.email")}</span>
-            <input name="email" type="email" value={form.email} onChange={handleChange} disabled={!isSystemAdmin} />
-          </label>
-          <label className="field-block">
-            <span>{t("common.phone")}</span>
-            <input name="phone" value={form.phone} onChange={handleChange} disabled={!isSystemAdmin} />
-          </label>
-          <label className="field-block">
-            <span>{t("common.address")}</span>
-            <input name="address" value={form.address} onChange={handleChange} disabled={!isSystemAdmin} />
-          </label>
-          <label className="field-block">
-            <span>{t("accountManage.reportRetentionDays")}</span>
+          <TextField label={t("common.name")} name="name" value={form.name} onChange={handleChange} disabled={!isSystemAdmin} required />
+          <TextField label={t("common.email")} name="email" type="email" value={form.email} onChange={handleChange} disabled={!isSystemAdmin} />
+          <TextField label={t("common.phone")} name="phone" value={form.phone} onChange={handleChange} disabled={!isSystemAdmin} />
+          <TextField label={t("common.address")} name="address" value={form.address} onChange={handleChange} disabled={!isSystemAdmin} />
+          <FormField label={t("accountManage.reportRetentionDays")}>
             <input
-              name="reportRetentionDays"
               type="number"
+              name="reportRetentionDays"
               min={1}
               max={3650}
               value={form.reportRetentionDays}
@@ -128,7 +117,7 @@ function AccountSettingsPage() {
               disabled={!isSystemAdmin}
             />
             <small>{t("accountManage.reportRetentionHint")}</small>
-          </label>
+          </FormField>
         </div>
 
         <div className="crud-form-actions">

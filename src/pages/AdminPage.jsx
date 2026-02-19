@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import SelectField from "../components/form/SelectField";
+import TextField from "../components/form/TextField";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { deactivateAccountUser, listAccountUsers, listInvitations, resendInvitation, sendInvitation } from "../services/adminService";
@@ -147,9 +149,8 @@ function AdminPage() {
       <form className="crud-form" onSubmit={handleInvite}>
         <h3>{t("admin.inviteUser")}</h3>
         <div className="form-grid-2">
-          <label className="field-block">
-            <span>{t("common.email")}</span>
-            <input
+          <TextField
+              label={t("common.email")}
               name="email"
               type="email"
               placeholder={t("common.email")}
@@ -157,18 +158,14 @@ function AdminPage() {
               onChange={handleInviteChange}
               required
             />
-          </label>
-          <label className="field-block">
-            <span>{t("admin.profile")}</span>
-            <select name="profileId" value={inviteForm.profileId} onChange={handleInviteChange} required>
+          <SelectField label={t("admin.profile")} name="profileId" value={inviteForm.profileId} onChange={handleInviteChange} required>
               <option value="">{`-- ${t("admin.selectProfile")} --`}</option>
               {profiles.map((profile) => (
                 <option key={profile.id} value={profile.id}>
                   {profile.name}
                 </option>
               ))}
-            </select>
-          </label>
+          </SelectField>
         </div>
 
         <div className="crud-form-actions">

@@ -742,6 +742,14 @@ button {
   color: var(--text-muted);
 }
 
+.field-block:has(:is(input, select, textarea)[required]) > span::before,
+.field-block.required > span::before,
+.lookup-wrap.required > label::before {
+  content: "* ";
+  color: #d14343;
+  font-weight: 700;
+}
+
 .field-block small {
   font-size: 0.8rem;
   color: var(--text-muted);
@@ -848,6 +856,47 @@ button {
 .crud-form-actions {
   display: flex;
   gap: 0.5rem;
+}
+
+.crud-form-actions > button[type="submit"] {
+  order: -1;
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.crud-form-actions > button[type="submit"]:hover {
+  filter: brightness(0.95);
+}
+
+.crud-form-actions > .button-secondary,
+.crud-form-actions > .button-link-secondary {
+  margin-left: auto;
+}
+
+.crud-form.was-validated :is(input, select, textarea):invalid {
+  border-color: #d14343;
+  box-shadow: 0 0 0 2px rgba(209, 67, 67, 0.16);
+}
+
+.crud-form-actions > button[type="submit"][disabled] {
+  opacity: 0.86;
+  cursor: wait;
+}
+
+.crud-form-actions > button[type="submit"][disabled]::before {
+  content: "";
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 999px;
+  animation: spin 0.7s linear infinite;
+}
+
+.field-block.field-error :is(input, select, textarea) {
+  border-color: #d14343;
+  box-shadow: 0 0 0 2px rgba(209, 67, 67, 0.16);
 }
 
 button,
@@ -1012,6 +1061,14 @@ button:disabled,
   font-size: 0.9rem;
 }
 
+.lookup-wrap.has-error input,
+.lookup-wrap.has-error .lookup-selected-pill,
+.field-block.field-error .lookup-wrap input,
+.field-block.field-error .lookup-wrap .lookup-selected-pill {
+  border-color: #d14343;
+  box-shadow: 0 0 0 2px rgba(209, 67, 67, 0.16);
+}
+
 .lookup-header {
   display: flex;
   align-items: center;
@@ -1043,7 +1100,7 @@ button:disabled,
   top: calc(100% + 2px);
   left: 0;
   right: 0;
-  z-index: 20;
+  z-index: 1300;
   background: var(--bg-panel);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1371,6 +1428,10 @@ button:disabled,
   padding: 1rem;
 }
 
+.modal-card.modal-card-wide {
+  width: min(1480px, calc(100vw - 2rem));
+}
+
 .reports-list {
   display: flex;
   flex-direction: column;
@@ -1422,11 +1483,18 @@ button:disabled,
 
   .app-menu {
     align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
   }
 
   .app-menu-primary {
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
     white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    min-width: max-content;
+    flex: 0 0 auto;
   }
 
   .actions-primary {
@@ -1473,6 +1541,12 @@ button:disabled,
     display: block;
     width: 100%;
     overflow: hidden;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 

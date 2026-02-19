@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import DateField from "../components/form/DateField";
+import NumberField from "../components/form/NumberField";
+import SelectField from "../components/form/SelectField";
+import TextField from "../components/form/TextField";
 import { listAccountPaymentForms } from "../services/accountPaymentFormsService";
 import { listCurrencies } from "../services/currenciesService";
 import { createInternalObligation, getTransactionById, updateInternalObligation } from "../services/transactionsService";
@@ -158,44 +162,26 @@ function InternalAccountPayableFormPage({ embedded = false, onCancel, onCreated 
       ) : (
         <form className="crud-form" onSubmit={handleSubmit}>
           <div className="form-grid-2">
-            <label className="field-block">
-              <span>{t("transactions.date")}</span>
-              <input type="date" name="date" value={form.date} onChange={handleChange} required />
-            </label>
-            <label className="field-block">
-              <span>{t("transactions.currency")}</span>
-              <select name="currencyId" value={form.currencyId} onChange={handleChange} required>
+            <DateField label={t("transactions.date")} name="date" value={form.date} onChange={handleChange} required />
+            <SelectField label={t("transactions.currency")} name="currencyId" value={form.currencyId} onChange={handleChange} required>
                 <option value="">{`-- ${t("transactions.selectCurrency")} --`}</option>
                 {currencies.map((currency) => (
                   <option key={currency.id} value={currency.id}>
                     {currency.name} ({currency.symbol})
                   </option>
                 ))}
-              </select>
-            </label>
-            <label className="field-block form-span-2">
-              <span>{t("common.name")}</span>
-              <input name="name" value={form.name} onChange={handleChange} required />
-            </label>
-            <label className="field-block">
-              <span>{t("paymentForms.title")}</span>
-              <select name="accountPaymentFormId" value={form.accountPaymentFormId} onChange={handleChange}>
+            </SelectField>
+            <TextField label={t("common.name")} name="name" value={form.name} onChange={handleChange} className="form-span-2" required />
+            <SelectField label={t("paymentForms.title")} name="accountPaymentFormId" value={form.accountPaymentFormId} onChange={handleChange}>
                 <option value="">{`-- ${t("transactions.selectAccountPaymentForm")} --`}</option>
                 {paymentForms.map((item) => (
                   <option key={item.id} value={item.id}>
                     {formatPaymentFormLabel(item)}
                   </option>
                 ))}
-              </select>
-            </label>
-            <label className="field-block">
-              <span>{t("transactions.referenceNumber")}</span>
-              <input name="referenceNumber" value={form.referenceNumber} onChange={handleChange} />
-            </label>
-            <label className="field-block">
-              <span>{t("transactions.total")}</span>
-              <input type="number" step="0.01" min="0" name="total" value={form.total} onChange={handleChange} required />
-            </label>
+            </SelectField>
+            <TextField label={t("transactions.referenceNumber")} name="referenceNumber" value={form.referenceNumber} onChange={handleChange} />
+            <NumberField label={t("transactions.total")} step="0.01" min="0" name="total" value={form.total} onChange={handleChange} required />
           </div>
 
           <div className="crud-form-actions">

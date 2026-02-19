@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import TextField from "../components/form/TextField";
 import { createEmployee, getEmployeeById, updateEmployee } from "../services/employeesService";
 
 const initialForm = {
@@ -119,22 +120,17 @@ function EmployeeFormPage({ embedded = false, onCancel, onCreated }) {
       ) : (
         <form className="crud-form" onSubmit={handleSubmit}>
           <div className="form-grid-2">
-            <label className="field-block">
-              <span>{t("common.name")}</span>
-              <input name="name" placeholder={t("common.name")} value={form.name} onChange={handleChange} required />
-            </label>
-            <label className="field-block">
-              <span>{t("common.phone")}</span>
-              <input name="phone" placeholder={t("common.phone")} value={form.phone} onChange={handleChange} />
-            </label>
-            <label className="field-block">
-              <span>{t("common.email")}</span>
-              <input name="email" placeholder={t("common.email")} value={form.email} onChange={handleChange} />
-            </label>
-            <label className="field-block">
-              <span>{t("common.address")}</span>
-              <input name="address" placeholder={t("common.address")} value={form.address} onChange={handleChange} />
-            </label>
+            <TextField
+              label={t("common.name")}
+              name="name"
+              placeholder={t("common.name")}
+              value={form.name}
+              onChange={handleChange}
+              required
+            />
+            <TextField label={t("common.phone")} name="phone" placeholder={t("common.phone")} value={form.phone} onChange={handleChange} />
+            <TextField label={t("common.email")} name="email" placeholder={t("common.email")} value={form.email} onChange={handleChange} />
+            <TextField label={t("common.address")} name="address" placeholder={t("common.address")} value={form.address} onChange={handleChange} />
             <label className="checkbox-field form-span-2">
               <input name="isPartner" type="checkbox" checked={form.isPartner} onChange={handleChange} />
               {t("employees.isPartner")}

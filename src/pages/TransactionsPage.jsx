@@ -306,7 +306,7 @@ function TransactionsPage({ moduleType }) {
         </>
       )}
 
-      {moduleType !== "sale" && isCreateModalOpen ? (
+      {isCreateModalOpen ? (
         <div
           className="modal-backdrop"
           onClick={() => {
@@ -315,7 +315,7 @@ function TransactionsPage({ moduleType }) {
             setSearchParams(next);
           }}
         >
-          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+          <div className={`modal-card ${moduleType === "sale" ? "modal-card-wide" : ""}`} onClick={(event) => event.stopPropagation()}>
             <TransactionCreatePage
               embedded
               moduleType={moduleType}

@@ -17,6 +17,7 @@ import {
   FiList,
   FiMoon,
   FiPackage,
+  FiPlus,
   FiShare2,
   FiUser,
   FiSearch,
@@ -69,7 +70,6 @@ const navGroups = [
     items: [
       { path: "/income-concepts", key: "nav.incomeConcepts", icon: FiTrendingUp },
       { path: "/expense-concepts", key: "nav.expenseConcepts", icon: FiTrendingDown },
-      { path: "/payable-concepts", key: "nav.payableConcepts", icon: FiFileText },
       { path: "/concept-groups", key: "nav.conceptGroups", icon: FiLayers }
     ]
   },
@@ -295,13 +295,10 @@ function Layout() {
     if (pathname.startsWith("/expense-concepts")) {
       return { createPath: "/expense-concepts?create=1", createLabel: t("actions.newExpenseConcept") };
     }
-    if (pathname.startsWith("/payable-concepts")) {
-      return { createPath: "/payable-concepts?create=1", createLabel: t("actions.newPayableConcept") };
-    }
     if (pathname.startsWith("/concept-groups")) {
       return { createPath: "/concept-groups?create=1", createLabel: t("actions.newConceptGroup") };
     }
-    if (pathname.startsWith("/sales")) return { createPath: "/sales/new", createLabel: t("actions.newSale") };
+    if (pathname.startsWith("/sales")) return { createPath: "/sales?create=1", createLabel: t("actions.newSale") };
     if (pathname.startsWith("/purchases")) return { createPath: "/purchases?create=1", createLabel: t("actions.newPurchase") };
     if (pathname.startsWith("/expenses")) return { createPath: "/expenses?create=1", createLabel: t("actions.newExpense") };
     if (pathname.startsWith("/incomes")) return { createPath: "/incomes?create=1", createLabel: t("actions.newIncome") };
@@ -877,7 +874,7 @@ function Layout() {
               <div className="app-menu-primary" ref={appMenuPrimaryRef}>
                 {selectedGroup?.items.map((item, index) => {
                   const isOverflowable = index > 0;
-                  const hideInCompact = isAppMenuCompact && isOverflowable;
+                  const hideInCompact = isAppMenuCompact && isOverflowable && !isMobile980;
 
                   if (hideInCompact) {
                     return null;
@@ -905,7 +902,7 @@ function Layout() {
                   openToolbarAnchorPanel("appmenu-overflow", appMenuOverflowBtnRef.current);
                 }}
                 aria-label="Más opciones de menú"
-                style={{ display: isAppMenuCompact && appMenuOverflowItems.length > 0 ? "inline-flex" : "none" }}
+                style={{ display: !isMobile980 && isAppMenuCompact && appMenuOverflowItems.length > 0 ? "inline-flex" : "none" }}
                 
               >
                 <span className="overflow-more-btn">{t("common.more")} <FiChevronDown /></span>
@@ -923,6 +920,7 @@ function Layout() {
                   if (item.type === "link") {
                     return (
                       <Link key={item.key} to={item.to} className={`action-btn ${item.main ? "main" : ""}`}>
+                        {item.main ? <FiPlus /> : null}
                         {item.label}
                       </Link>
                     );

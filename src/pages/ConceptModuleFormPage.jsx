@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import NumberField from "../components/form/NumberField";
+import SelectField from "../components/form/SelectField";
+import TextField from "../components/form/TextField";
 import LookupCombobox from "../components/LookupCombobox";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
@@ -47,6 +50,7 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(isEdit);
   const [error, setError] = useState("");
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [groupOptions, setGroupOptions] = useState([]);
   const [groupLookup, setGroupLookup] = useState("");
 
@@ -104,6 +108,7 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setSubmitAttempted(true);
     setError("");
     if (!event.currentTarget.checkValidity()) {
       event.currentTarget.reportValidity();
@@ -173,10 +178,7 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
       ) : (
         <form className="crud-form" onSubmit={handleSubmit}>
           <div className="form-grid-2">
-            <label className="field-block">
-              <span>{t("common.name")}</span>
-              <input name="name" placeholder={t("common.name")} value={form.name} onChange={handleChange} required />
-            </label>
+            <TextField label={t("common.name")} name="name" placeholder={t("common.name")} value={form.name} onChange={handleChange} required />
 
             {moduleType !== "groups" ? (
               ["income", "expense", "payable"].includes(moduleType) ? (
@@ -192,6 +194,8 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
                   }}
                   placeholder={`-- ${t("concepts.group")} --`}
                   noResultsText={t("common.empty")}
+                  required
+                  hasError={submitAttempted && !form.parentConceptId}
                   selectedPillText={groupOptions.find((g) => g.id === Number(form.parentConceptId))?.name || ""}
                   onClearSelection={() => {
                     setForm((prev) => ({ ...prev, parentConceptId: "" }));
@@ -221,72 +225,57 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
                   }}
                 />
               ) : (
-                <label className="field-block">
-                  <span>{t("concepts.group")}</span>
-                  <select name="parentConceptId" value={form.parentConceptId} onChange={handleChange}>
+                <SelectField label={t("concepts.group")} name="parentConceptId" value={form.parentConceptId} onChange={handleChange}>
                     <option value="">{`-- ${t("concepts.noGroup")} --`}</option>
                     {groupOptions.map((group) => (
                       <option key={group.id} value={group.id}>
                         {group.name}
                       </option>
                     ))}
-                  </select>
-                </label>
+                </SelectField>
               )
             ) : (
-              <label className="field-block">
-                <span>{t("concepts.groupType")}</span>
-                <select name="groupType" value={form.groupType} onChange={handleChange}>
+              <SelectField label={t("concepts.groupType")} name="groupType" value={form.groupType} onChange={handleChange}>
                   <option value="income">{t("concepts.groupTypeIncome")}</option>
                   <option value="expense">{t("concepts.groupTypeExpense")}</option>
-                </select>
-              </label>
+              </SelectField>
             )}
 
             {moduleType === "products" ? (
-              <label className="field-block">
-                <span>{t("concepts.taxPercentage")}</span>
-                <input
-                  name="taxPercentage"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder={t("concepts.taxPercentage")}
-                  value={form.taxPercentage}
-                  onChange={handleChange}
-                  required
-                />
-              </label>
+              <NumberField
+                label={t("concepts.taxPercentage")}
+                name="taxPercentage"
+                min="0"
+                step="0.01"
+                placeholder={t("concepts.taxPercentage")}
+                value={form.taxPercentage}
+                onChange={handleChange}
+                required
+              />
             ) : null}
 
             {moduleType === "products" && (
               <>
-                <label className="field-block">
-                  <span>{t("transactions.price")}</span>
-                  <input
-                    name="price"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder={t("transactions.price")}
-                    value={form.price}
-                    onChange={handleChange}
-                    required
-                  />
-                </label>
-                <label className="field-block">
-                  <span>{t("transactions.additionalCharges")}</span>
-                  <input
-                    name="additionalCharges"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder={t("transactions.additionalCharges")}
-                    value={form.additionalCharges}
-                    onChange={handleChange}
-                    required
-                  />
-                </label>
+                <NumberField
+                  label={t("transactions.price")}
+                  name="price"
+                  min="0"
+                  step="0.01"
+                  placeholder={t("transactions.price")}
+                  value={form.price}
+                  onChange={handleChange}
+                  required
+                />
+                <NumberField
+                  label={t("transactions.additionalCharges")}
+                  name="additionalCharges"
+                  min="0"
+                  step="0.01"
+                  placeholder={t("transactions.additionalCharges")}
+                  value={form.additionalCharges}
+                  onChange={handleChange}
+                  required
+                />
               </>
             )}
           </div>

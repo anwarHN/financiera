@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import DateField from "../components/form/DateField";
+import NumberField from "../components/form/NumberField";
+import SelectField from "../components/form/SelectField";
+import TextField from "../components/form/TextField";
 import { listAccountPaymentForms } from "../services/accountPaymentFormsService";
 import { listConcepts } from "../services/conceptsService";
 import { listPaymentMethods } from "../services/paymentMethodsService";
@@ -184,28 +188,18 @@ function TransactionPaymentPage({ direction }) {
       {error && <p className="error-text">{error}</p>}
       <form className="crud-form" onSubmit={handleSubmit}>
         <div className="form-grid-2">
-          <label className="field-block">
-            <span>{t("transactions.date")}</span>
-            <input type="date" name="date" value={form.date} onChange={handleChange} required />
-          </label>
-          <label className="field-block">
-            <span>{t("transactions.amount")}</span>
-            <input type="number" name="amount" value={form.amount} min="0" step="0.01" onChange={handleChange} required />
-          </label>
-          <label className="field-block">
-            <span>{t("transactions.paymentMethod")}</span>
-            <select name="paymentMethodId" value={form.paymentMethodId} onChange={handleChange} required>
+          <DateField label={t("transactions.date")} name="date" value={form.date} onChange={handleChange} required />
+          <NumberField label={t("transactions.amount")} name="amount" value={form.amount} min="0" step="0.01" onChange={handleChange} required />
+          <SelectField label={t("transactions.paymentMethod")} name="paymentMethodId" value={form.paymentMethodId} onChange={handleChange} required>
               <option value="">{`-- ${t("transactions.selectPaymentMethod")} --`}</option>
               {paymentMethods.map((method) => (
                 <option key={method.id} value={method.id}>
                   {method.name}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="field-block">
-            <span>{t("transactions.accountPaymentForm")}</span>
-            <select
+          </SelectField>
+          <SelectField
+              label={t("transactions.accountPaymentForm")}
               name="accountPaymentFormId"
               value={form.accountPaymentFormId}
               onChange={handleChange}
@@ -217,12 +211,8 @@ function TransactionPaymentPage({ direction }) {
                   {formatPaymentFormLabel(row)}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="field-block form-span-2">
-            <span>{t("transactions.description")}</span>
-            <input name="description" value={form.description} onChange={handleChange} />
-          </label>
+          </SelectField>
+          <TextField label={t("transactions.description")} name="description" value={form.description} onChange={handleChange} className="form-span-2" />
         </div>
         <div className="crud-form-actions">
           <button type="submit" disabled={isSaving}>

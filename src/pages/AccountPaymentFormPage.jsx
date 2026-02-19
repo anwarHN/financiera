@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import SelectField from "../components/form/SelectField";
+import TextField from "../components/form/TextField";
 import {
   createAccountPaymentForm,
   getAccountPaymentFormById,
@@ -141,37 +143,22 @@ function AccountPaymentFormPage({ embedded = false, onCancel, onCreated }) {
       ) : (
         <form className="crud-form" onSubmit={handleSubmit}>
           <div className="form-grid-2">
-            <label className="field-block">
-              <span>{t("common.name")}</span>
-              <input name="name" value={form.name} onChange={handleChange} required />
-            </label>
-            <label className="field-block">
-              <span>{t("paymentForms.kind")}</span>
-              <select name="kind" value={form.kind} onChange={handleChange} required>
+            <TextField label={t("common.name")} name="name" value={form.name} onChange={handleChange} required />
+            <SelectField label={t("paymentForms.kind")} name="kind" value={form.kind} onChange={handleChange} required>
                 <option value="bank_account">{t("paymentForms.kinds.bank_account")}</option>
                 <option value="credit_card">{t("paymentForms.kinds.credit_card")}</option>
                 <option value="cashbox">{t("paymentForms.kinds.cashbox")}</option>
-              </select>
-            </label>
-            <label className="field-block">
-              <span>{t("paymentForms.provider")}</span>
-              <input name="provider" value={form.provider} onChange={handleChange} />
-            </label>
-            <label className="field-block">
-              <span>{t("paymentForms.reference")}</span>
-              <input name="reference" value={form.reference} onChange={handleChange} />
-            </label>
-            <label className="field-block">
-              <span>{t("paymentForms.employee")}</span>
-              <select name="employeeId" value={form.employeeId} onChange={handleChange}>
+            </SelectField>
+            <TextField label={t("paymentForms.provider")} name="provider" value={form.provider} onChange={handleChange} />
+            <TextField label={t("paymentForms.reference")} name="reference" value={form.reference} onChange={handleChange} />
+            <SelectField label={t("paymentForms.employee")} name="employeeId" value={form.employeeId} onChange={handleChange}>
                 <option value="">{`-- ${t("transactions.optionalSeller")} --`}</option>
                 {employees.map((employee) => (
                   <option key={employee.id} value={employee.id}>
                     {employee.name}
                   </option>
                 ))}
-              </select>
-            </label>
+            </SelectField>
             <label className="checkbox-field form-span-2">
               <input
                 type="checkbox"

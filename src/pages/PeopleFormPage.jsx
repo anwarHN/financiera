@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import TextField from "../components/form/TextField";
 import { createPerson, getPersonById, updatePerson } from "../services/personsService";
 
 const initialForm = {
@@ -111,18 +112,23 @@ function PeopleFormPage({ personType, titleKey, basePath, embedded = false, onCa
       ) : (
         <form className="crud-form" onSubmit={handleSubmit}>
           <div className="form-grid-2">
-            <label className="field-block">
-              <span>{t("common.name")}</span>
-              <input name="name" placeholder={t("common.name")} value={form.name} onChange={handleChange} required />
-            </label>
-            <label className="field-block">
-              <span>{t("common.phone")}</span>
-              <input name="phone" placeholder={t("common.phone")} value={form.phone} onChange={handleChange} />
-            </label>
-            <label className="field-block form-span-2">
-              <span>{t("common.address")}</span>
-              <input name="address" placeholder={t("common.address")} value={form.address} onChange={handleChange} />
-            </label>
+            <TextField
+              label={t("common.name")}
+              name="name"
+              placeholder={t("common.name")}
+              value={form.name}
+              onChange={handleChange}
+              required
+            />
+            <TextField label={t("common.phone")} name="phone" placeholder={t("common.phone")} value={form.phone} onChange={handleChange} />
+            <TextField
+              label={t("common.address")}
+              name="address"
+              placeholder={t("common.address")}
+              value={form.address}
+              onChange={handleChange}
+              className="form-span-2"
+            />
           </div>
 
           <div className="crud-form-actions">

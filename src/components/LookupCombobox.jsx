@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 function LookupCombobox({
@@ -14,11 +14,15 @@ function LookupCombobox({
   onCreateRecord,
   noResultsText,
   selectedPillText,
-  onClearSelection
+  onClearSelection,
+  required = false,
+  hasError = false
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const inputRef = useRef(null);
+  const [resultsStyle, setResultsStyle] = useState({});
 
   const filteredOptions = useMemo(() => {
     const query = value.trim().toLowerCase();
@@ -65,8 +69,32 @@ function LookupCombobox({
     }
   };
 
+  useEffect(() => {
+    if (!isOpen || selectedPillText) return;
+
+    const updatePosition = () => {
+      const rect = inputRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setResultsStyle({
+        position: "fixed",
+        top: `${rect.bottom + 2}px`,
+        left: `${rect.left}px`,
+        width: `${rect.width}px`,
+        zIndex: 1300
+      });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [isOpen, selectedPillText, value, filteredOptions.length]);
+
   return (
-    <div className="lookup-wrap">
+    <div className={`lookup-wrap ${required ? "required" : ""} ${hasError ? "has-error" : ""}`}>
       {label ? <label>{label}</label> : null}
       <div className="lookup-input-row">
         {selectedPillText ? (
@@ -88,6 +116,7 @@ function LookupCombobox({
           </div>
         ) : (
           <input
+            ref={inputRef}
             value={value}
             onChange={(event) => {
               onValueChange(event.target.value);
@@ -116,38 +145,44 @@ function LookupCombobox({
           </div>
         ) : null}
       </div>
-      {!selectedPillText && isOpen && (
-        <div className="lookup-results">
-          {filteredOptions.length > 0 ? (
-            filteredOptions.map((item, index) => (
-              <button
-                key={item.id}
-                type="button"
-                className={`lookup-item ${highlightedIndex === index ? "active" : ""}`}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                  onSelect(item);
-                  setIsOpen(false);
-                }}
-              >
-                {getOptionLabel(item)}
-              </button>
-            ))
-          ) : (
-            <div className="lookup-empty">{noResultsText}</div>
-          )}
-        </div>
-      )}
+      {!selectedPillText && isOpen
+        ? createPortal(
+            <div className="lookup-results" style={resultsStyle}>
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map((item, index) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`lookup-item ${highlightedIndex === index ? "active" : ""}`}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      onSelect(item);
+                      setIsOpen(false);
+                    }}
+                  >
+                    {getOptionLabel(item)}
+                  </button>
+                ))
+              ) : (
+                <div className="lookup-empty">{noResultsText}</div>
+              )}
+            </div>,
+            document.body
+          )
+        : null}
       {renderCreateModal
         ? createPortal(
             renderCreateModal({
               isOpen: isCreateModalOpen,
               onClose: () => setIsCreateModalOpen(false),
               onCreated: async (record) => {
-                if (onCreateRecord) {
-                  await onCreateRecord(record);
+                try {
+                  if (onCreateRecord) {
+                    await onCreateRecord(record);
+                  }
+                } finally {
+                  setIsCreateModalOpen(false);
                 }
-                setIsCreateModalOpen(false);
               }
             }),
             document.body

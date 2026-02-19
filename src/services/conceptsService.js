@@ -1,7 +1,7 @@
 import { supabase } from "../lib/supabase";
 
 const selectColumns =
-  "id, name, parentConceptId, isGroup, isIncome, isExpense, isProduct, isPaymentForm, isAccountPayableConcept, isIncomingPaymentConcept, isOutgoingPaymentConcept, isSystem, taxPercentage, price, additionalCharges";
+  "id, name, parentConceptId, parentConcept:concepts!concepts_parentConceptId_fkey(name), isGroup, isIncome, isExpense, isProduct, isPaymentForm, isAccountPayableConcept, isIncomingPaymentConcept, isOutgoingPaymentConcept, isSystem, taxPercentage, price, additionalCharges";
 
 export async function listConcepts(accountId) {
   const { data, error } = await supabase

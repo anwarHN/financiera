@@ -82,7 +82,7 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
               {paginatedItems.map((item) => (
                 <tr key={item.id}>
                   <td>{item.name}</td>
-                  <td>{item.parentConceptId ?? "-"}</td>
+                  <td>{item.parentConcept?.name ?? "-"}</td>
                   <td>{item.taxPercentage}</td>
                   {moduleType === "products" && <td>{Number(item.price || 0).toFixed(2)}</td>}
                   {moduleType === "products" && <td>{Number(item.additionalCharges || 0).toFixed(2)}</td>}
