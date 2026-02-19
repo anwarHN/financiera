@@ -1478,15 +1478,26 @@ button:disabled,
 
 @media (max-width: 620px) {
   .topbar {
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
     gap: 0.45rem;
     padding: 0 8px;
+  }
+
+  .topbar-left {
+    grid-column: 1;
+    grid-row: 1;
+    justify-content: center;
+    width: 100%;
   }
 
   .topbar-right {
     display: flex;
     gap: 0.35rem;
-    margin-left: auto;
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    justify-content: flex-end;
     min-width: 0;
   }
 
@@ -1499,7 +1510,7 @@ button:disabled,
   }
 
   .topbar-left .product-name {
-    max-width: 86px;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
