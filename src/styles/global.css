@@ -1477,11 +1477,15 @@ button:disabled,
 }
 
 @media (max-width: 620px) {
+  .app-shell {
+    grid-template-rows: auto 1fr;
+  }
+
   .topbar {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto;
     gap: 0.45rem;
-    padding: 0 8px;
+    padding: 0.4rem 8px 0.5rem;
   }
 
   .topbar-left {
@@ -1492,12 +1496,14 @@ button:disabled,
   }
 
   .topbar-right {
-    display: flex;
-    gap: 0.35rem;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.45rem;
     grid-column: 1;
     grid-row: 2;
     width: 100%;
-    justify-content: flex-end;
+    justify-content: stretch;
+    align-items: center;
     min-width: 0;
   }
 
@@ -1517,16 +1523,36 @@ button:disabled,
   }
 
   .account-switch-btn {
-    max-width: 88px;
-    min-height: 32px;
-    padding: 0.25rem 0.45rem;
-    font-size: 0.8rem;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 36px;
+    padding: 0.3rem 0.35rem;
+    font-size: 0.76rem;
   }
 
   .topbar-right .icon-btn,
   .topbar-right .avatar-btn {
-    min-width: 32px;
-    min-height: 32px;
+    width: 100%;
+    min-width: 0;
+    min-height: 36px;
+  }
+
+  .topbar-right > .icon-btn,
+  .topbar-right > .account-switch-btn,
+  .topbar-right > .user-menu-wrap {
+    width: 100%;
+  }
+
+  .user-menu-wrap {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+    display: flex;
+    width: 100%;
+  }
+
+  .user-menu-wrap .avatar-btn {
+    width: 100%;
   }
 
   .workspace {
