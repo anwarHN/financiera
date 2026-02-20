@@ -498,35 +498,42 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
     employeeId,
     incomingPayment = false,
     includeCreatedById = true
-  }) => ({
-    accountId: account.accountId,
-    personId: personId || null,
-    date,
-    type: config.type,
-    name: description?.trim() || null,
-    referenceNumber: referenceNumber?.trim() || null,
-    deliverTo: null,
-    deliveryAddress: null,
-    status: 1,
-    ...(includeCreatedById ? { createdById: user.id } : {}),
-    net: totals.net,
-    discounts: totals.discount,
-    taxes: totals.tax,
-    additionalCharges: totals.additionalCharges,
-    total: totals.total,
-    isAccountPayable: moduleType === "purchase" ? isCredit : false,
-    isAccountReceivable: moduleType === "sale" ? isCredit : false,
-    isIncomingPayment: incomingPayment,
-    isOutcomingPayment: false,
-    balance: isCredit ? totals.total : 0,
-    payments: isCredit ? 0 : totals.total,
-    isActive: true,
-    currencyId: currencyId ? Number(currencyId) : null,
-    projectId: projectId ? Number(projectId) : null,
-    employeeId: employeeId ? Number(employeeId) : null,
-    paymentMethodId: paymentMethodId ? Number(paymentMethodId) : null,
-    accountPaymentFormId: accountPaymentFormId ? Number(accountPaymentFormId) : null
-  });
+  }) => {
+    const parsedAccountPaymentFormId = accountPaymentFormId ? Number(accountPaymentFormId) : null;
+    const shouldAutoReconcile = Boolean(parsedAccountPaymentFormId);
+
+    return {
+      accountId: account.accountId,
+      personId: personId || null,
+      date,
+      type: config.type,
+      name: description?.trim() || null,
+      referenceNumber: referenceNumber?.trim() || null,
+      deliverTo: null,
+      deliveryAddress: null,
+      status: 1,
+      ...(includeCreatedById ? { createdById: user.id } : {}),
+      net: totals.net,
+      discounts: totals.discount,
+      taxes: totals.tax,
+      additionalCharges: totals.additionalCharges,
+      total: totals.total,
+      isAccountPayable: moduleType === "purchase" ? isCredit : false,
+      isAccountReceivable: moduleType === "sale" ? isCredit : false,
+      isIncomingPayment: incomingPayment,
+      isOutcomingPayment: false,
+      balance: isCredit ? totals.total : 0,
+      payments: isCredit ? 0 : totals.total,
+      isActive: true,
+      currencyId: currencyId ? Number(currencyId) : null,
+      projectId: projectId ? Number(projectId) : null,
+      employeeId: employeeId ? Number(employeeId) : null,
+      paymentMethodId: paymentMethodId ? Number(paymentMethodId) : null,
+      accountPaymentFormId: parsedAccountPaymentFormId,
+      isReconciled: shouldAutoReconcile,
+      reconciledAt: shouldAutoReconcile ? date : null
+    };
+  };
 
   const handleSubmitSimple = async (event) => {
     event.preventDefault();

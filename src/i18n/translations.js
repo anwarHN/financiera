@@ -425,7 +425,8 @@ export const translations = {
       reconcile: "Conciliar",
       reconciled: "Conciliada",
       changeReconcileDate: "Cambiar fecha conciliación",
-      unreconcile: "Desmarcar como conciliado"
+      unreconcile: "Desmarcar como conciliado",
+      reconcileDateOutOfRange: "La fecha de conciliación debe estar entre las fechas desde y hasta seleccionadas."
     },
     transactions: {
       salesTitle: "Registro de ventas",
@@ -926,7 +927,8 @@ export const translations = {
       reconcile: "Reconcile",
       reconciled: "Reconciled",
       changeReconcileDate: "Change reconciliation date",
-      unreconcile: "Unmark as reconciled"
+      unreconcile: "Unmark as reconciled",
+      reconcileDateOutOfRange: "Reconciliation date must be between selected from and to dates."
     },
     transactions: {
       salesTitle: "Sales entries",

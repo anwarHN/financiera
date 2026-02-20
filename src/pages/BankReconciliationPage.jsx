@@ -97,7 +97,19 @@ function BankReconciliationPage() {
     });
   }, [activeTransactions, dateFrom, dateTo]);
 
+  const isReconcileDateInRange = useMemo(() => {
+    if (!reconcileDate || !dateFrom || !dateTo) return false;
+    return reconcileDate >= dateFrom && reconcileDate <= dateTo;
+  }, [reconcileDate, dateFrom, dateTo]);
+
+  const validateReconcileDateRange = () => {
+    if (isReconcileDateInRange) return true;
+    setError(t("reconciliation.reconcileDateOutOfRange"));
+    return false;
+  };
+
   const handleReconcile = async (transactionId) => {
+    if (!validateReconcileDateRange()) return;
     try {
       await reconcileTransaction(transactionId, reconcileDate);
       await loadTransactions();
@@ -141,22 +153,36 @@ function BankReconciliationPage() {
             <span>{t("reports.dateTo")}</span>
             <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
           </label>
-          <label className="field-block form-span-2">
+        </div>
+        <div className="reconciliation-summary-row">
+          <div className="reconciliation-balances">
+            <p>
+              {t("reconciliation.previousBalance")}: <strong>{formatNumber(previousBalance)}</strong>
+            </p>
+            <p>
+              {t("reconciliation.currentBalance")}: <strong>{formatNumber(currentBalance)}</strong>
+            </p>
+            <p>
+              {t("reconciliation.periodMovementsSum")}: <strong>{formatNumber(periodMovementsSum)}</strong>
+            </p>
+          </div>
+          <label className="field-block reconciliation-date-field">
             <span>{t("reconciliation.reconcileDate")}</span>
-            <input type="date" value={reconcileDate} onChange={(event) => setReconcileDate(event.target.value)} />
+            <input
+              type="date"
+              value={reconcileDate}
+              min={dateFrom}
+              max={dateTo}
+              onChange={(event) => {
+                setReconcileDate(event.target.value);
+                if (error === t("reconciliation.reconcileDateOutOfRange")) {
+                  setError("");
+                }
+              }}
+            />
             <small>{t("reconciliation.reconcileDateHelp")}</small>
           </label>
         </div>
-
-        <p>
-          {t("reconciliation.previousBalance")}: <strong>{formatNumber(previousBalance)}</strong>
-        </p>
-        <p>
-          {t("reconciliation.currentBalance")}: <strong>{formatNumber(currentBalance)}</strong>
-        </p>
-        <p>
-          {t("reconciliation.periodMovementsSum")}: <strong>{formatNumber(periodMovementsSum)}</strong>
-        </p>
       </section>
 
       <table className="crud-table">
@@ -185,7 +211,12 @@ function BankReconciliationPage() {
                 <td>{row.isReconciled ? formatDate(row.reconciledAt, language) : "-"}</td>
                 <td className="table-actions reconciliation-actions">
                   {!row.isReconciled ? (
-                    <button type="button" className="button-secondary" onClick={() => handleReconcile(row.id)}>
+                    <button
+                      type="button"
+                      className="button-secondary"
+                      onClick={() => handleReconcile(row.id)}
+                      disabled={!isReconcileDateInRange}
+                    >
                       {t("reconciliation.reconcile")}
                     </button>
                   ) : null}
@@ -195,7 +226,7 @@ function BankReconciliationPage() {
                         key: "change-reconcile-date",
                         label: t("reconciliation.changeReconcileDate"),
                         onClick: () => handleReconcile(row.id),
-                        disabled: !row.isReconciled
+                        disabled: !row.isReconciled || !isReconcileDateInRange
                       },
                       {
                         key: "unreconcile",
