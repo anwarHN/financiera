@@ -28,10 +28,9 @@ export async function getTransactionsForReports(accountId, { dateFrom, dateTo } 
 export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, currencyId } = {}) {
   let txQuery = supabase
     .from("transactions")
-    .select("id, type, currencyId, isActive")
+    .select("id, type, currencyId, isActive, isIncomingPayment, isOutcomingPayment")
     .eq("accountId", accountId)
-    .eq("isActive", true)
-    .in("type", [2, 3]);
+    .eq("isActive", true);
 
   if (dateFrom) txQuery = txQuery.gte("date", dateFrom);
   if (dateTo) txQuery = txQuery.lte("date", dateTo);
@@ -40,10 +39,22 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
   const { data: transactions, error: txError } = await txQuery;
   if (txError) throw txError;
 
-  const validTransactions = transactions ?? [];
+  const validTransactions = (transactions ?? []).filter((tx) => {
+    const type = Number(tx.type);
+    return type === 2 || type === 3 || Boolean(tx.isIncomingPayment) || Boolean(tx.isOutcomingPayment);
+  });
   if (validTransactions.length === 0) return [];
 
-  const typeByTxId = new Map(validTransactions.map((tx) => [Number(tx.id), Number(tx.type)]));
+  const txMetaById = new Map(
+    validTransactions.map((tx) => [
+      Number(tx.id),
+      {
+        type: Number(tx.type),
+        isIncomingPayment: Boolean(tx.isIncomingPayment),
+        isOutcomingPayment: Boolean(tx.isOutcomingPayment)
+      }
+    ])
+  );
   const txIds = validTransactions.map((tx) => Number(tx.id));
 
   const { data: details, error: detailsError } = await supabase
@@ -74,15 +85,14 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
   const grouped = new Map();
 
   for (const detail of details ?? []) {
-    const txType = typeByTxId.get(Number(detail.transactionId));
-    if (txType !== 2 && txType !== 3) continue;
+    const txMeta = txMetaById.get(Number(detail.transactionId));
+    if (!txMeta) continue;
 
-    const flowType = txType === 3 ? "income" : "expense";
+    const flowType = txMeta.type === 3 || txMeta.isIncomingPayment ? "income" : "expense";
     const conceptName = detail.concepts?.name || "-";
     const parentConceptId = Number(detail.concepts?.parentConceptId || 0);
     const groupName = groupNameById.get(parentConceptId) || tbdGroupName(flowType);
-    const amount = Number(detail.total || 0);
-    const normalizedAmount = txType === 3 ? Math.abs(amount) : -Math.abs(amount);
+    const normalizedAmount = Number(detail.total || 0);
     const key = `${flowType}::${groupName}::${conceptName}`;
 
     grouped.set(key, {
