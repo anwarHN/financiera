@@ -34,6 +34,11 @@ function ReportsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [hasExecuted, setHasExecuted] = useState(false);
   const [showSetup, setShowSetup] = useState(true);
+  const [cashflowSummary, setCashflowSummary] = useState({
+    previousBalance: 0,
+    periodMovements: 0,
+    newBalance: 0
+  });
 
   const reportConfig = useMemo(() => reportCatalog.find((report) => report.id === selectedReport) ?? reportCatalog[0], [selectedReport]);
 
@@ -156,6 +161,25 @@ function ReportsPage() {
           currencyId: filters.currencyId || undefined
         });
         setResults(buildResults(rows, selectedReport));
+        const periodMovements = rows.reduce((acc, row) => acc + Number(row.total || 0), 0);
+
+        let previousBalance = 0;
+        if (filters.dateFrom) {
+          const fromDate = new Date(`${filters.dateFrom}T00:00:00.000Z`);
+          fromDate.setUTCDate(fromDate.getUTCDate() - 1);
+          const previousTo = fromDate.toISOString().slice(0, 10);
+          const previousRows = await getCashflowConceptTotals(account.accountId, {
+            dateTo: previousTo,
+            currencyId: filters.currencyId || undefined
+          });
+          previousBalance = previousRows.reduce((acc, row) => acc + Number(row.total || 0), 0);
+        }
+
+        setCashflowSummary({
+          previousBalance,
+          periodMovements,
+          newBalance: previousBalance + periodMovements
+        });
       } else {
         const transactions = await getTransactionsForReports(account.accountId, {
           dateFrom: filters.dateFrom || undefined,
@@ -165,6 +189,11 @@ function ReportsPage() {
           ? transactions.filter((tx) => String(tx.currencyId ?? "") === filters.currencyId)
           : transactions;
         setResults(buildResults(filteredByCurrency, selectedReport));
+        setCashflowSummary({
+          previousBalance: 0,
+          periodMovements: 0,
+          newBalance: 0
+        });
       }
 
       setHasExecuted(true);
@@ -412,6 +441,23 @@ function ReportsPage() {
               )}
             </>
           )}
+
+          {selectedReport === "cashflow" ? (
+            <div className="cashflow-summary-grid">
+              <div className="cashflow-summary-card">
+                <span>{t("reconciliation.previousBalance")}</span>
+                <strong>{formatNumber(cashflowSummary.previousBalance)}</strong>
+              </div>
+              <div className="cashflow-summary-card">
+                <span>{t("reconciliation.periodMovementsSum")}</span>
+                <strong>{formatNumber(cashflowSummary.periodMovements)}</strong>
+              </div>
+              <div className="cashflow-summary-card">
+                <span>{t("reconciliation.currentBalance")}</span>
+                <strong>{formatNumber(cashflowSummary.newBalance)}</strong>
+              </div>
+            </div>
+          ) : null}
 
           <table className="crud-table">
             <thead>
