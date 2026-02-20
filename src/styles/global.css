@@ -442,14 +442,15 @@ button {
 }
 
 .app-menu {
-  margin: calc(1rem * var(--density-scale)) calc(1rem * var(--density-scale)) 0;
+  margin: calc(1.15rem * var(--density-scale)) calc(1.15rem * var(--density-scale)) 0;
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   justify-content: space-between;
   gap: 0.2rem;
   background: transparent;
-  padding: 0 calc(0.65rem * var(--density-scale));
+  padding: calc(0.35rem * var(--density-scale)) calc(0.95rem * var(--density-scale));
   border-radius: 8px;
+  overflow: visible;
 }
 
 @media (min-width: 981px) {
@@ -457,18 +458,38 @@ button {
     position: sticky;
     top: 0;
     z-index: 5;
+    background: transparent;
+    border: 1px solid transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    overflow: visible;
+  }
+
+  .app-menu.is-stuck {
+    background: color-mix(in oklab, var(--bg-app-menu) 92%, transparent);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(6px);
+    padding: calc(0.5rem * var(--density-scale)) calc(1.1rem * var(--density-scale));
+    min-height: calc(4.2rem * var(--density-scale));
+  }
+
+  .app-menu.is-stuck .app-menu-primary {
+    min-height: calc(2.2rem * var(--density-scale));
   }
 }
 
 .app-menu-primary {
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   gap: 0.2rem;
   min-width: 0;
   flex: 1;
 }
 
 .app-menu-entry {
+  display: inline-flex;
+  align-items: center;
   border: none;
   background: transparent;
   padding: calc(0.7rem * var(--density-scale)) calc(0.75rem * var(--density-scale))
@@ -478,6 +499,8 @@ button {
   color: var(--text-ui);
   white-space: nowrap;
   flex: 0 0 auto;
+  min-height: calc(2.35rem * var(--density-scale));
+  box-sizing: border-box;
 }
 
 .app-menu-entry.active {

@@ -170,7 +170,9 @@ function Layout() {
   const [isAppMenuCompact, setIsAppMenuCompact] = useState(false);
   const [isActionsCompact, setIsActionsCompact] = useState(false);
   const [isSidebarForcedCollapsed, setIsSidebarForcedCollapsed] = useState(false);
+  const [isAppMenuStuck, setIsAppMenuStuck] = useState(false);
 
+  const workspaceRef = useRef(null);
   const appMenuPrimaryRef = useRef(null);
   const actionsPrimaryRef = useRef(null);
   const sidebarMobileBtnRef = useRef(null);
@@ -535,6 +537,19 @@ function Layout() {
     };
   }, []);
 
+  useEffect(() => {
+    const workspaceEl = workspaceRef.current;
+    if (!workspaceEl) return;
+
+    const updateStickyState = () => {
+      setIsAppMenuStuck(workspaceEl.scrollTop > 1);
+    };
+
+    updateStickyState();
+    workspaceEl.addEventListener("scroll", updateStickyState);
+    return () => workspaceEl.removeEventListener("scroll", updateStickyState);
+  }, [pathname, isMobile980]);
+
   const handleLogout = async () => {
     await logout();
   };
@@ -867,9 +882,9 @@ function Layout() {
           </aside>
         )}
 
-        <section className={`workspace ${isAccountRoute ? "account-mode" : ""}`}>
+        <section className={`workspace ${isAccountRoute ? "account-mode" : ""}`} ref={workspaceRef}>
           {shouldShowAppMenu && (
-            <div className="app-menu" data-tour="app-menu">
+            <div className={`app-menu ${isAppMenuStuck ? "is-stuck" : ""}`} data-tour="app-menu">
               {isMobile980 ? (
                 <button
                   type="button"

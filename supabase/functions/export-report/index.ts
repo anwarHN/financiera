@@ -9,7 +9,7 @@ interface ExportPayload {
   currencyId?: number | null;
 }
 
-type TxRow = {
+type BaseTxRow = {
   id: number;
   date: string;
   type: number;
@@ -20,13 +20,50 @@ type TxRow = {
   currencyId: number | null;
 };
 
-type InternalPayableRow = {
+type InternalObligationRow = {
   id: number;
   date: string;
   name: string;
   total: number;
   balance: number;
   currencyId: number | null;
+};
+
+type CashflowTxRow = {
+  id: number;
+  date: string;
+  type: number;
+  total: number;
+  currencyId: number | null;
+  isIncomingPayment: boolean;
+  isOutcomingPayment: boolean;
+  isAccountReceivable: boolean;
+  isInternalTransfer: boolean;
+};
+
+type CashflowConceptDetail = {
+  transactionId: number;
+  total: number;
+  conceptId: number;
+  concepts: {
+    id: number;
+    name: string;
+    parentConceptId: number | null;
+  } | null;
+};
+
+type CashflowGroupedRow = {
+  section: string;
+  group: string;
+  concept: string;
+  total: number;
+};
+
+type ExportBuildResult = {
+  rows: Record<string, string | number>[];
+  total: number;
+  balance: number;
+  extras?: Array<[string, string | number]>;
 };
 
 const reportTitles: Record<ExportPayload["reportId"], string> = {
@@ -44,23 +81,277 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS"
 };
 
-function buildReportRows(transactions: TxRow[], reportId: ExportPayload["reportId"]) {
-  if (reportId === "internal_obligations") return [];
-  if (reportId === "cashflow") return [];
-  if (reportId === "sales") return transactions.filter((tx) => tx.type === 1);
-  if (reportId === "expenses") return transactions.filter((tx) => tx.type === 2);
-  if (reportId === "receivable") return transactions.filter((tx) => tx.isAccountReceivable && Number(tx.balance || 0) > 0);
-  if (reportId === "payable") return transactions.filter((tx) => tx.isAccountPayable && Number(tx.balance || 0) > 0);
-
-  const incomes = transactions.filter((tx) => tx.type === 1 || tx.type === 3);
-  const out = transactions.filter((tx) => tx.type === 2);
-  return [...incomes, ...out];
-}
-
 function txTypeLabel(type: number) {
   if (type === 1) return "Venta";
   if (type === 2) return "Gasto";
-  return "Ingreso";
+  if (type === 3) return "Ingreso";
+  if (type === 4) return "Compra";
+  if (type === 5) return "Pago saliente";
+  if (type === 6) return "Pago entrante";
+  return "Transacción";
+}
+
+function sanitizeNumber(value: unknown) {
+  return Number(Number(value || 0).toFixed(2));
+}
+
+function normalizeDate(value?: string | null) {
+  return value ? value : "-";
+}
+
+function previousDate(date: string) {
+  const d = new Date(`${date}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+async function authenticateRequest(supabaseAdmin: ReturnType<typeof createClient>, req: Request, accountId: number) {
+  const authHeader = req.headers.get("Authorization") || "";
+  const accessToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (!accessToken) {
+    throw new Error("Missing bearer token");
+  }
+
+  const {
+    data: { user },
+    error: userError
+  } = await supabaseAdmin.auth.getUser(accessToken);
+  if (userError || !user) {
+    throw new Error(`Invalid token: ${userError?.message ?? "unknown"}`);
+  }
+
+  const { data: membership, error: membershipError } = await supabaseAdmin
+    .from("usersToAccounts")
+    .select('"userId","accountId"')
+    .eq("userId", user.id)
+    .eq("accountId", accountId)
+    .maybeSingle();
+
+  if (membershipError || !membership) {
+    throw new Error("Forbidden for this account");
+  }
+}
+
+async function fetchBaseTransactions(supabaseAdmin: ReturnType<typeof createClient>, payload: ExportPayload) {
+  let txQuery = supabaseAdmin
+    .from("transactions")
+    .select("id, date, type, total, balance, isAccountPayable, isAccountReceivable, currencyId")
+    .eq("accountId", payload.accountId)
+    .eq("isActive", true)
+    .order("date", { ascending: false });
+
+  if (payload.dateFrom) txQuery = txQuery.gte("date", payload.dateFrom);
+  if (payload.dateTo) txQuery = txQuery.lte("date", payload.dateTo);
+  if (payload.currencyId != null) txQuery = txQuery.eq("currencyId", payload.currencyId);
+
+  const { data, error } = await txQuery;
+  if (error) throw error;
+  return (data ?? []) as BaseTxRow[];
+}
+
+async function buildStandardReport(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payload: ExportPayload
+): Promise<ExportBuildResult> {
+  const txRows = await fetchBaseTransactions(supabaseAdmin, payload);
+
+  let reportRows: BaseTxRow[] = [];
+  if (payload.reportId === "sales") reportRows = txRows.filter((tx) => tx.type === 1);
+  if (payload.reportId === "expenses") reportRows = txRows.filter((tx) => tx.type === 2);
+  if (payload.reportId === "receivable") reportRows = txRows.filter((tx) => tx.isAccountReceivable && Number(tx.balance || 0) > 0);
+  if (payload.reportId === "payable") reportRows = txRows.filter((tx) => tx.isAccountPayable && Number(tx.balance || 0) > 0);
+
+  const rows = reportRows.map((tx) => ({
+    id: tx.id,
+    fecha: tx.date,
+    tipo: txTypeLabel(tx.type),
+    total: sanitizeNumber(tx.total),
+    balance: sanitizeNumber(tx.balance)
+  }));
+
+  return {
+    rows,
+    total: rows.reduce((acc, row) => acc + Number(row.total || 0), 0),
+    balance: rows.reduce((acc, row) => acc + Number(row.balance || 0), 0)
+  };
+}
+
+async function buildInternalObligationsReport(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payload: ExportPayload
+): Promise<ExportBuildResult> {
+  let query = supabaseAdmin
+    .from("transactions")
+    .select('id, date, name, total, balance, "currencyId"')
+    .eq("accountId", payload.accountId)
+    .eq("isInternalObligation", true)
+    .eq("isActive", true)
+    .order("date", { ascending: false });
+
+  if (payload.dateFrom) query = query.gte("date", payload.dateFrom);
+  if (payload.dateTo) query = query.lte("date", payload.dateTo);
+  if (payload.currencyId != null) query = query.eq("currencyId", payload.currencyId);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const rows = ((data ?? []) as InternalObligationRow[]).map((row) => ({
+    id: row.id,
+    fecha: row.date,
+    tipo: row.name || "Obligación interna",
+    total: sanitizeNumber(row.total),
+    balance: sanitizeNumber(row.balance)
+  }));
+
+  return {
+    rows,
+    total: rows.reduce((acc, row) => acc + Number(row.total || 0), 0),
+    balance: rows.reduce((acc, row) => acc + Number(row.balance || 0), 0)
+  };
+}
+
+async function fetchCashflowConceptTotals(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payload: Pick<ExportPayload, "accountId" | "dateFrom" | "dateTo" | "currencyId">
+) {
+  let txQuery = supabaseAdmin
+    .from("transactions")
+    .select("id, type, total, currencyId, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isInternalTransfer")
+    .eq("accountId", payload.accountId)
+    .eq("isActive", true);
+
+  if (payload.dateFrom) txQuery = txQuery.gte("date", payload.dateFrom);
+  if (payload.dateTo) txQuery = txQuery.lte("date", payload.dateTo);
+  if (payload.currencyId != null) txQuery = txQuery.eq("currencyId", payload.currencyId);
+
+  const { data: transactions, error: txError } = await txQuery;
+  if (txError) throw txError;
+
+  const validTransactions = ((transactions ?? []) as CashflowTxRow[]).filter((tx) => {
+    if (tx.isInternalTransfer) return false;
+    const isCashSale = Number(tx.type) === 1 && !Boolean(tx.isAccountReceivable);
+    return Number(tx.type) === 2 || Number(tx.type) === 3 || isCashSale || tx.isIncomingPayment || tx.isOutcomingPayment;
+  });
+
+  if (validTransactions.length === 0) return [] as CashflowGroupedRow[];
+
+  const txMetaById = new Map(
+    validTransactions.map((tx) => [
+      Number(tx.id),
+      {
+        type: Number(tx.type),
+        isIncomingPayment: Boolean(tx.isIncomingPayment),
+        isOutcomingPayment: Boolean(tx.isOutcomingPayment)
+      }
+    ])
+  );
+  const txIds = validTransactions.map((tx) => Number(tx.id));
+
+  const { data: details, error: detailsError } = await supabaseAdmin
+    .from("transactionDetails")
+    .select("transactionId, total, conceptId, concepts(id, name, parentConceptId)")
+    .in("transactionId", txIds);
+  if (detailsError) throw detailsError;
+
+  const detailRows = (details ?? []) as CashflowConceptDetail[];
+  const parentConceptIds = Array.from(
+    new Set(
+      detailRows
+        .map((row) => Number(row.concepts?.parentConceptId || 0))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    )
+  );
+
+  let groupNameById = new Map<number, string>();
+  if (parentConceptIds.length > 0) {
+    const { data: groups, error: groupsError } = await supabaseAdmin.from("concepts").select("id, name").in("id", parentConceptIds);
+    if (groupsError) throw groupsError;
+    groupNameById = new Map((groups ?? []).map((group) => [Number(group.id), group.name || "-"]));
+  }
+
+  const grouped = new Map<string, CashflowGroupedRow>();
+  for (const detail of detailRows) {
+    const txMeta = txMetaById.get(Number(detail.transactionId));
+    if (!txMeta) continue;
+
+    const isIncome = txMeta.type === 1 || txMeta.type === 3 || txMeta.isIncomingPayment;
+    const section = isIncome ? "Ingresos" : "Gastos";
+    const conceptName = detail.concepts?.name || "-";
+    const parentId = Number(detail.concepts?.parentConceptId || 0);
+    const group = groupNameById.get(parentId) || (isIncome ? "Sin grupo (ingresos)" : "Sin grupo (gastos)");
+    const amount = Number(detail.total || 0);
+    const key = `${section}::${group}::${conceptName}`;
+
+    grouped.set(key, {
+      section,
+      group,
+      concept: conceptName,
+      total: Number(grouped.get(key)?.total || 0) + amount
+    });
+  }
+
+  return Array.from(grouped.values());
+}
+
+async function buildCashflowReport(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payload: ExportPayload
+): Promise<ExportBuildResult> {
+  const rows = await fetchCashflowConceptTotals(supabaseAdmin, {
+    accountId: payload.accountId,
+    dateFrom: payload.dateFrom || null,
+    dateTo: payload.dateTo || null,
+    currencyId: payload.currencyId ?? null
+  });
+
+  const orderedRows = rows.sort((a, b) => {
+    if (a.section !== b.section) return a.section === "Ingresos" ? -1 : 1;
+    if (a.group !== b.group) return a.group.localeCompare(b.group);
+    return a.concept.localeCompare(b.concept);
+  });
+
+  const exportRows = orderedRows.map((row) => ({
+    seccion: row.section,
+    grupo: row.group,
+    concepto: row.concept,
+    total: sanitizeNumber(row.total)
+  }));
+
+  const periodMovements = exportRows.reduce((acc, row) => acc + Number(row.total || 0), 0);
+
+  let previousBalance = 0;
+  if (payload.dateFrom) {
+    const prevRows = await fetchCashflowConceptTotals(supabaseAdmin, {
+      accountId: payload.accountId,
+      dateFrom: null,
+      dateTo: previousDate(payload.dateFrom),
+      currencyId: payload.currencyId ?? null
+    });
+    previousBalance = prevRows.reduce((acc, row) => acc + Number(row.total || 0), 0);
+  }
+
+  const newBalance = previousBalance + periodMovements;
+
+  return {
+    rows: exportRows,
+    total: periodMovements,
+    balance: 0,
+    extras: [
+      ["Saldo anterior", sanitizeNumber(previousBalance)],
+      ["Movimientos del período", sanitizeNumber(periodMovements)],
+      ["Nuevo saldo", sanitizeNumber(newBalance)]
+    ]
+  };
+}
+
+async function buildReportData(supabaseAdmin: ReturnType<typeof createClient>, payload: ExportPayload): Promise<ExportBuildResult> {
+  if (payload.reportId === "internal_obligations") {
+    return buildInternalObligationsReport(supabaseAdmin, payload);
+  }
+  if (payload.reportId === "cashflow") {
+    return buildCashflowReport(supabaseAdmin, payload);
+  }
+  return buildStandardReport(supabaseAdmin, payload);
 }
 
 Deno.serve(async (req) => {
@@ -98,175 +389,33 @@ Deno.serve(async (req) => {
         }
       );
     }
+
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false }
     });
 
-    const authHeader = req.headers.get("Authorization") || "";
-    const accessToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-    if (!accessToken) {
-      return new Response(JSON.stringify({ success: false, error: "Missing bearer token" }), {
-        headers: { ...corsHeaders, "content-type": "application/json" },
-        status: 401
-      });
-    }
+    await authenticateRequest(supabaseAdmin, req, payload.accountId);
 
-    const {
-      data: { user },
-      error: userError
-    } = await supabaseAdmin.auth.getUser(accessToken);
-    if (userError || !user) {
-      return new Response(JSON.stringify({ success: false, error: `Invalid token: ${userError?.message ?? "unknown"}` }), {
-        headers: { ...corsHeaders, "content-type": "application/json" },
-        status: 401
-      });
-    }
+    const report = await buildReportData(supabaseAdmin, payload);
 
-    const { data: membership, error: membershipError } = await supabaseAdmin
-      .from("usersToAccounts")
-      .select('"userId","accountId"')
-      .eq("userId", user.id)
-      .eq("accountId", payload.accountId)
-      .maybeSingle();
-
-    if (membershipError || !membership) {
-      return new Response(JSON.stringify({ success: false, error: "Forbidden for this account" }), {
-        headers: { ...corsHeaders, "content-type": "application/json" },
-        status: 403
-      });
-    }
-
-    const exportRows: Array<{ id: number; date: string; typeLabel: string; total: number; balance: number }> = [];
-    let totalAmount = 0;
-    let totalBalance = 0;
-
-    if (payload.reportId === "internal_obligations") {
-      let internalQuery = supabaseAdmin
-        .from("transactions")
-        .select('id, date, name, total, balance, "currencyId"')
-        .eq("accountId", payload.accountId)
-        .eq("isInternalObligation", true)
-        .eq("isActive", true)
-        .order("date", { ascending: false });
-
-      if (payload.dateFrom) internalQuery = internalQuery.gte("date", payload.dateFrom);
-      if (payload.dateTo) internalQuery = internalQuery.lte("date", payload.dateTo);
-      if (payload.currencyId != null) internalQuery = internalQuery.eq("currencyId", payload.currencyId);
-
-      const { data: internalRows, error: internalError } = await internalQuery;
-      if (internalError) throw internalError;
-
-      const rows = (internalRows ?? []) as InternalPayableRow[];
-      totalAmount = rows.reduce((acc, row) => acc + Number(row.total || 0), 0);
-      totalBalance = rows.reduce((acc, row) => acc + Number(row.balance || 0), 0);
-      exportRows.push(
-        ...rows.map((row) => ({
-          id: row.id,
-          date: row.date,
-          typeLabel: row.name || "Obligación interna",
-          total: Number(Number(row.total || 0).toFixed(2)),
-          balance: Number(Number(row.balance || 0).toFixed(2))
-        }))
-      );
-    } else if (payload.reportId === "cashflow") {
-      let txQuery = supabaseAdmin
-        .from("transactions")
-        .select('id, date, type, total, isIncomingPayment, isOutcomingPayment, "accountPaymentFormId", "currencyId"')
-        .eq("accountId", payload.accountId)
-        .eq("isActive", true)
-        .order("date", { ascending: false });
-
-      if (payload.dateFrom) txQuery = txQuery.gte("date", payload.dateFrom);
-      if (payload.dateTo) txQuery = txQuery.lte("date", payload.dateTo);
-      if (payload.currencyId != null) txQuery = txQuery.eq("currencyId", payload.currencyId);
-
-      const { data: cashRows, error: cashError } = await txQuery;
-      if (cashError) throw cashError;
-
-      const formIds = Array.from(new Set((cashRows ?? []).map((row) => row.accountPaymentFormId).filter(Boolean)));
-      const { data: forms } = formIds.length
-        ? await supabaseAdmin.from("account_payment_forms").select("id, name").in("id", formIds)
-        : { data: [] };
-      const formMap = new Map((forms ?? []).map((f) => [f.id, f.name]));
-
-      const grouped = new Map<number, { total: number; balance: number; label: string }>();
-      for (const row of cashRows ?? []) {
-        if (!row.accountPaymentFormId) continue;
-        if (!(row.isIncomingPayment || row.isOutcomingPayment || row.type === 2)) continue;
-        const signedAmount = row.isIncomingPayment ? Math.abs(Number(row.total || 0)) : -Math.abs(Number(row.total || 0));
-        const current = grouped.get(row.accountPaymentFormId) ?? {
-          total: 0,
-          balance: 0,
-          label: formMap.get(row.accountPaymentFormId) ?? `#${row.accountPaymentFormId}`
-        };
-        current.total += signedAmount;
-        grouped.set(row.accountPaymentFormId, current);
-      }
-
-      const rows = Array.from(grouped.entries()).map(([id, values]) => ({
-        id,
-        date: "",
-        typeLabel: values.label,
-        total: Number(values.total.toFixed(2)),
-        balance: 0
-      }));
-      totalAmount = rows.reduce((acc, row) => acc + Number(row.total || 0), 0);
-      totalBalance = 0;
-      exportRows.push(...rows);
-    } else {
-      let txQuery = supabaseAdmin
-        .from("transactions")
-        .select("id, date, type, total, balance, isAccountPayable, isAccountReceivable, currencyId")
-        .eq("accountId", payload.accountId)
-        .eq("isActive", true)
-        .order("date", { ascending: false });
-
-      if (payload.dateFrom) txQuery = txQuery.gte("date", payload.dateFrom);
-      if (payload.dateTo) txQuery = txQuery.lte("date", payload.dateTo);
-
-      const { data: transactions, error: txError } = await txQuery;
-      if (txError) {
-        throw txError;
-      }
-
-      const txRows = (transactions ?? []) as TxRow[];
-      const filteredByCurrency =
-        payload.currencyId != null ? txRows.filter((tx) => Number(tx.currencyId ?? 0) === Number(payload.currencyId)) : txRows;
-      const reportRows = buildReportRows(filteredByCurrency, payload.reportId);
-      totalAmount = reportRows.reduce((acc, row) => acc + Number(row.total || 0), 0);
-      totalBalance = reportRows.reduce((acc, row) => acc + Number(row.balance || 0), 0);
-      exportRows.push(
-        ...reportRows.map((tx) => ({
-          id: tx.id,
-          date: tx.date,
-          typeLabel: txTypeLabel(tx.type),
-          total: Number(Number(tx.total || 0).toFixed(2)),
-          balance: Number(Number(tx.balance || 0).toFixed(2))
-        }))
-      );
-    }
-
-    const metadataSheet = XLSX.utils.aoa_to_sheet([
+    const metadataRows: Array<[string, string | number]> = [
       ["Reporte", reportTitles[payload.reportId]],
       ["Cuenta", payload.accountId],
       ["Generado en", new Date().toISOString()],
-      ["Desde", payload.dateFrom ?? "-"],
-      ["Hasta", payload.dateTo ?? "-"],
+      ["Desde", normalizeDate(payload.dateFrom)],
+      ["Hasta", normalizeDate(payload.dateTo)],
       ["Moneda ID", payload.currencyId ?? "Todas"],
-      ["Registros", exportRows.length],
-      ["Total", Number(totalAmount.toFixed(2))],
-      ["Balance", Number(totalBalance.toFixed(2))]
-    ]);
+      ["Registros", report.rows.length],
+      ["Total", sanitizeNumber(report.total)],
+      ["Balance", sanitizeNumber(report.balance)]
+    ];
 
-    const detailSheet = XLSX.utils.json_to_sheet(
-      exportRows.map((row) => ({
-        id: row.id,
-        fecha: row.date,
-        tipo: row.typeLabel,
-        total: row.total,
-        balance: row.balance
-      }))
-    );
+    if (report.extras?.length) {
+      metadataRows.push(...report.extras);
+    }
+
+    const metadataSheet = XLSX.utils.aoa_to_sheet(metadataRows);
+    const detailSheet = XLSX.utils.json_to_sheet(report.rows);
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, metadataSheet, "Resumen");
@@ -281,10 +430,7 @@ Deno.serve(async (req) => {
       contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       upsert: false
     });
-
-    if (uploadError) {
-      throw uploadError;
-    }
+    if (uploadError) throw uploadError;
 
     const { data: signed, error: signedError } = await supabaseAdmin.storage.from("report-exports").createSignedUrl(filePath, 600);
     if (signedError || !signed?.signedUrl) {
@@ -303,9 +449,10 @@ Deno.serve(async (req) => {
       }
     );
   } catch (error) {
-    return new Response(JSON.stringify({ success: false, error: String(error) }), {
+    const message = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ success: false, error: message }), {
       headers: { ...corsHeaders, "content-type": "application/json" },
-      status: 400
+      status: message.includes("Forbidden") ? 403 : message.includes("Invalid token") || message.includes("Missing bearer token") ? 401 : 400
     });
   }
 });

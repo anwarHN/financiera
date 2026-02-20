@@ -28,7 +28,7 @@ export async function getTransactionsForReports(accountId, { dateFrom, dateTo } 
 export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, currencyId } = {}) {
   let txQuery = supabase
     .from("transactions")
-    .select("id, type, currencyId, isActive, isIncomingPayment, isOutcomingPayment")
+    .select("id, type, currencyId, isActive, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isInternalTransfer")
     .eq("accountId", accountId)
     .eq("isActive", true);
 
@@ -41,7 +41,9 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
 
   const validTransactions = (transactions ?? []).filter((tx) => {
     const type = Number(tx.type);
-    return type === 2 || type === 3 || Boolean(tx.isIncomingPayment) || Boolean(tx.isOutcomingPayment);
+    if (Boolean(tx.isInternalTransfer)) return false;
+    const isCashSale = type === 1 && !Boolean(tx.isAccountReceivable);
+    return type === 2 || type === 3 || isCashSale || Boolean(tx.isIncomingPayment) || Boolean(tx.isOutcomingPayment);
   });
   if (validTransactions.length === 0) return [];
 
@@ -88,7 +90,7 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
     const txMeta = txMetaById.get(Number(detail.transactionId));
     if (!txMeta) continue;
 
-    const flowType = txMeta.type === 3 || txMeta.isIncomingPayment ? "income" : "expense";
+    const flowType = txMeta.type === 3 || txMeta.type === 1 || txMeta.isIncomingPayment ? "income" : "expense";
     const conceptName = detail.concepts?.name || "-";
     const parentConceptId = Number(detail.concepts?.parentConceptId || 0);
     const groupName = groupNameById.get(parentConceptId) || tbdGroupName(flowType);
