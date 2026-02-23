@@ -15,8 +15,17 @@ import { formatDateTime } from "../utils/dateFormat";
 
 const pageSize = 10;
 
+function parseLocalDateInput(value) {
+  if (value instanceof Date) return new Date(value);
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
+  }
+  return new Date(value);
+}
+
 function startOfWeek(date) {
-  const copy = new Date(date);
+  const copy = parseLocalDateInput(date);
   const day = copy.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   copy.setDate(copy.getDate() + diff);
@@ -25,7 +34,7 @@ function startOfWeek(date) {
 }
 
 function startOfMonth(date) {
-  const copy = new Date(date);
+  const copy = parseLocalDateInput(date);
   copy.setDate(1);
   copy.setHours(0, 0, 0, 0);
   return copy;
@@ -38,7 +47,7 @@ function endOfMonth(date) {
 }
 
 function buildRange(anchorDate, rangeMode) {
-  const base = new Date(anchorDate);
+  const base = parseLocalDateInput(anchorDate);
   if (rangeMode === "day") {
     const start = new Date(base);
     start.setHours(0, 0, 0, 0);
@@ -269,7 +278,7 @@ function AppointmentsPage({ mode = "calendar" }) {
   };
 
   const defaultStart = useMemo(() => {
-    const base = createDraftStart ? new Date(createDraftStart) : new Date(anchorDate);
+    const base = createDraftStart ? new Date(createDraftStart) : parseLocalDateInput(anchorDate);
     base.setHours(9, 0, 0, 0);
     if (createDraftStart) {
       return createDraftStart.toISOString();
@@ -278,7 +287,7 @@ function AppointmentsPage({ mode = "calendar" }) {
   }, [anchorDate, createDraftStart]);
 
   const defaultEnd = useMemo(() => {
-    const base = createDraftStart ? new Date(createDraftStart) : new Date(anchorDate);
+    const base = createDraftStart ? new Date(createDraftStart) : parseLocalDateInput(anchorDate);
     if (createDraftStart) {
       base.setMinutes(base.getMinutes() + 60, 0, 0);
     } else {

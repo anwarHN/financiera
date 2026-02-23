@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef } from "react";
 
 function toDate(value) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
+  }
   return value instanceof Date ? new Date(value) : new Date(value);
 }
 
@@ -79,7 +83,7 @@ function buildWeekDays(anchorDate) {
 }
 
 function buildMonthCells(anchorDate) {
-  const monthStart = startOfDay(new Date(anchorDate));
+  const monthStart = startOfDay(toDate(anchorDate));
   monthStart.setDate(1);
   const monthEnd = startOfDay(new Date(monthStart));
   monthEnd.setMonth(monthEnd.getMonth() + 1, 0);
@@ -94,7 +98,7 @@ function buildMonthCells(anchorDate) {
 }
 
 function buildYearMonths(anchorDate) {
-  const start = startOfDay(new Date(anchorDate));
+  const start = startOfDay(toDate(anchorDate));
   start.setMonth(0, 1);
   return Array.from({ length: 12 }, (_, i) => {
     const d = new Date(start);
