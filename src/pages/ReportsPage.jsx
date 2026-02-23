@@ -4,7 +4,13 @@ import { useI18n } from "../contexts/I18nContext";
 import { getBudgetExecutionReport, getProjectExecutionReport, listBudgets } from "../services/budgetsService";
 import { listCurrencies } from "../services/currenciesService";
 import { listProjects } from "../services/projectsService";
-import { exportReportXlsx, getCashflowBankBalances, getCashflowConceptTotals, getTransactionsForReports } from "../services/reportsService";
+import {
+  exportReportXlsx,
+  getCashflowBankBalances,
+  getCashflowConceptTotals,
+  getEmployeeAbsenceTotals,
+  getTransactionsForReports
+} from "../services/reportsService";
 import { listInternalObligationsForReport } from "../services/transactionsService";
 import { formatDate } from "../utils/dateFormat";
 import { formatNumber } from "../utils/numberFormat";
@@ -17,7 +23,8 @@ const fullReportCatalog = [
   { id: "budget_execution", titleKey: "reports.budgetExecution", filters: ["budget"] },
   { id: "project_execution", titleKey: "reports.projectExecution", filters: ["project", "dateRange"] },
   { id: "expenses", titleKey: "reports.expenses", filters: ["dateRange", "currency"] },
-  { id: "cashflow", titleKey: "reports.cashflow", filters: ["dateRange", "currency"] }
+  { id: "cashflow", titleKey: "reports.cashflow", filters: ["dateRange", "currency"] },
+  { id: "employee_absences", titleKey: "reports.employeeAbsences", filters: ["dateRange"] }
 ];
 
 function ReportsPage() {
@@ -201,6 +208,18 @@ function ReportsPage() {
           newBalance: previousBalance + periodMovements
         });
         setCashflowBankBalances(bankBalances);
+      } else if (selectedReport === "employee_absences") {
+        const rows = await getEmployeeAbsenceTotals(account.accountId, {
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined
+        });
+        setResults(rows);
+        setCashflowSummary({
+          previousBalance: 0,
+          periodMovements: 0,
+          newBalance: 0
+        });
+        setCashflowBankBalances([]);
       } else {
         const transactions = await getTransactionsForReports(account.accountId, {
           dateFrom: filters.dateFrom || undefined,
@@ -285,6 +304,9 @@ function ReportsPage() {
   }, [filters, currencies, budgets, projects, t, language]);
 
   const total = useMemo(() => {
+    if (selectedReport === "employee_absences") {
+      return results.reduce((acc, item) => acc + Number(item.totalAbsences || 0), 0);
+    }
     if (selectedReport === "cashflow") {
       return results.reduce((acc, section) => acc + Number(section.total || 0), 0);
     }
@@ -469,6 +491,11 @@ function ReportsPage() {
                   {t("transactions.additionalCharges")}: {formatNumber(salesAdditionalChargesTotal)}
                 </p>
               ) : null}
+              {selectedReport === "employee_absences" ? (
+                <p>
+                  {t("transactions.total")}: {formatNumber(total, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </p>
+              ) : null}
               {(selectedReport === "receivable" ||
                 selectedReport === "payable" ||
                 selectedReport === "internal_obligations") && (
@@ -540,6 +567,11 @@ function ReportsPage() {
                   <th>{t("transactions.concept")}</th>
                   <th className="num-col">{t("transactions.total")}</th>
                 </tr>
+              ) : selectedReport === "employee_absences" ? (
+                <tr>
+                  <th>{t("appointments.employee")}</th>
+                  <th className="num-col">{t("transactions.total")}</th>
+                </tr>
               ) : (
                 <tr>
                   <th className="num-col">ID</th>
@@ -553,7 +585,9 @@ function ReportsPage() {
             <tbody>
               {(selectedReport === "cashflow" ? cashflowRowCount === 0 : rowsWithTypeLabel.length === 0) ? (
                 <tr>
-                  <td colSpan={budgetExecutionTotals ? 4 : selectedReport === "cashflow" ? 4 : 5}>{t("common.empty")}</td>
+                  <td colSpan={budgetExecutionTotals ? 4 : selectedReport === "cashflow" ? 4 : selectedReport === "employee_absences" ? 2 : 5}>
+                    {t("common.empty")}
+                  </td>
                 </tr>
               ) : budgetExecutionTotals ? (
                 rowsWithTypeLabel.map((tx) => (
@@ -591,6 +625,15 @@ function ReportsPage() {
                     ))
                   ])
                 ])
+              ) : selectedReport === "employee_absences" ? (
+                results.map((row) => (
+                  <tr key={`employee-absence-${row.employeeId}`}>
+                    <td>{row.employeeName || "-"}</td>
+                    <td className="num-col">
+                      {formatNumber(row.totalAbsences || 0, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </td>
+                  </tr>
+                ))
               ) : (
                 rowsWithTypeLabel.map((tx) => (
                   <tr key={`${selectedReport}-${tx.id}-${tx.date}`}>

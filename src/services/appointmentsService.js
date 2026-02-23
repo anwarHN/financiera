@@ -6,8 +6,9 @@ const selectColumns =
 export async function listAppointments({ accountId, dateFrom, dateTo, employeeId }) {
   let query = supabase.from("appointments").select(selectColumns).eq("accountId", accountId).order("startsAt", { ascending: true });
 
-  if (dateFrom) query = query.gte("startsAt", dateFrom);
-  if (dateTo) query = query.lte("endsAt", dateTo);
+  // Include appointments that overlap the requested range.
+  if (dateTo) query = query.lte("startsAt", dateTo);
+  if (dateFrom) query = query.gte("endsAt", dateFrom);
   if (employeeId) query = query.eq("employeeId", employeeId);
 
   const { data, error } = await query;
@@ -32,4 +33,3 @@ export async function getAppointmentById(id) {
   if (error) throw error;
   return data;
 }
-

@@ -129,7 +129,7 @@ begin
       true,
       true,
       true,
-      '{"dashboard":{"read":true,"create":true,"update":true},"transactions":{"read":true,"create":true,"update":true},"concepts":{"read":true,"create":true,"update":true},"clients":{"read":true,"create":true,"update":true},"providers":{"read":true,"create":true,"update":true},"employees":{"read":true,"create":true,"update":true},"appointments":{"read":true,"create":true,"update":true},"paymentForms":{"read":true,"create":true,"update":true},"planning":{"read":true,"create":true,"update":true},"catalogs":{"read":true,"create":true,"update":true},"reports":{"read":true,"create":true,"update":true},"reportAccess":{"sales":true,"receivable":true,"payable":true,"internal_obligations":true,"budget_execution":true,"project_execution":true,"expenses":true,"cashflow":true}}'::jsonb,
+      '{"dashboard":{"read":true,"create":true,"update":true},"transactions":{"read":true,"create":true,"update":true},"concepts":{"read":true,"create":true,"update":true},"clients":{"read":true,"create":true,"update":true},"providers":{"read":true,"create":true,"update":true},"employees":{"read":true,"create":true,"update":true},"appointments":{"read":true,"create":true,"update":true},"paymentForms":{"read":true,"create":true,"update":true},"planning":{"read":true,"create":true,"update":true},"catalogs":{"read":true,"create":true,"update":true},"reports":{"read":true,"create":true,"update":true},"reportAccess":{"sales":true,"receivable":true,"payable":true,"internal_obligations":true,"budget_execution":true,"project_execution":true,"expenses":true,"cashflow":true,"employee_absences":true}}'::jsonb,
       new.id
     )
     returning id into admin_profile_id;

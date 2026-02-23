@@ -42,7 +42,8 @@ export const translations = {
       searchTypeToStart: "Escribe al menos 2 caracteres para buscar",
       searchNoResults: "No hay resultados",
       genericLoadError: "No fue posible cargar los datos",
-      genericSaveError: "No fue posible guardar los cambios"
+      genericSaveError: "No fue posible guardar los cambios",
+      deactivate: "Anular"
     },
     topbar: {
       apps: "Aplicaciones",
@@ -212,7 +213,9 @@ export const translations = {
       allResources: "Todos",
       anchorDate: "Fecha base",
       invalidRange: "La fecha/hora de fin debe ser mayor a la de inicio.",
-      unavailableWarning: "El empleado no tiene disponibilidad en la fecha/hora seleccionada."
+      unavailableWarning: "El empleado no tiene disponibilidad en la fecha/hora seleccionada.",
+      unavailableCellLegend: "Celda gris: empleado no disponible.",
+      absenceCellLegend: "Celda roja: ausencia registrada."
     },
     persons: {
       title: "Clientes y proveedores",
@@ -317,6 +320,7 @@ export const translations = {
       accountsPayable: "Cuentas por pagar",
       internalObligations: "Obligaciones internas",
       cashflow: "Flujo de caja",
+      employeeAbsences: "Ausencias por empleado",
       step1: "1. Selecciona el reporte",
       step2: "2. Define filtros",
       step3: "3. Resultado",
@@ -584,7 +588,8 @@ export const translations = {
       searchTypeToStart: "Type at least 2 characters to search",
       searchNoResults: "No results found",
       genericLoadError: "Could not load data",
-      genericSaveError: "Could not save changes"
+      genericSaveError: "Could not save changes",
+      deactivate: "Void"
     },
     topbar: {
       apps: "Applications",
@@ -753,7 +758,9 @@ export const translations = {
       allResources: "All",
       anchorDate: "Base date",
       invalidRange: "End date/time must be greater than start date/time.",
-      unavailableWarning: "The employee is not available for the selected date/time."
+      unavailableWarning: "The employee is not available for the selected date/time.",
+      unavailableCellLegend: "Gray cell: employee unavailable.",
+      absenceCellLegend: "Red cell: recorded absence."
     },
     persons: {
       title: "Clients and suppliers",
@@ -858,6 +865,7 @@ export const translations = {
       accountsPayable: "Accounts payable",
       internalObligations: "Internal obligations",
       cashflow: "Cashflow",
+      employeeAbsences: "Employee absences",
       step1: "1. Select report",
       step2: "2. Set filters",
       step3: "3. Result",

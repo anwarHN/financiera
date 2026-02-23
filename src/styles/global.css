@@ -1358,6 +1358,38 @@ button:disabled,
   min-height: 0;
 }
 
+.appointments-legend {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 0.55rem;
+}
+
+.appointments-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.appointments-legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.appointments-legend-swatch.unavailable {
+  background: color-mix(in oklab, #9ca3af 28%, transparent);
+}
+
+.appointments-legend-swatch.absence {
+  background: color-mix(in oklab, #c026d3 22%, transparent);
+}
+
 .appointments-day-grid {
   display: grid;
   gap: 0.35rem;

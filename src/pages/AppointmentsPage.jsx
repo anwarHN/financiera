@@ -99,7 +99,7 @@ function AppointmentsPage({ mode = "calendar" }) {
 
   const isCreateModalOpen = searchParams.get("create") === "1" && canCreate;
   const rangeMode = searchParams.get("range") || "week";
-  const anchorDate = searchParams.get("date") || dateToInput(new Date());
+  const anchorDate = searchParams.get("date") || dateToInput(startOfWeek(new Date()));
   const resourceFilter = searchParams.get("employeeId") || "";
 
   useEffect(() => {
@@ -118,7 +118,7 @@ function AppointmentsPage({ mode = "calendar" }) {
     }
 
     if (!next.get("date")) {
-      next.set("date", dateToInput(new Date()));
+      next.set("date", dateToInput(startOfWeek(new Date())));
       hasChanges = true;
     }
 
@@ -133,7 +133,7 @@ function AppointmentsPage({ mode = "calendar" }) {
     if (hasChanges) {
       setSearchParams(next, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, mode]);
 
   const range = useMemo(() => buildRange(anchorDate, rangeMode), [anchorDate, rangeMode]);
   const allEmployeeResources = useMemo(
@@ -142,9 +142,10 @@ function AppointmentsPage({ mode = "calendar" }) {
   );
 
   const filteredAppointments = useMemo(() => {
+    if (mode === "table") return appointments;
     if (!resourceFilter) return appointments;
     return appointments.filter((item) => Number(item.employeeId) === Number(resourceFilter));
-  }, [appointments, resourceFilter]);
+  }, [appointments, resourceFilter, mode]);
   const groupedResources = useMemo(() => {
     if (!resourceFilter) return allEmployeeResources;
     return allEmployeeResources.filter((resource) => Number(resource.employeeId) === Number(resourceFilter));
@@ -170,8 +171,8 @@ function AppointmentsPage({ mode = "calendar" }) {
       const [appointmentsData, employeesData, availabilityData, absencesData] = await Promise.all([
         listAppointments({
           accountId: account.accountId,
-          dateFrom: range.start.toISOString(),
-          dateTo: range.end.toISOString()
+          dateFrom: mode === "table" ? undefined : range.start.toISOString(),
+          dateTo: mode === "table" ? undefined : range.end.toISOString()
         }),
         listEmployees(account.accountId),
         listEmployeeAvailability(account.accountId),
@@ -381,6 +382,18 @@ function AppointmentsPage({ mode = "calendar" }) {
             </>
           ) : (
             <div className={`appointments-viewport ${mode === "by-employee" ? "is-by-employee" : ""}`.trim()}>
+              {mode === "by-employee" ? (
+                <div className="appointments-legend">
+                  <span className="appointments-legend-item">
+                    <span className="appointments-legend-swatch unavailable" />
+                    {t("appointments.unavailableCellLegend")}
+                  </span>
+                  <span className="appointments-legend-item">
+                    <span className="appointments-legend-swatch absence" />
+                    {t("appointments.absenceCellLegend")}
+                  </span>
+                </div>
+              ) : null}
               {mode === "by-employee" ? (
                 <AppointmentsCalendar
                   groupedByResource

@@ -3,7 +3,7 @@ import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 
 interface ExportPayload {
   accountId: number;
-  reportId: "sales" | "receivable" | "payable" | "internal_obligations" | "expenses" | "cashflow";
+  reportId: "sales" | "receivable" | "payable" | "internal_obligations" | "expenses" | "cashflow" | "employee_absences";
   dateFrom?: string | null;
   dateTo?: string | null;
   currencyId?: number | null;
@@ -72,7 +72,8 @@ const reportTitles: Record<ExportPayload["reportId"], string> = {
   payable: "Cuentas por pagar",
   internal_obligations: "Obligaciones internas",
   expenses: "Gastos",
-  cashflow: "Flujo de caja"
+  cashflow: "Flujo de caja",
+  employee_absences: "Ausencias por empleado"
 };
 
 const corsHeaders = {
@@ -344,12 +345,59 @@ async function buildCashflowReport(
   };
 }
 
+async function buildEmployeeAbsencesReport(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payload: ExportPayload
+): Promise<ExportBuildResult> {
+  let query = supabaseAdmin
+    .from("employee_absences")
+    .select('id, "employeeId", "dateFrom", "dateTo", "isActive", employes(name)')
+    .eq("accountId", payload.accountId)
+    .eq("isActive", true);
+
+  if (payload.dateFrom) query = query.gte("dateTo", payload.dateFrom);
+  if (payload.dateTo) query = query.lte("dateFrom", payload.dateTo);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const grouped = new Map<string, { employeeId: number; employeeName: string; totalAbsences: number }>();
+  (data ?? []).forEach((row) => {
+    const employeeId = Number(row.employeeId || 0);
+    const employeeName = row.employes?.name || "-";
+    const key = `${employeeId}-${employeeName}`;
+    const current = grouped.get(key) || {
+      employeeId,
+      employeeName,
+      totalAbsences: 0
+    };
+    current.totalAbsences += 1;
+    grouped.set(key, current);
+  });
+
+  const rows = Array.from(grouped.values())
+    .sort((a, b) => a.employeeName.localeCompare(b.employeeName))
+    .map((row) => ({
+      empleado: row.employeeName,
+      total_ausencias: row.totalAbsences
+    }));
+
+  return {
+    rows,
+    total: rows.reduce((acc, row) => acc + Number(row.total_ausencias || 0), 0),
+    balance: 0
+  };
+}
+
 async function buildReportData(supabaseAdmin: ReturnType<typeof createClient>, payload: ExportPayload): Promise<ExportBuildResult> {
   if (payload.reportId === "internal_obligations") {
     return buildInternalObligationsReport(supabaseAdmin, payload);
   }
   if (payload.reportId === "cashflow") {
     return buildCashflowReport(supabaseAdmin, payload);
+  }
+  if (payload.reportId === "employee_absences") {
+    return buildEmployeeAbsencesReport(supabaseAdmin, payload);
   }
   return buildStandardReport(supabaseAdmin, payload);
 }

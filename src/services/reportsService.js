@@ -150,6 +150,36 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
   }));
 }
 
+export async function getEmployeeAbsenceTotals(accountId, { dateFrom, dateTo } = {}) {
+  let query = supabase
+    .from("employee_absences")
+    .select('id, employeeId, dateFrom, dateTo, isActive, employes(name)')
+    .eq("accountId", accountId)
+    .eq("isActive", true);
+
+  if (dateFrom) query = query.gte("dateTo", dateFrom);
+  if (dateTo) query = query.lte("dateFrom", dateTo);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const grouped = new Map();
+  (data ?? []).forEach((row) => {
+    const employeeId = Number(row.employeeId || 0);
+    const employeeName = row.employes?.name || "-";
+    const key = `${employeeId}-${employeeName}`;
+    const current = grouped.get(key) || {
+      employeeId,
+      employeeName,
+      totalAbsences: 0
+    };
+    current.totalAbsences += 1;
+    grouped.set(key, current);
+  });
+
+  return Array.from(grouped.values()).sort((a, b) => a.employeeName.localeCompare(b.employeeName));
+}
+
 export async function exportReportXlsx({
   accountId,
   reportId,
