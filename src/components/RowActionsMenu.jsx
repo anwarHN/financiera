@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { FiMoreVertical } from "react-icons/fi";
+import { FiChevronDown } from "react-icons/fi";
 
 function RowActionsMenu({ actions }) {
+  const visibleActions = (actions ?? []).filter(Boolean);
   const [isOpen, setIsOpen] = useState(false);
   const wrapRef = useRef(null);
 
@@ -17,15 +18,19 @@ function RowActionsMenu({ actions }) {
     return () => window.removeEventListener("click", onClickOutside);
   }, []);
 
+  if (visibleActions.length === 0) {
+    return null;
+  }
+
   return (
     <div className="row-actions-wrap" ref={wrapRef}>
       <button type="button" className="row-menu-btn" onClick={() => setIsOpen((prev) => !prev)} aria-label="Actions">
-        <FiMoreVertical />
+        <FiChevronDown />
       </button>
 
       {isOpen && (
         <div className="row-menu-dropdown">
-          {actions.map((action) =>
+          {visibleActions.map((action) =>
             action.to ? (
               <Link key={action.key} to={action.to} className={`row-menu-item ${action.danger ? "danger" : ""}`}>
                 {action.label}

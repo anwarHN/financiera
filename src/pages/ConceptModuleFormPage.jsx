@@ -275,7 +275,6 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
                   placeholder={t("transactions.additionalCharges")}
                   value={form.additionalCharges}
                   onChange={handleChange}
-                  required
                 />
               </>
             )}

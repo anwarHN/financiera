@@ -1,20 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
-import dayjs from "dayjs";
-import "dayjs/locale/es";
-import { Scheduler, SchedulerData, ViewType, DATE_FORMAT, wrapperFun } from "react-big-schedule";
-import "react-big-schedule/dist/css/style.css";
 import { useSearchParams } from "react-router-dom";
 import Pagination from "../components/Pagination";
 import AppointmentFormModal from "../components/AppointmentFormModal";
+import AppointmentsCalendar from "../components/AppointmentsCalendar";
 import RowActionsMenu from "../components/RowActionsMenu";
+import StatusBadge from "../components/StatusBadge";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import { useModulePermissions } from "../hooks/useModulePermissions";
 import { createAppointment, listAppointments, updateAppointment } from "../services/appointmentsService";
+import { listEmployeeAbsences, listEmployeeAvailability } from "../services/employeeScheduleService";
 import { listEmployees } from "../services/employeesService";
 import { formatDateTime } from "../utils/dateFormat";
 
 const pageSize = 10;
-const SchedulerWithDnD = wrapperFun(Scheduler);
 
 function startOfWeek(date) {
   const copy = new Date(date);
@@ -22,12 +21,6 @@ function startOfWeek(date) {
   const diff = day === 0 ? -6 : 1 - day;
   copy.setDate(copy.getDate() + diff);
   copy.setHours(0, 0, 0, 0);
-  return copy;
-}
-
-function addDays(date, days) {
-  const copy = new Date(date);
-  copy.setDate(copy.getDate() + days);
   return copy;
 }
 
@@ -53,12 +46,14 @@ function buildRange(anchorDate, rangeMode) {
     end.setHours(23, 59, 59, 999);
     return { start, end };
   }
+
   if (rangeMode === "month") {
     return { start: startOfMonth(base), end: endOfMonth(base) };
   }
 
   const start = startOfWeek(base);
-  const end = addDays(start, 6);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
   end.setHours(23, 59, 59, 999);
   return { start, end };
 }
@@ -83,144 +78,62 @@ function statusClass(status) {
   return "warning";
 }
 
-function statusColor(status) {
-  if (status === "attended") return "#16a34a";
-  if (status === "missed") return "#dc2626";
-  if (status === "canceled") return "#64748b";
-  return "#eab308";
-}
-
-function mapRangeModeToViewType(rangeMode) {
-  if (rangeMode === "day") return ViewType.Day;
-  if (rangeMode === "month") return ViewType.Month;
-  return ViewType.Week;
-}
-
-function mapViewTypeToRangeMode(viewType) {
-  if (viewType === ViewType.Day) return "day";
-  if (viewType === ViewType.Month) return "month";
-  return "week";
-}
-
-function buildSchedulerData({ t, language, rangeMode, anchorDate, resources, events, configOverrides }) {
-  const viewType = mapRangeModeToViewType(rangeMode);
-  const schedulerData = new SchedulerData(anchorDate, viewType, false, false, {
-    schedulerWidth: "100%",
-    schedulerContentHeight: "430px",
-    headerEnabled: true,
-    creatable: false,
-    checkConflict: false,
-    views: [
-      { viewName: t("appointments.rangeDay"), viewType: ViewType.Day, showAgenda: false, isEventPerspective: false },
-      { viewName: t("appointments.rangeWeek"), viewType: ViewType.Week, showAgenda: false, isEventPerspective: false },
-      { viewName: t("appointments.rangeMonth"), viewType: ViewType.Month, showAgenda: false, isEventPerspective: false }
-    ],
-    ...configOverrides
-  });
-
-  schedulerData.setSchedulerLocale(language === "es" ? "es" : "en");
-  schedulerData.setResources(resources);
-  schedulerData.setEvents(events);
-
-  return schedulerData;
-}
-
-function AppointmentsSchedule({
-  t,
-  language,
-  rangeMode,
-  anchorDate,
-  resources,
-  headerResources,
-  appointments,
-  onEdit,
-  onMove,
-  onResizeStart,
-  onResizeEnd,
-  onPrev,
-  onNext,
-  onViewChange,
-  onSelectDate,
-  onChangeResourceFilter,
-  resourceFilter
-}) {
-  const schedulerEvents = useMemo(
-    () =>
-      [...appointments]
-        .filter((item) => Boolean(item.employeeId))
-        .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
-        .map((item) => ({
-          id: item.id,
-          start: dayjs(item.startsAt).format("YYYY-MM-DD HH:mm:ss"),
-          end: dayjs(item.endsAt).format("YYYY-MM-DD HH:mm:ss"),
-          resourceId: `emp-${item.employeeId}`,
-          title: `${item.persons?.name || "-"} | ${item.title}`,
-          bgColor: statusColor(item.status)
-        })),
-    [appointments]
-  );
-
-  const rightCustomHeader = (
-    <div className="appointments-scheduler-header appointments-scheduler-header-right">
-      <span>{t("appointments.resourceFilter")}</span>
-      <select value={resourceFilter} onChange={(event) => onChangeResourceFilter(event.target.value)}>
-        <option value="">{`-- ${t("appointments.allResources")} --`}</option>
-        {headerResources.map((resource) => (
-          <option key={resource.id} value={resource.employeeId}>
-            {resource.name}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-
-  const schedulerData = useMemo(
-    () =>
-      buildSchedulerData({
-        t,
-        language,
-        rangeMode,
-        anchorDate,
-        resources,
-        events: schedulerEvents
-      }),
-    [t, language, rangeMode, anchorDate, resources, schedulerEvents]
-  );
-
-  return (
-    <div className="appointments-scheduler-wrap">
-      <SchedulerWithDnD
-        schedulerData={schedulerData}
-        prevClick={onPrev}
-        nextClick={onNext}
-        onViewChange={onViewChange}
-        onSelectDate={onSelectDate}
-        rightCustomHeader={rightCustomHeader}
-        eventItemClick={onEdit}
-        moveEvent={onMove}
-        updateEventStart={onResizeStart}
-        updateEventEnd={onResizeEnd}
-      />
-    </div>
-  );
-}
-
 function AppointmentsPage({ mode = "calendar" }) {
   const { t, language } = useI18n();
   const { account, user } = useAuth();
+  const { canCreate, canUpdate } = useModulePermissions("appointments");
   const [searchParams, setSearchParams] = useSearchParams();
   const [appointments, setAppointments] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [availabilityRows, setAvailabilityRows] = useState([]);
+  const [absenceRows, setAbsenceRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [editingItem, setEditingItem] = useState(null);
+  const [createDraftStart, setCreateDraftStart] = useState(null);
+  const [createDraftEmployeeId, setCreateDraftEmployeeId] = useState("");
+  const [createDraftEmployeeName, setCreateDraftEmployeeName] = useState("");
+  const [createAvailabilityAlert, setCreateAvailabilityAlert] = useState("");
 
-  const isCreateModalOpen = searchParams.get("create") === "1";
+  const isCreateModalOpen = searchParams.get("create") === "1" && canCreate;
   const rangeMode = searchParams.get("range") || "week";
   const anchorDate = searchParams.get("date") || dateToInput(new Date());
   const resourceFilter = searchParams.get("employeeId") || "";
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    let hasChanges = false;
+
+    if (!next.get("range")) {
+      next.set("range", "week");
+      hasChanges = true;
+    }
+
+    const range = next.get("range");
+    if (range === "year") {
+      next.set("range", "month");
+      hasChanges = true;
+    }
+
+    if (!next.get("date")) {
+      next.set("date", dateToInput(new Date()));
+      hasChanges = true;
+    }
+
+    if (mode === "by-employee") {
+      const groupedRange = next.get("range");
+      if (groupedRange !== "week" && groupedRange !== "month") {
+        next.set("range", "week");
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const range = useMemo(() => buildRange(anchorDate, rangeMode), [anchorDate, rangeMode]);
   const allEmployeeResources = useMemo(
@@ -228,15 +141,14 @@ function AppointmentsPage({ mode = "calendar" }) {
     [employees]
   );
 
-  const resources = useMemo(() => {
-    if (!resourceFilter) return allEmployeeResources;
-    return allEmployeeResources.filter((item) => item.employeeId === Number(resourceFilter));
-  }, [allEmployeeResources, resourceFilter]);
-
   const filteredAppointments = useMemo(() => {
     if (!resourceFilter) return appointments;
     return appointments.filter((item) => Number(item.employeeId) === Number(resourceFilter));
   }, [appointments, resourceFilter]);
+  const groupedResources = useMemo(() => {
+    if (!resourceFilter) return allEmployeeResources;
+    return allEmployeeResources.filter((resource) => Number(resource.employeeId) === Number(resourceFilter));
+  }, [allEmployeeResources, resourceFilter]);
 
   const paginatedTableRows = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -255,16 +167,24 @@ function AppointmentsPage({ mode = "calendar" }) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [appointmentsData, employeesData] = await Promise.all([
+      const [appointmentsData, employeesData, availabilityData, absencesData] = await Promise.all([
         listAppointments({
           accountId: account.accountId,
           dateFrom: range.start.toISOString(),
           dateTo: range.end.toISOString()
         }),
-        listEmployees(account.accountId)
+        listEmployees(account.accountId),
+        listEmployeeAvailability(account.accountId),
+        listEmployeeAbsences(account.accountId, {
+          dateFrom: range.start.toISOString().slice(0, 10),
+          dateTo: range.end.toISOString().slice(0, 10),
+          includeInactive: false
+        })
       ]);
       setAppointments(appointmentsData);
       setEmployees(employeesData);
+      setAvailabilityRows(availabilityData);
+      setAbsenceRows(absencesData);
       setError("");
     } catch {
       setError(t("common.genericLoadError"));
@@ -283,6 +203,24 @@ function AppointmentsPage({ mode = "calendar" }) {
   const closeCreate = () => {
     const next = new URLSearchParams(searchParams);
     next.delete("create");
+    setSearchParams(next);
+    setCreateDraftStart(null);
+    setCreateDraftEmployeeId("");
+    setCreateDraftEmployeeName("");
+    setCreateAvailabilityAlert("");
+  };
+
+  const openCreateAt = (startsAtDate, context = null) => {
+    if (!canCreate) return;
+    setEditingItem(null);
+    setCreateDraftStart(new Date(startsAtDate));
+    const employeeId = context?.employeeId ? String(context.employeeId) : "";
+    setCreateDraftEmployeeId(employeeId);
+    const employeeName = employeeId ? employees.find((item) => String(item.id) === employeeId)?.name || "" : "";
+    setCreateDraftEmployeeName(employeeName);
+    setCreateAvailabilityAlert(context?.isUnavailable ? t("appointments.unavailableWarning") : "");
+    const next = new URLSearchParams(searchParams);
+    next.set("create", "1");
     setSearchParams(next);
   };
 
@@ -308,39 +246,6 @@ function AppointmentsPage({ mode = "calendar" }) {
     }
   };
 
-  const findAppointmentByEvent = (event) => {
-    const eventId = Number(event?.id);
-    return appointments.find((item) => Number(item.id) === eventId) ?? null;
-  };
-
-  const handleEditFromScheduler = (_, event) => {
-    const row = findAppointmentByEvent(event);
-    if (row) setEditingItem(row);
-  };
-
-  const updateFromScheduler = async ({ event, slotId, newStart, newEnd, mode: updateMode }) => {
-    const row = findAppointmentByEvent(event);
-    if (!row) return;
-
-    const employeeId = slotId === undefined ? row.employeeId : Number(String(slotId).replace("emp-", ""));
-
-    const payload = {
-      employeeId,
-      startsAt: newStart ? dayjs(newStart).toISOString() : row.startsAt,
-      endsAt: newEnd ? dayjs(newEnd).toISOString() : row.endsAt
-    };
-
-    try {
-      setSaving(true);
-      await updateAppointment(row.id, payload);
-      await loadData();
-    } catch {
-      setError(updateMode === "move" ? t("common.genericSaveError") : t("common.genericSaveError"));
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleToggleStatus = async (row) => {
     try {
       setSaving(true);
@@ -354,43 +259,79 @@ function AppointmentsPage({ mode = "calendar" }) {
     }
   };
 
-  const handleSchedulerPrev = (schedulerData) => {
-    schedulerData.prev();
-    setParam("date", schedulerData.startDate.format(DATE_FORMAT));
-  };
-
-  const handleSchedulerNext = (schedulerData) => {
-    schedulerData.next();
-    setParam("date", schedulerData.startDate.format(DATE_FORMAT));
-  };
-
-  const handleSchedulerViewChange = (_, view) => {
-    setParam("range", mapViewTypeToRangeMode(view.viewType));
-  };
-
-  const handleSchedulerSelectDate = (_, date) => {
-    setParam("date", dayjs(date).format(DATE_FORMAT));
+  const shiftRangeDate = (direction) => {
+    const base = new Date(`${anchorDate}T00:00:00`);
+    if (rangeMode === "day") base.setDate(base.getDate() + direction);
+    else if (rangeMode === "month") base.setMonth(base.getMonth() + direction);
+    else base.setDate(base.getDate() + 7 * direction);
+    setParam("date", dateToInput(base));
   };
 
   const defaultStart = useMemo(() => {
-    const base = new Date(anchorDate);
+    const base = createDraftStart ? new Date(createDraftStart) : new Date(anchorDate);
     base.setHours(9, 0, 0, 0);
+    if (createDraftStart) {
+      return createDraftStart.toISOString();
+    }
     return base.toISOString();
-  }, [anchorDate]);
+  }, [anchorDate, createDraftStart]);
 
   const defaultEnd = useMemo(() => {
-    const base = new Date(anchorDate);
-    base.setHours(10, 0, 0, 0);
+    const base = createDraftStart ? new Date(createDraftStart) : new Date(anchorDate);
+    if (createDraftStart) {
+      base.setMinutes(base.getMinutes() + 60, 0, 0);
+    } else {
+      base.setHours(10, 0, 0, 0);
+    }
     return base.toISOString();
-  }, [anchorDate]);
+  }, [anchorDate, createDraftStart]);
+
+  const showCalendarControls = mode !== "table";
 
   return (
-    <div className="module-page">
+    <div className={`module-page appointments-module-page ${mode === "by-employee" ? "is-by-employee" : ""}`.trim()}>
       <h1>{t("appointments.title")}</h1>
       {error ? <p className="error-text">{error}</p> : null}
 
       <div className="appointments-layout">
         <section className="appointments-content-pane">
+          {showCalendarControls ? (
+            <div className="appointments-shared-controls">
+              <div className="appointments-shared-controls-group">
+                {mode !== "by-employee" ? (
+                  <button type="button" className={`action-btn ${rangeMode === "day" ? "main" : ""}`} onClick={() => setParam("range", "day")}>
+                    {t("appointments.rangeDay")}
+                  </button>
+                ) : null}
+                <button type="button" className={`action-btn ${rangeMode === "week" ? "main" : ""}`} onClick={() => setParam("range", "week")}>
+                  {t("appointments.rangeWeek")}
+                </button>
+                <button type="button" className={`action-btn ${rangeMode === "month" ? "main" : ""}`} onClick={() => setParam("range", "month")}>
+                  {t("appointments.rangeMonth")}
+                </button>
+              </div>
+              <div className="appointments-shared-controls-group">
+                {mode === "calendar" || mode === "by-employee" ? (
+                  <select value={resourceFilter} onChange={(event) => setParam("employeeId", event.target.value)}>
+                    <option value="">{`-- ${t("appointments.allResources")} --`}</option>
+                    {allEmployeeResources.map((resource) => (
+                      <option key={resource.id} value={resource.employeeId}>
+                        {resource.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+                <button type="button" className="action-btn" onClick={() => shiftRangeDate(-1)}>
+                  {t("common.previous")}
+                </button>
+                <input type="date" value={anchorDate} onChange={(event) => setParam("date", event.target.value)} />
+                <button type="button" className="action-btn" onClick={() => shiftRangeDate(1)}>
+                  {t("common.next")}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           {loading ? (
             <p>{t("common.loading")}</p>
           ) : mode === "table" ? (
@@ -416,21 +357,19 @@ function AppointmentsPage({ mode = "calendar" }) {
                       <td>{row.employes?.name || "-"}</td>
                       <td>{row.title}</td>
                       <td>
-                        <span className={`status-pill ${statusClass(row.status)}`}>{statusLabel(t, row.status)}</span>
+                        <StatusBadge tone={statusClass(row.status)}>{statusLabel(t, row.status)}</StatusBadge>
                       </td>
                       <td className="table-actions">
                         <RowActionsMenu
                           actions={[
-                            {
-                              key: "edit",
-                              label: t("common.edit"),
-                              onClick: () => setEditingItem(row)
-                            },
-                            {
+                            ...(canUpdate ? [{ key: "edit", label: t("common.edit"), onClick: () => setEditingItem(row) }] : []),
+                            ...(canUpdate
+                              ? [{
                               key: "toggle-status",
                               label: row.status === "attended" ? t("appointments.markPending") : t("appointments.markAttended"),
                               onClick: () => handleToggleStatus(row)
-                            }
+                            }]
+                              : [])
                           ]}
                         />
                       </td>
@@ -440,74 +379,50 @@ function AppointmentsPage({ mode = "calendar" }) {
               </table>
               <Pagination page={page} pageSize={pageSize} totalItems={filteredAppointments.length} onPageChange={setPage} />
             </>
-          ) : mode === "by-employee" ? (
-            <div className="appointments-cards-grid">
-              {resources.map((resource) => (
-                <section key={resource.id} className="generic-panel appointments-resource-column">
-                  <h3>{resource.name}</h3>
-                  <AppointmentsSchedule
-                    t={t}
-                    language={language}
-                    rangeMode={rangeMode}
-                    anchorDate={anchorDate}
-                    resources={[resource]}
-                    headerResources={allEmployeeResources}
-                    appointments={filteredAppointments}
-                    onEdit={handleEditFromScheduler}
-                    onMove={(schedulerData, event, slotId, _slotName, newStart, newEnd) =>
-                      updateFromScheduler({ schedulerData, event, slotId, newStart, newEnd, mode: "move" })
-                    }
-                    onResizeStart={(schedulerData, event, newStart) =>
-                      updateFromScheduler({ schedulerData, event, slotId: event.resourceId, newStart, mode: "resize-start" })
-                    }
-                    onResizeEnd={(schedulerData, event, newEnd) =>
-                      updateFromScheduler({ schedulerData, event, slotId: event.resourceId, newEnd, mode: "resize-end" })
-                    }
-                    onPrev={handleSchedulerPrev}
-                    onNext={handleSchedulerNext}
-                    onViewChange={handleSchedulerViewChange}
-                    onSelectDate={handleSchedulerSelectDate}
-                    onChangeResourceFilter={(value) => setParam("employeeId", value)}
-                    resourceFilter={resourceFilter}
-                  />
-                </section>
-              ))}
-            </div>
           ) : (
-            <AppointmentsSchedule
-              t={t}
-              language={language}
-              rangeMode={rangeMode}
-              anchorDate={anchorDate}
-              resources={resources}
-              headerResources={allEmployeeResources}
-              appointments={filteredAppointments}
-              onEdit={handleEditFromScheduler}
-              onMove={(schedulerData, event, slotId, _slotName, newStart, newEnd) =>
-                updateFromScheduler({ schedulerData, event, slotId, newStart, newEnd, mode: "move" })
-              }
-              onResizeStart={(schedulerData, event, newStart) =>
-                updateFromScheduler({ schedulerData, event, slotId: event.resourceId, newStart, mode: "resize-start" })
-              }
-              onResizeEnd={(schedulerData, event, newEnd) =>
-                updateFromScheduler({ schedulerData, event, slotId: event.resourceId, newEnd, mode: "resize-end" })
-              }
-              onPrev={handleSchedulerPrev}
-              onNext={handleSchedulerNext}
-              onViewChange={handleSchedulerViewChange}
-              onSelectDate={handleSchedulerSelectDate}
-              onChangeResourceFilter={(value) => setParam("employeeId", value)}
-              resourceFilter={resourceFilter}
-            />
+            <div className={`appointments-viewport ${mode === "by-employee" ? "is-by-employee" : ""}`.trim()}>
+              {mode === "by-employee" ? (
+                <AppointmentsCalendar
+                  groupedByResource
+                  resources={groupedResources}
+                  appointments={filteredAppointments}
+                  availabilityRows={availabilityRows}
+                  absenceRows={absenceRows}
+                  viewMode={rangeMode}
+                  anchorDate={anchorDate}
+                  language={language}
+                  onSelectAppointment={(item) => {
+                    if (canUpdate) setEditingItem(item);
+                  }}
+                  onCreateAt={openCreateAt}
+                />
+              ) : (
+                <AppointmentsCalendar
+                  appointments={filteredAppointments}
+                  availabilityRows={availabilityRows}
+                  absenceRows={absenceRows}
+                  viewMode={rangeMode}
+                  anchorDate={anchorDate}
+                  language={language}
+                  onSelectAppointment={(item) => {
+                    if (canUpdate) setEditingItem(item);
+                  }}
+                  onCreateAt={openCreateAt}
+                />
+              )}
+            </div>
           )}
         </section>
       </div>
 
       <AppointmentFormModal
-        isOpen={isCreateModalOpen || Boolean(editingItem)}
+        isOpen={(isCreateModalOpen || Boolean(editingItem)) && (canCreate || canUpdate)}
         appointment={editingItem}
         defaultStart={defaultStart}
         defaultEnd={defaultEnd}
+        defaultEmployeeId={createDraftEmployeeId}
+        defaultEmployeeName={createDraftEmployeeName}
+        availabilityAlert={!editingItem ? createAvailabilityAlert : ""}
         onClose={() => {
           setEditingItem(null);
           closeCreate();

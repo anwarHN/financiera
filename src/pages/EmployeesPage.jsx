@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Pagination from "../components/Pagination";
 import EmployeeFormPage from "./EmployeeFormPage";
+import EmployeeAvailabilityModal from "../components/EmployeeAvailabilityModal";
 import RowActionsMenu from "../components/RowActionsMenu";
+import StatusBadge from "../components/StatusBadge";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import { useModulePermissions } from "../hooks/useModulePermissions";
 import { deactivateEmployee, listEmployees } from "../services/employeesService";
 
 const pageSize = 10;
@@ -12,14 +15,20 @@ const pageSize = 10;
 function EmployeesPage() {
   const { t } = useI18n();
   const { account } = useAuth();
+  const { canCreate, canUpdate } = useModulePermissions("employees");
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [searchParams, setSearchParams] = useSearchParams();
-  const isCreateModalOpen = searchParams.get("create") === "1";
+  const isCreateModalOpen = searchParams.get("create") === "1" && canCreate;
   const editId = searchParams.get("edit");
-  const isEditModalOpen = Boolean(editId);
+  const availabilityId = searchParams.get("availability");
+  const isEditModalOpen = Boolean(editId) && canUpdate;
+  const selectedEmployeeForAvailability = useMemo(
+    () => items.find((item) => String(item.id) === String(availabilityId)) || null,
+    [items, availabilityId]
+  );
 
   useEffect(() => {
     if (!account?.accountId) {
@@ -61,6 +70,7 @@ function EmployeesPage() {
     const next = new URLSearchParams(searchParams);
     next.delete("create");
     next.delete("edit");
+    next.delete("availability");
     setSearchParams(next);
   };
 
@@ -97,11 +107,16 @@ function EmployeesPage() {
                   <td>{item.email ?? "-"}</td>
                   <td>{item.address ?? "-"}</td>
                   <td>{item.isPartner ? t("common.yes") : t("common.no")}</td>
-                  <td>{item.isActive ? t("common.active") : t("common.inactive")}</td>
+                  <td>
+                    <StatusBadge tone={item.isActive ? "success" : "muted"}>
+                      {item.isActive ? t("common.active") : t("common.inactive")}
+                    </StatusBadge>
+                  </td>
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[
-                        {
+                        ...(canUpdate
+                          ? [{
                           key: "edit",
                           label: t("common.edit"),
                           onClick: () => {
@@ -110,14 +125,28 @@ function EmployeesPage() {
                             next.delete("create");
                             setSearchParams(next);
                           }
-                        },
+                        }]
+                          : []),
                         {
+                          key: "availability",
+                          label: t("employees.availability"),
+                          onClick: () => {
+                            const next = new URLSearchParams(searchParams);
+                            next.set("availability", String(item.id));
+                            next.delete("create");
+                            next.delete("edit");
+                            setSearchParams(next);
+                          }
+                        },
+                        ...(canUpdate
+                          ? [{
                           key: "deactivate",
                           label: t("common.deactivate"),
                           onClick: () => handleDeactivate(item.id),
                           disabled: !item.isActive,
                           danger: true
-                        }
+                        }]
+                          : [])
                       ]}
                     />
                   </td>
@@ -147,6 +176,13 @@ function EmployeesPage() {
           </div>
         </div>
       ) : null}
+
+      <EmployeeAvailabilityModal
+        isOpen={Boolean(selectedEmployeeForAvailability)}
+        employee={selectedEmployeeForAvailability}
+        onClose={closeModal}
+        onSaved={loadData}
+      />
     </div>
   );
 }

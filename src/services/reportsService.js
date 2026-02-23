@@ -112,6 +112,44 @@ function tbdGroupName(flowType) {
   return flowType === "income" ? "Sin grupo (ingresos)" : "Sin grupo (gastos)";
 }
 
+export async function getCashflowBankBalances(accountId, { dateTo, currencyId } = {}) {
+  const { data: forms, error: formsError } = await supabase
+    .from("account_payment_forms")
+    .select("id, name, provider, kind, isActive")
+    .eq("accountId", accountId)
+    .eq("isActive", true)
+    .eq("kind", "bank_account")
+    .order("name", { ascending: true });
+  if (formsError) throw formsError;
+
+  let txQuery = supabase
+    .from("transactions")
+    .select('id, total, currencyId, "accountPaymentFormId", isActive')
+    .eq("accountId", accountId)
+    .eq("isActive", true)
+    .not("accountPaymentFormId", "is", null);
+
+  if (dateTo) txQuery = txQuery.lte("date", dateTo);
+  if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
+
+  const { data: transactions, error: txError } = await txQuery;
+  if (txError) throw txError;
+
+  const totalsByFormId = new Map();
+  (transactions ?? []).forEach((tx) => {
+    const formId = Number(tx.accountPaymentFormId || 0);
+    if (!formId) return;
+    totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + Number(tx.total || 0));
+  });
+
+  return (forms ?? []).map((form) => ({
+    id: form.id,
+    name: form.name,
+    provider: form.provider,
+    balance: Number(totalsByFormId.get(Number(form.id)) || 0)
+  }));
+}
+
 export async function exportReportXlsx({
   accountId,
   reportId,

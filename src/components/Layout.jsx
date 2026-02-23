@@ -34,6 +34,7 @@ import { searchGlobalByAccount } from "../services/globalSearchService";
 import { listPendingInvitationsForCurrentUser } from "../services/invitationsService";
 import { formatDate } from "../utils/dateFormat";
 import ModuleOnboarding from "./ModuleOnboarding";
+import OnboardingHelpButton from "./OnboardingHelpButton";
 
 const navGroups = [
   {
@@ -54,7 +55,8 @@ const navGroups = [
     items: [
       { path: "/appointments/calendar", key: "nav.appointmentsCalendar", icon: FiCalendar },
       { path: "/appointments/by-employee", key: "nav.appointmentsByEmployee", icon: FiUsers },
-      { path: "/appointments/table", key: "nav.appointmentsTable", icon: FiList }
+      { path: "/appointments/table", key: "nav.appointmentsTable", icon: FiList },
+      { path: "/employee-absences", key: "nav.employeeAbsences", icon: FiUserCheck }
     ]
   },
   {
@@ -72,16 +74,6 @@ const navGroups = [
       { path: "/purchases", key: "nav.purchases", icon: FiPackage },
       { path: "/expenses", key: "nav.expenses", icon: FiTrendingDown },
       { path: "/incomes", key: "nav.incomes", icon: FiDollarSign }
-    ]
-  },
-  {
-    id: "concepts",
-    titleKey: "sidebar.concepts",
-    icon: FiLayers,
-    items: [
-      { path: "/income-concepts", key: "nav.incomeConcepts", icon: FiTrendingUp },
-      { path: "/expense-concepts", key: "nav.expenseConcepts", icon: FiTrendingDown },
-      { path: "/concept-groups", key: "nav.conceptGroups", icon: FiLayers }
     ]
   },
   {
@@ -103,6 +95,17 @@ const navGroups = [
     items: [
       { path: "/projects", key: "nav.projects", icon: FiFolder },
       { path: "/budgets", key: "nav.budgets", icon: FiFileText }
+    ]
+  },
+  {
+    id: "catalogs",
+    titleKey: "sidebar.catalogs",
+    icon: FiList,
+    items: [
+      { path: "/income-concepts", key: "nav.incomeConcepts", icon: FiTrendingUp },
+      { path: "/expense-concepts", key: "nav.expenseConcepts", icon: FiTrendingDown },
+      { path: "/concept-groups", key: "nav.conceptGroups", icon: FiLayers },
+      { path: "/currencies", key: "nav.currencies", icon: FiDollarSign }
     ]
   },
   {
@@ -137,8 +140,59 @@ function resolveTransactionSearchTarget(row) {
   return "/";
 }
 
+function resolveCreateModuleByPath(pathname) {
+  if (pathname.startsWith("/clients")) return "clients";
+  if (pathname.startsWith("/providers")) return "providers";
+  if (pathname.startsWith("/employees")) return "employees";
+  if (pathname.startsWith("/appointments")) return "appointments";
+  if (pathname.startsWith("/employee-absences")) return "appointments";
+  if (pathname.startsWith("/products")) return "concepts";
+  if (pathname.startsWith("/income-concepts")) return "concepts";
+  if (pathname.startsWith("/expense-concepts")) return "concepts";
+  if (pathname.startsWith("/concept-groups")) return "concepts";
+  if (pathname.startsWith("/payment-forms")) return "paymentForms";
+  if (pathname.startsWith("/bank-deposits")) return "transactions";
+  if (pathname.startsWith("/bank-transfers")) return "transactions";
+  if (pathname.startsWith("/internal-obligations")) return "transactions";
+  if (pathname.startsWith("/sales")) return "transactions";
+  if (pathname.startsWith("/purchases")) return "transactions";
+  if (pathname.startsWith("/expenses")) return "transactions";
+  if (pathname.startsWith("/incomes")) return "transactions";
+  if (pathname.startsWith("/projects")) return "planning";
+  if (pathname.startsWith("/budgets")) return "planning";
+  if (pathname.startsWith("/currencies")) return "catalogs";
+  return null;
+}
+
+function resolveReadModuleByPath(pathname) {
+  if (pathname === "/") return "dashboard";
+  if (pathname.startsWith("/clients")) return "clients";
+  if (pathname.startsWith("/providers")) return "providers";
+  if (pathname.startsWith("/employees")) return "employees";
+  if (pathname.startsWith("/appointments")) return "appointments";
+  if (pathname.startsWith("/employee-absences")) return "appointments";
+  if (pathname.startsWith("/products")) return "concepts";
+  if (pathname.startsWith("/income-concepts")) return "concepts";
+  if (pathname.startsWith("/expense-concepts")) return "concepts";
+  if (pathname.startsWith("/concept-groups")) return "concepts";
+  if (pathname.startsWith("/payment-forms")) return "paymentForms";
+  if (pathname.startsWith("/bank-deposits")) return "transactions";
+  if (pathname.startsWith("/bank-transfers")) return "transactions";
+  if (pathname.startsWith("/internal-obligations")) return "transactions";
+  if (pathname.startsWith("/bank-reconciliation")) return "transactions";
+  if (pathname.startsWith("/sales")) return "transactions";
+  if (pathname.startsWith("/purchases")) return "transactions";
+  if (pathname.startsWith("/expenses")) return "transactions";
+  if (pathname.startsWith("/incomes")) return "transactions";
+  if (pathname.startsWith("/projects")) return "planning";
+  if (pathname.startsWith("/budgets")) return "planning";
+  if (pathname.startsWith("/currencies")) return "catalogs";
+  if (pathname.startsWith("/reports")) return "reports";
+  return null;
+}
+
 function Layout() {
-  const { logout, user, account, accounts, switchAccount } = useAuth();
+  const { logout, user, account, accounts, switchAccount, hasModulePermission, hasDashboardAccess, canCreateProfiles, canCreateUsers } = useAuth();
   const { t, language, setLanguage } = useI18n();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -278,8 +332,31 @@ function Layout() {
     };
   }, [account?.accountId, searchTerm]);
 
-  const selectedGroup = navGroups.find((group) => group.id === selectedGroupId) ?? null;
+  const canSeeDashboard = hasDashboardAccess();
+  const canAccessNavItem = (itemPath) => {
+    const moduleKey = resolveReadModuleByPath(itemPath);
+    if (moduleKey === "dashboard") return canSeeDashboard;
+    if (!moduleKey) return true;
+    return hasModulePermission(moduleKey, "read");
+  };
+
+  const allowedNavGroups = useMemo(
+    () =>
+      navGroups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) => canAccessNavItem(item.path))
+        }))
+        .filter((group) => group.items.length > 0),
+    [canSeeDashboard, hasModulePermission]
+  );
+  const selectedGroup = allowedNavGroups.find((group) => group.id === selectedGroupId) ?? allowedNavGroups[0] ?? null;
   const isAccountRoute = pathname.startsWith("/account");
+  const defaultHomePath = useMemo(() => {
+    if (canSeeDashboard) return "/";
+    const firstAccessible = allowedNavGroups.flatMap((group) => group.items)[0];
+    return firstAccessible?.path || "/";
+  }, [allowedNavGroups, canSeeDashboard]);
 
   const actionsConfig = useMemo(() => {
     if (pathname.startsWith("/clients")) return { createPath: "/clients?create=1", createLabel: t("actions.newClient") };
@@ -291,6 +368,9 @@ function Layout() {
     }
     if (pathname.startsWith("/appointments")) {
       return { createPath: `${pathname}?create=1`, createLabel: t("actions.newAppointment") };
+    }
+    if (pathname.startsWith("/employee-absences")) {
+      return { createPath: "/employee-absences?create=1", createLabel: t("employees.newAbsence") };
     }
     if (pathname.startsWith("/products")) return { createPath: "/products?create=1", createLabel: t("actions.newProduct") };
     if (pathname.startsWith("/payment-forms")) {
@@ -320,6 +400,7 @@ function Layout() {
     if (pathname.startsWith("/incomes")) return { createPath: "/incomes?create=1", createLabel: t("actions.newIncome") };
     if (pathname.startsWith("/projects")) return { createPath: "/projects?create=1", createLabel: t("actions.newProject") };
     if (pathname.startsWith("/budgets")) return { createPath: "/budgets?create=1", createLabel: t("actions.newBudget") };
+    if (pathname.startsWith("/currencies")) return { createPath: "/currencies?create=1", createLabel: t("actions.newCurrency") };
     if (pathname.startsWith("/account")) return { createPath: null, createLabel: null };
     if (pathname.startsWith("/reports")) return { createPath: null, createLabel: null };
 
@@ -328,7 +409,17 @@ function Layout() {
 
   const actionItems = useMemo(() => {
     const items = [];
-    if (actionsConfig.createPath) {
+    const createModule = resolveCreateModuleByPath(pathname);
+    const canCreateInCurrentModule = createModule ? hasModulePermission(createModule, "create") : false;
+    const canCreateAccountItems = pathname.startsWith("/account")
+      ? pathname.startsWith("/account/profiles")
+        ? canCreateProfiles
+        : pathname.startsWith("/account/users") || pathname.startsWith("/account/invitations")
+          ? canCreateUsers
+          : false
+      : false;
+
+    if (actionsConfig.createPath && (canCreateInCurrentModule || canCreateAccountItems)) {
       items.push({
         key: "create",
         label: actionsConfig.createLabel,
@@ -342,7 +433,7 @@ function Layout() {
     items.push({ key: "refresh", label: t("actions.refresh"), type: "button", onClick: () => window.location.reload(), overflowable: true });
 
     return items;
-  }, [actionsConfig, t]);
+  }, [actionsConfig, canCreateProfiles, canCreateUsers, hasModulePermission, pathname, t]);
 
   const appMenuOverflowItems = useMemo(() => {
     if (!selectedGroup) return [];
@@ -586,6 +677,7 @@ function Layout() {
           className="search-wrap"
           htmlFor="global-search"
           ref={desktopSearchWrapRef}
+          data-tour="topbar-search"
           onClick={(event) => {
             event.stopPropagation();
             const searchAnchor = isMobile980 ? mobileSearchBtnRef.current : desktopSearchWrapRef.current;
@@ -617,12 +709,13 @@ function Layout() {
           <button
             className="icon-btn mobile-search-btn"
             ref={mobileSearchBtnRef}
+            data-tour="topbar-search"
             onClick={(event) => togglePanel("search", event)}
             aria-label={t("common.searchPlaceholder")}
           >
             <FiSearch />
           </button>
-          <button className="icon-btn" onClick={() => navigate("/")} aria-label={t("nav.dashboard")}>
+          <button className="icon-btn" data-tour="topbar-home" onClick={() => navigate(defaultHomePath)} aria-label={t("nav.dashboard")}>
             <FiHome />
           </button>
           <button
@@ -638,6 +731,7 @@ function Layout() {
           <button
             className="icon-btn"
             ref={notificationsBtnRef}
+            data-tour="topbar-notifications"
             onClick={(event) => togglePanel("notifications", event)}
             aria-label={t("topbar.notifications")}
           >
@@ -841,7 +935,7 @@ function Layout() {
         </ul>
       </div>
 
-      <main className="content">
+      <main className={`content ${isAccountRoute ? "account-route" : ""}`.trim()}>
         {!isAccountRoute && (
           <aside
             className={`sidebar-icons ${isSidebarForcedCollapsed ? "force-collapsed" : ""}`}
@@ -857,7 +951,7 @@ function Layout() {
               <span className="side-icon-glyph">{isSidebarForcedCollapsed ? <FiChevronRight /> : <FiChevronLeft />}</span>
               <span className="side-icon-label">{isSidebarForcedCollapsed ? t("common.expand") : t("common.collapse")}</span>
             </button>
-            {navGroups.map((group) => {
+            {allowedNavGroups.map((group) => {
               const isActiveGroup = selectedGroupId === group.id;
               const firstPath = group.items?.[0]?.path ?? "/";
 
@@ -985,7 +1079,7 @@ function Layout() {
           >
             <h3>Módulos</h3>
             <nav className="panel-list">
-              {navGroups.map((group) => (
+              {allowedNavGroups.map((group) => (
                 <button
                   key={group.id}
                   type="button"
@@ -1055,7 +1149,8 @@ function Layout() {
             {isAccountRoute ? (
               <Outlet />
             ) : (
-              <section className="generic-panel">
+              <section className="generic-panel module-panel-shell">
+                <OnboardingHelpButton />
                 <Outlet />
               </section>
             )}

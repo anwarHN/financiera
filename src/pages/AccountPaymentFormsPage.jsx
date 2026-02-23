@@ -5,6 +5,7 @@ import AccountPaymentFormPage from "./AccountPaymentFormPage";
 import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import { useModulePermissions } from "../hooks/useModulePermissions";
 import { deleteAccountPaymentForm, listAccountPaymentForms } from "../services/accountPaymentFormsService";
 
 const pageSize = 10;
@@ -12,14 +13,15 @@ const pageSize = 10;
 function AccountPaymentFormsPage() {
   const { t } = useI18n();
   const { account } = useAuth();
+  const { canCreate, canUpdate } = useModulePermissions("paymentForms");
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [searchParams, setSearchParams] = useSearchParams();
-  const isCreateModalOpen = searchParams.get("create") === "1";
+  const isCreateModalOpen = searchParams.get("create") === "1" && canCreate;
   const editId = searchParams.get("edit");
-  const isEditModalOpen = Boolean(editId);
+  const isEditModalOpen = Boolean(editId) && canUpdate;
 
   useEffect(() => {
     if (!account?.accountId) return;
@@ -93,7 +95,8 @@ function AccountPaymentFormsPage() {
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[
-                        {
+                        ...(canUpdate
+                          ? [{
                           key: "edit",
                           label: t("common.edit"),
                           onClick: () => {
@@ -102,8 +105,9 @@ function AccountPaymentFormsPage() {
                             next.delete("create");
                             setSearchParams(next);
                           }
-                        },
-                        { key: "delete", label: t("common.delete"), onClick: () => handleDelete(item.id), danger: true }
+                        }]
+                          : []),
+                        ...(canUpdate ? [{ key: "delete", label: t("common.delete"), onClick: () => handleDelete(item.id), danger: true }] : [])
                       ]}
                     />
                   </td>

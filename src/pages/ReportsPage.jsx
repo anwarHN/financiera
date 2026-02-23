@@ -4,12 +4,12 @@ import { useI18n } from "../contexts/I18nContext";
 import { getBudgetExecutionReport, getProjectExecutionReport, listBudgets } from "../services/budgetsService";
 import { listCurrencies } from "../services/currenciesService";
 import { listProjects } from "../services/projectsService";
-import { exportReportXlsx, getCashflowConceptTotals, getTransactionsForReports } from "../services/reportsService";
+import { exportReportXlsx, getCashflowBankBalances, getCashflowConceptTotals, getTransactionsForReports } from "../services/reportsService";
 import { listInternalObligationsForReport } from "../services/transactionsService";
 import { formatDate } from "../utils/dateFormat";
 import { formatNumber } from "../utils/numberFormat";
 
-const reportCatalog = [
+const fullReportCatalog = [
   { id: "sales", titleKey: "reports.sales", filters: ["dateRange", "currency"] },
   { id: "receivable", titleKey: "reports.accountsReceivable", filters: ["dateRange", "currency"] },
   { id: "payable", titleKey: "reports.accountsPayable", filters: ["dateRange", "currency"] },
@@ -22,7 +22,7 @@ const reportCatalog = [
 
 function ReportsPage() {
   const { t, language } = useI18n();
-  const { account } = useAuth();
+  const { account, hasModulePermission, hasReportPermission, isSystemAdmin } = useAuth();
   const [selectedReport, setSelectedReport] = useState("sales");
   const [filters, setFilters] = useState({ dateFrom: "", dateTo: "", currencyId: "", budgetId: "", projectId: "" });
   const [currencies, setCurrencies] = useState([]);
@@ -39,8 +39,24 @@ function ReportsPage() {
     periodMovements: 0,
     newBalance: 0
   });
+  const [cashflowBankBalances, setCashflowBankBalances] = useState([]);
 
-  const reportConfig = useMemo(() => reportCatalog.find((report) => report.id === selectedReport) ?? reportCatalog[0], [selectedReport]);
+  const reportCatalog = useMemo(
+    () => fullReportCatalog.filter((report) => isSystemAdmin || hasReportPermission(report.id)),
+    [hasReportPermission, isSystemAdmin]
+  );
+  const canReadReportsModule = hasModulePermission("reports", "read");
+  const reportConfig = useMemo(
+    () => reportCatalog.find((report) => report.id === selectedReport) ?? reportCatalog[0] ?? null,
+    [selectedReport, reportCatalog]
+  );
+
+  useEffect(() => {
+    if (!reportCatalog.length) return;
+    if (!reportCatalog.some((report) => report.id === selectedReport)) {
+      setSelectedReport(reportCatalog[0].id);
+    }
+  }, [reportCatalog, selectedReport]);
 
   useEffect(() => {
     if (!account?.accountId) return;
@@ -118,7 +134,7 @@ function ReportsPage() {
   };
 
   const executeReport = async () => {
-    if (!account?.accountId || !selectedReport) return;
+    if (!account?.accountId || !selectedReport || !reportConfig) return;
 
     try {
       setIsLoading(true);
@@ -160,6 +176,10 @@ function ReportsPage() {
           dateTo: filters.dateTo || undefined,
           currencyId: filters.currencyId || undefined
         });
+        const bankBalances = await getCashflowBankBalances(account.accountId, {
+          dateTo: filters.dateTo || undefined,
+          currencyId: filters.currencyId || undefined
+        });
         setResults(buildResults(rows, selectedReport));
         const periodMovements = rows.reduce((acc, row) => acc + Number(row.total || 0), 0);
 
@@ -180,6 +200,7 @@ function ReportsPage() {
           periodMovements,
           newBalance: previousBalance + periodMovements
         });
+        setCashflowBankBalances(bankBalances);
       } else {
         const transactions = await getTransactionsForReports(account.accountId, {
           dateFrom: filters.dateFrom || undefined,
@@ -194,6 +215,7 @@ function ReportsPage() {
           periodMovements: 0,
           newBalance: 0
         });
+        setCashflowBankBalances([]);
       }
 
       setHasExecuted(true);
@@ -273,6 +295,14 @@ function ReportsPage() {
     if (selectedReport !== "sales") return 0;
     return results.reduce((acc, item) => acc + Number(item.additionalCharges || 0), 0);
   }, [results, selectedReport]);
+  const cashflowBanksTotal = useMemo(
+    () => cashflowBankBalances.reduce((acc, row) => acc + Number(row.balance || 0), 0),
+    [cashflowBankBalances]
+  );
+  const cashflowDifferenceVsNet = useMemo(
+    () => Number(cashflowBanksTotal || 0) - Number(cashflowSummary.newBalance || 0),
+    [cashflowBanksTotal, cashflowSummary.newBalance]
+  );
 
   const handleExport = async () => {
     if (!account?.accountId || !selectedReport || isExporting) return;
@@ -300,9 +330,14 @@ function ReportsPage() {
   return (
     <div className="module-page">
       <h1>{t("reports.title")}</h1>
+      {!canReadReportsModule ? (
+        <p className="error-text">{t("reports.noAccessModule")}</p>
+      ) : reportCatalog.length === 0 ? (
+        <p className="error-text">{t("reports.noAccessAny")}</p>
+      ) : null}
       {error && <p className="error-text">{error}</p>}
 
-      {showSetup && (
+      {canReadReportsModule && reportCatalog.length > 0 && reportConfig && showSetup && (
         <div className="grid-2">
           <section className="generic-panel">
             <h3>{t("reports.availableReports")}</h3>
@@ -383,10 +418,11 @@ function ReportsPage() {
         </div>
       )}
 
+      {canReadReportsModule && reportCatalog.length > 0 ? (
       <div className="actions-menu">
         <div className="actions-primary">
           {!hasExecuted || showSetup ? (
-            <button type="button" className="action-btn main" disabled={!selectedReport || isLoading} onClick={executeReport}>
+            <button type="button" className="action-btn main" disabled={!selectedReport || !reportConfig || isLoading} onClick={executeReport}>
               {t("reports.run")}
             </button>
           ) : (
@@ -403,8 +439,9 @@ function ReportsPage() {
           )}
         </div>
       </div>
+      ) : null}
 
-      {hasExecuted && !showSetup && (
+      {canReadReportsModule && reportCatalog.length > 0 && hasExecuted && !showSetup && reportConfig && (
         <section className="generic-panel">
           <h3>{t(reportConfig.titleKey)}</h3>
           {appliedFilters.map((line) => (
@@ -443,20 +480,48 @@ function ReportsPage() {
           )}
 
           {selectedReport === "cashflow" ? (
-            <div className="cashflow-summary-grid">
-              <div className="cashflow-summary-card">
-                <span>{t("reconciliation.previousBalance")}</span>
-                <strong>{formatNumber(cashflowSummary.previousBalance)}</strong>
+            <>
+              <div className="cashflow-summary-grid">
+                <div className="cashflow-summary-card">
+                  <span>{t("reconciliation.previousBalance")}</span>
+                  <strong>{formatNumber(cashflowSummary.previousBalance)}</strong>
+                </div>
+                <div className="cashflow-summary-card">
+                  <span>{t("reconciliation.periodMovementsSum")}</span>
+                  <strong>{formatNumber(cashflowSummary.periodMovements)}</strong>
+                </div>
+                <div className="cashflow-summary-card">
+                  <span>{t("reconciliation.currentBalance")}</span>
+                  <strong>{formatNumber(cashflowSummary.newBalance)}</strong>
+                </div>
               </div>
-              <div className="cashflow-summary-card">
-                <span>{t("reconciliation.periodMovementsSum")}</span>
-                <strong>{formatNumber(cashflowSummary.periodMovements)}</strong>
+              <div className="cashflow-summary-grid">
+                <div className="cashflow-summary-card cashflow-summary-card-wide">
+                  <span>{t("reports.bankBalancesByAccount")}</span>
+                  <div className="cashflow-bank-balance-lines">
+                    {cashflowBankBalances.length === 0 ? (
+                      <p>{t("common.empty")}</p>
+                    ) : (
+                      cashflowBankBalances.map((item) => (
+                        <p key={`cashflow-bank-balance-${item.id}`}>
+                          {item.name}
+                          {item.provider ? ` (${item.provider})` : ""}: <strong>{formatNumber(item.balance || 0)}</strong>
+                        </p>
+                      ))
+                    )}
+                  </div>
+                  <p>
+                    {t("reports.bankBalancesTotal")}: <strong>{formatNumber(cashflowBanksTotal)}</strong>
+                  </p>
+                  <p>
+                    {t("reports.incomeExpenseNet")}: <strong>{formatNumber(cashflowSummary.newBalance)}</strong>
+                  </p>
+                  <p>
+                    {t("reports.bankVsNetDifference")}: <strong>{formatNumber(cashflowDifferenceVsNet)}</strong>
+                  </p>
+                </div>
               </div>
-              <div className="cashflow-summary-card">
-                <span>{t("reconciliation.currentBalance")}</span>
-                <strong>{formatNumber(cashflowSummary.newBalance)}</strong>
-              </div>
-            </div>
+            </>
           ) : null}
 
           <table className="crud-table">
@@ -464,24 +529,24 @@ function ReportsPage() {
               {budgetExecutionTotals ? (
                 <tr>
                   <th>{t("transactions.concept")}</th>
-                  <th>{t("budgets.budgetAmount")}</th>
-                  <th>{t("reports.executed")}</th>
-                  <th>{t("reports.variance")}</th>
+                  <th className="num-col">{t("budgets.budgetAmount")}</th>
+                  <th className="num-col">{t("reports.executed")}</th>
+                  <th className="num-col">{t("reports.variance")}</th>
                 </tr>
               ) : selectedReport === "cashflow" ? (
                 <tr>
                   <th>{t("common.type")}</th>
                   <th>{t("concepts.group")}</th>
                   <th>{t("transactions.concept")}</th>
-                  <th>{t("transactions.total")}</th>
+                  <th className="num-col">{t("transactions.total")}</th>
                 </tr>
               ) : (
                 <tr>
-                  <th>ID</th>
+                  <th className="num-col">ID</th>
                   <th>{t("transactions.date")}</th>
                   <th>{t("common.type")}</th>
-                  <th>{t("transactions.total")}</th>
-                  <th>{t("transactions.balance")}</th>
+                  <th className="num-col">{t("transactions.total")}</th>
+                  <th className="num-col">{t("transactions.balance")}</th>
                 </tr>
               )}
             </thead>
@@ -494,9 +559,9 @@ function ReportsPage() {
                 rowsWithTypeLabel.map((tx) => (
                   <tr key={`${selectedReport}-${tx.id}`}>
                     <td>{tx.typeLabel}</td>
-                    <td>{formatNumber(tx.budgeted || 0)}</td>
-                    <td>{formatNumber(tx.executed || 0)}</td>
-                    <td>{formatNumber(tx.variance || 0)}</td>
+                    <td className="num-col">{formatNumber(tx.budgeted || 0)}</td>
+                    <td className="num-col">{formatNumber(tx.executed || 0)}</td>
+                    <td className="num-col">{formatNumber(tx.variance || 0)}</td>
                   </tr>
                 ))
               ) : selectedReport === "cashflow" ? (
@@ -504,14 +569,14 @@ function ReportsPage() {
                   <tr key={`cashflow-section-${section.flow}`} className="report-section-row">
                     <td>{section.flowLabel}</td>
                     <td colSpan={2}>-</td>
-                    <td>{formatNumber(section.total || 0)}</td>
+                    <td className="num-col">{formatNumber(section.total || 0)}</td>
                   </tr>,
                   ...(section.groups || []).flatMap((group) => [
                     <tr key={`cashflow-group-${section.flow}-${group.groupName}`} className="report-group-row">
                       <td>{section.flowLabel}</td>
                       <td>{group.groupName}</td>
                       <td>-</td>
-                      <td>{formatNumber(group.total || 0)}</td>
+                      <td className="num-col">{formatNumber(group.total || 0)}</td>
                     </tr>,
                     ...(group.concepts || []).map((concept) => (
                       <tr
@@ -521,7 +586,7 @@ function ReportsPage() {
                         <td>{section.flowLabel}</td>
                         <td>{group.groupName}</td>
                         <td>{concept.conceptName}</td>
-                        <td>{formatNumber(concept.total || 0)}</td>
+                        <td className="num-col">{formatNumber(concept.total || 0)}</td>
                       </tr>
                     ))
                   ])
@@ -529,11 +594,11 @@ function ReportsPage() {
               ) : (
                 rowsWithTypeLabel.map((tx) => (
                   <tr key={`${selectedReport}-${tx.id}-${tx.date}`}>
-                    <td>{tx.id}</td>
+                    <td className="num-col">{tx.id}</td>
                     <td>{formatDate(tx.date, language)}</td>
                     <td>{tx.typeLabel}</td>
-                    <td>{formatNumber(tx.total || 0)}</td>
-                    <td>{formatNumber(tx.balance || 0)}</td>
+                    <td className="num-col">{formatNumber(tx.total || 0)}</td>
+                    <td className="num-col">{formatNumber(tx.balance || 0)}</td>
                   </tr>
                 ))
               )}

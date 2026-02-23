@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import SelectField from "../components/form/SelectField";
+import StatusBadge from "../components/StatusBadge";
 import TextField from "../components/form/TextField";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
@@ -229,7 +230,21 @@ function AdminPage() {
             <tr key={inv.id}>
               <td>{inv.email}</td>
               <td>{inv.account_profiles?.name ?? "-"}</td>
-              <td>{inv.status}</td>
+              <td>
+                <StatusBadge
+                  tone={
+                    inv.status === "linked"
+                      ? "success"
+                      : inv.status === "sent" || inv.status === "pending"
+                        ? "warning"
+                        : inv.status === "expired" || inv.status === "invalidated"
+                          ? "muted"
+                          : "muted"
+                  }
+                >
+                  {inv.status}
+                </StatusBadge>
+              </td>
               <td>{formatDateTime(inv.expiresAt, language)}</td>
               <td>
                 {inv.status === "sent" ? (

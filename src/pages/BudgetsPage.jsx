@@ -6,6 +6,7 @@ import BudgetFormPage from "./BudgetFormPage";
 import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import { useModulePermissions } from "../hooks/useModulePermissions";
 import { deactivateBudget, listBudgets, listBudgetLines } from "../services/budgetsService";
 import { formatDate } from "../utils/dateFormat";
 import { formatNumber } from "../utils/numberFormat";
@@ -15,15 +16,16 @@ const pageSize = 10;
 function BudgetsPage() {
   const { t, language } = useI18n();
   const { account } = useAuth();
+  const { canCreate, canUpdate } = useModulePermissions("planning");
   const [items, setItems] = useState([]);
   const [lineTotals, setLineTotals] = useState({});
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [searchParams, setSearchParams] = useSearchParams();
-  const isCreateModalOpen = searchParams.get("create") === "1";
+  const isCreateModalOpen = searchParams.get("create") === "1" && canCreate;
   const editId = searchParams.get("edit");
-  const isEditModalOpen = Boolean(editId);
+  const isEditModalOpen = Boolean(editId) && canUpdate;
 
   useEffect(() => {
     if (!account?.accountId) return;
@@ -93,7 +95,7 @@ function BudgetsPage() {
                 <th>{t("reports.dateFrom")}</th>
                 <th>{t("reports.dateTo")}</th>
                 <th>{t("projects.project")}</th>
-                <th>{t("budgets.totalBudget")}</th>
+                <th className="num-col">{t("budgets.totalBudget")}</th>
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
@@ -107,12 +109,13 @@ function BudgetsPage() {
                   <td>{formatDate(item.periodStart, language)}</td>
                   <td>{formatDate(item.periodEnd, language)}</td>
                   <td>{item.projects?.name || "-"}</td>
-                  <td>{formatNumber(lineTotals[item.id] || 0)}</td>
+                  <td className="num-col">{formatNumber(lineTotals[item.id] || 0)}</td>
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[
                         { key: "detail", label: t("transactions.viewDetail"), to: `/budgets/${item.id}` },
-                        {
+                        ...(canUpdate
+                          ? [{
                           key: "edit",
                           label: t("common.edit"),
                           onClick: () => {
@@ -121,8 +124,11 @@ function BudgetsPage() {
                             next.delete("create");
                             setSearchParams(next);
                           }
-                        },
-                        { key: "deactivate", label: t("transactions.deactivate"), onClick: () => handleDeactivate(item.id), danger: true }
+                        }]
+                          : []),
+                        ...(canUpdate
+                          ? [{ key: "deactivate", label: t("transactions.deactivate"), onClick: () => handleDeactivate(item.id), danger: true }]
+                          : [])
                       ]}
                     />
                   </td>

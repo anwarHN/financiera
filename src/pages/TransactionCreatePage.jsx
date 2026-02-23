@@ -22,6 +22,7 @@ import {
   TRANSACTION_TYPES,
   updateTransactionWithDetails
 } from "../services/transactionsService";
+import { formatNumber } from "../utils/numberFormat";
 import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
 
 const moduleConfig = {
@@ -1106,7 +1107,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
           </section>
 
           <p>
-            {t("transactions.summary")} {(Number(simpleForm.amount || 0) + Number(simpleForm.additionalCharges || 0)).toFixed(2)}
+            {t("transactions.summary")} {formatNumber(Number(simpleForm.amount || 0) + Number(simpleForm.additionalCharges || 0))}
           </p>
 
           <div className="crud-form-actions">
@@ -1359,7 +1360,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                           onChange={(event) => updateSaleLine(line.rowId, "additionalCharges", event.target.value)}
                         />
                       </td>
-                      <td>{lineAmounts.total.toFixed(2)}</td>
+                      <td>{formatNumber(lineAmounts.total)}</td>
                       <td>
                         <select value={line.sellerId} onChange={(event) => updateSaleLine(line.rowId, "sellerId", event.target.value)}>
                           <option value="">{`-- ${t("transactions.optionalSeller")} --`}</option>
@@ -1383,7 +1384,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
           </table>
 
           <p>
-            {t("transactions.summary")} {saleTotals.total.toFixed(2)}
+            {t("transactions.summary")} {formatNumber(saleTotals.total)}
           </p>
 
           <div className="crud-form-actions">

@@ -12,6 +12,8 @@ alter table public.projects enable row level security;
 alter table public.budgets enable row level security;
 alter table public.budget_lines enable row level security;
 alter table public.appointments enable row level security;
+alter table public.employee_availability enable row level security;
+alter table public.employee_absences enable row level security;
 
 -- Helper function to identify whether user belongs to account
 create or replace function public.user_belongs_to_account(target_account_id bigint)
@@ -179,6 +181,22 @@ with check (
 drop policy if exists "appointments_tenant_access" on public.appointments;
 create policy "appointments_tenant_access"
 on public.appointments
+for all
+to authenticated
+using (public.user_belongs_to_account("accountId"))
+with check (public.user_belongs_to_account("accountId"));
+
+drop policy if exists "employee_availability_tenant_access" on public.employee_availability;
+create policy "employee_availability_tenant_access"
+on public.employee_availability
+for all
+to authenticated
+using (public.user_belongs_to_account("accountId"))
+with check (public.user_belongs_to_account("accountId"));
+
+drop policy if exists "employee_absences_tenant_access" on public.employee_absences;
+create policy "employee_absences_tenant_access"
+on public.employee_absences
 for all
 to authenticated
 using (public.user_belongs_to_account("accountId"))

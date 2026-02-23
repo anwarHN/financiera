@@ -16,11 +16,15 @@ export const translations = {
       edit: "Editar",
       backToList: "Volver al listado",
       actions: "Acciones",
+      help: "Ayuda",
       name: "Nombre",
       phone: "Teléfono",
       email: "Correo",
       address: "Dirección",
       type: "Tipo",
+      status: "Estado",
+      active: "Activa",
+      inactive: "Inactiva",
       yes: "Sí",
       no: "No",
       empty: "Sin registros",
@@ -86,6 +90,7 @@ export const translations = {
       core: "General",
       concepts: "Conceptos",
       transactions: "Transacciones",
+      catalogs: "Catálogos",
       security: "Seguridad"
     },
     actions: {
@@ -112,7 +117,8 @@ export const translations = {
       newInternalObligation: "Nueva obligación interna",
       newPayableConcept: "Nuevo concepto de cuentas por pagar",
       newProject: "Nuevo proyecto",
-      newBudget: "Nuevo presupuesto"
+      newBudget: "Nuevo presupuesto",
+      newCurrency: "Nueva moneda"
     },
     auth: {
       loginTitle: "Iniciar sesión",
@@ -140,13 +146,14 @@ export const translations = {
       appointmentsCalendar: "Calendario",
       appointmentsByEmployee: "Por empleado",
       appointmentsTable: "Tabla de citas",
+      employeeAbsences: "Ausencias",
       planning: "Planeación",
       projects: "Proyectos",
       budgets: "Presupuestos",
       products: "Productos",
       incomeConcepts: "Conceptos ingreso",
       expenseConcepts: "Conceptos gasto",
-      conceptGroups: "Grupos",
+      conceptGroups: "Grupos de conceptos de ingreso/gasto",
       concepts: "Conceptos",
       sales: "Ventas",
       purchases: "Compras",
@@ -159,6 +166,7 @@ export const translations = {
       bankDeposits: "Depósitos bancarios",
       bankTransfers: "Traslados bancarios",
       bankReconciliation: "Conciliación bancaria",
+      currencies: "Monedas",
       payableConcepts: "Conceptos CxP",
       reports: "Reportes",
       profiles: "Perfiles",
@@ -198,11 +206,13 @@ export const translations = {
       range: "Vista",
       rangeDay: "Día",
       rangeWeek: "Semana",
+      rangeYear: "Año",
       rangeMonth: "Mes",
       resourceFilter: "Empleado",
       allResources: "Todos",
       anchorDate: "Fecha base",
-      invalidRange: "La fecha/hora de fin debe ser mayor a la de inicio."
+      invalidRange: "La fecha/hora de fin debe ser mayor a la de inicio.",
+      unavailableWarning: "El empleado no tiene disponibilidad en la fecha/hora seleccionada."
     },
     persons: {
       title: "Clientes y proveedores",
@@ -219,7 +229,11 @@ export const translations = {
     employees: {
       title: "Empleados",
       sensitiveHint: "El salario debe mostrarse sólo a perfiles autorizados",
-      isPartner: "Es socio"
+      isPartner: "Es socio",
+      availability: "Disponibilidad",
+      availabilityFor: "Disponibilidad del empleado",
+      absencesTitle: "Control de ausencias",
+      newAbsence: "Nueva ausencia"
     },
     concepts: {
       title: "Conceptos, productos y formas de pago",
@@ -257,6 +271,13 @@ export const translations = {
         credit_card: "Tarjeta de crédito",
         cashbox: "Caja / efectivo"
       }
+    },
+    currencies: {
+      title: "Monedas",
+      new: "Nueva moneda",
+      edit: "Editar moneda",
+      symbol: "Símbolo",
+      isLocal: "Es moneda local"
     },
     internalObligations: {
       title: "Obligaciones internas",
@@ -306,7 +327,13 @@ export const translations = {
       currencyFilterHint: "Todas las monedas",
       totalRecords: "Total de registros",
       changeReportFilters: "Cambiar reporte y filtros",
-      exportExcel: "Exportar a Excel"
+      exportExcel: "Exportar a Excel",
+      noAccessModule: "No tienes permiso para ver el módulo de reportes.",
+      noAccessAny: "No tienes acceso a ningún reporte.",
+      bankBalancesByAccount: "Saldos por cuenta bancaria",
+      bankBalancesTotal: "Suma de saldos en cuentas bancarias",
+      incomeExpenseNet: "Ingresos menos egresos (neto)",
+      bankVsNetDifference: "Diferencia (cuentas bancarias - neto)"
     },
     projects: {
       title: "Proyectos",
@@ -339,14 +366,24 @@ export const translations = {
       canCreateProfiles: "Crear perfiles",
       canVoidTransactions: "Anular transacciones",
       module: "Módulo",
+      access: "Acceso",
+      selectAll: "Seleccionar todo",
       read: "Lectura",
       write: "Escritura",
       update: "Modificación",
+      reportAccessTitle: "Acceso por reporte",
       modules: {
+        dashboard: "Dashboard",
         transactions: "Transacciones",
         concepts: "Conceptos",
         clients: "Clientes",
-        providers: "Proveedores"
+        providers: "Proveedores",
+        employees: "Empleados",
+        appointments: "Citas",
+        paymentForms: "Cuentas y tarjetas",
+        planning: "Planeación",
+        catalogs: "Catálogos",
+        reports: "Reportes"
       }
     },
     admin: {
@@ -487,6 +524,8 @@ export const translations = {
       minAmount: "Monto mínimo",
       maxAmount: "Monto máximo",
       price: "Precio unitario",
+      tax: "Impuesto",
+      discount: "Descuento",
       taxPercentage: "% impuesto",
       discountPercentage: "% descuento",
       additionalCharges: "Cargos adicionales",
@@ -499,7 +538,7 @@ export const translations = {
       status: "Estado",
       active: "Activa",
       inactive: "Inactiva",
-      deactivate: "Desactivar"
+      deactivate: "Anular"
     }
   },
   en: {
@@ -519,11 +558,15 @@ export const translations = {
       edit: "Edit",
       backToList: "Back to list",
       actions: "Actions",
+      help: "Help",
       name: "Name",
       phone: "Phone",
       email: "Email",
       address: "Address",
       type: "Type",
+      status: "Status",
+      active: "Active",
+      inactive: "Inactive",
       yes: "Yes",
       no: "No",
       empty: "No records",
@@ -589,6 +632,7 @@ export const translations = {
       core: "Core",
       concepts: "Concepts",
       transactions: "Transactions",
+      catalogs: "Catalogs",
       security: "Security"
     },
     actions: {
@@ -615,7 +659,8 @@ export const translations = {
       newInternalObligation: "New internal obligation",
       newPayableConcept: "New accounts payable concept",
       newProject: "New project",
-      newBudget: "New budget"
+      newBudget: "New budget",
+      newCurrency: "New currency"
     },
     auth: {
       loginTitle: "Sign in",
@@ -642,13 +687,14 @@ export const translations = {
       appointmentsCalendar: "Calendar",
       appointmentsByEmployee: "By employee",
       appointmentsTable: "Appointments table",
+      employeeAbsences: "Absences",
       planning: "Planning",
       projects: "Projects",
       budgets: "Budgets",
       products: "Products",
       incomeConcepts: "Income concepts",
       expenseConcepts: "Expense concepts",
-      conceptGroups: "Groups",
+      conceptGroups: "Income/expense concept groups",
       concepts: "Concepts",
       sales: "Sales",
       purchases: "Purchases",
@@ -661,6 +707,7 @@ export const translations = {
       bankDeposits: "Bank deposits",
       bankTransfers: "Bank transfers",
       bankReconciliation: "Bank reconciliation",
+      currencies: "Currencies",
       payableConcepts: "AP concepts",
       reports: "Reports",
       profiles: "Profiles",
@@ -700,11 +747,13 @@ export const translations = {
       range: "View",
       rangeDay: "Day",
       rangeWeek: "Week",
+      rangeYear: "Year",
       rangeMonth: "Month",
       resourceFilter: "Employee",
       allResources: "All",
       anchorDate: "Base date",
-      invalidRange: "End date/time must be greater than start date/time."
+      invalidRange: "End date/time must be greater than start date/time.",
+      unavailableWarning: "The employee is not available for the selected date/time."
     },
     persons: {
       title: "Clients and suppliers",
@@ -721,7 +770,11 @@ export const translations = {
     employees: {
       title: "Employees",
       sensitiveHint: "Salary must be visible only for authorized roles",
-      isPartner: "Is partner"
+      isPartner: "Is partner",
+      availability: "Availability",
+      availabilityFor: "Employee availability",
+      absencesTitle: "Absence control",
+      newAbsence: "New absence"
     },
     concepts: {
       title: "Concepts, products and payment methods",
@@ -759,6 +812,13 @@ export const translations = {
         credit_card: "Credit card",
         cashbox: "Cashbox"
       }
+    },
+    currencies: {
+      title: "Currencies",
+      new: "New currency",
+      edit: "Edit currency",
+      symbol: "Symbol",
+      isLocal: "Is local currency"
     },
     internalObligations: {
       title: "Internal obligations",
@@ -808,7 +868,13 @@ export const translations = {
       currencyFilterHint: "All currencies",
       totalRecords: "Total records",
       changeReportFilters: "Change report and filters",
-      exportExcel: "Export to Excel"
+      exportExcel: "Export to Excel",
+      noAccessModule: "You do not have permission to view the reports module.",
+      noAccessAny: "You do not have access to any report.",
+      bankBalancesByAccount: "Balances by bank account",
+      bankBalancesTotal: "Total balances in bank accounts",
+      incomeExpenseNet: "Income minus expenses (net)",
+      bankVsNetDifference: "Difference (bank accounts - net)"
     },
     projects: {
       title: "Projects",
@@ -841,14 +907,24 @@ export const translations = {
       canCreateProfiles: "Create profiles",
       canVoidTransactions: "Void transactions",
       module: "Module",
+      access: "Access",
+      selectAll: "Select all",
       read: "Read",
       write: "Write",
       update: "Update",
+      reportAccessTitle: "Report access",
       modules: {
+        dashboard: "Dashboard",
         transactions: "Transactions",
         concepts: "Concepts",
         clients: "Clients",
-        providers: "Suppliers"
+        providers: "Suppliers",
+        employees: "Employees",
+        appointments: "Appointments",
+        paymentForms: "Bank accounts & cards",
+        planning: "Planning",
+        catalogs: "Catalogs",
+        reports: "Reports"
       }
     },
     admin: {
@@ -989,6 +1065,8 @@ export const translations = {
       minAmount: "Minimum amount",
       maxAmount: "Maximum amount",
       price: "Unit price",
+      tax: "Tax",
+      discount: "Discount",
       taxPercentage: "Tax %",
       discountPercentage: "Discount %",
       additionalCharges: "Additional charges",
@@ -1001,7 +1079,7 @@ export const translations = {
       status: "Status",
       active: "Active",
       inactive: "Inactive",
-      deactivate: "Deactivate"
+      deactivate: "Void"
     }
   }
 };

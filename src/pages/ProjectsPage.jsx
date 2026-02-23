@@ -3,8 +3,10 @@ import { useSearchParams } from "react-router-dom";
 import Pagination from "../components/Pagination";
 import ProjectFormPage from "./ProjectFormPage";
 import RowActionsMenu from "../components/RowActionsMenu";
+import StatusBadge from "../components/StatusBadge";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import { useModulePermissions } from "../hooks/useModulePermissions";
 import { deactivateProject, listProjects } from "../services/projectsService";
 import { formatDate } from "../utils/dateFormat";
 
@@ -13,14 +15,15 @@ const pageSize = 10;
 function ProjectsPage() {
   const { t, language } = useI18n();
   const { account } = useAuth();
+  const { canCreate, canUpdate } = useModulePermissions("planning");
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [searchParams, setSearchParams] = useSearchParams();
-  const isCreateModalOpen = searchParams.get("create") === "1";
+  const isCreateModalOpen = searchParams.get("create") === "1" && canCreate;
   const editId = searchParams.get("edit");
-  const isEditModalOpen = Boolean(editId);
+  const isEditModalOpen = Boolean(editId) && canUpdate;
 
   useEffect(() => {
     if (!account?.accountId) return;
@@ -89,11 +92,16 @@ function ProjectsPage() {
                   <td>{item.name}</td>
                   <td>{formatDate(item.startDate, language)}</td>
                   <td>{formatDate(item.endDate, language)}</td>
-                  <td>{item.isActive ? t("transactions.active") : t("transactions.inactive")}</td>
+                  <td>
+                    <StatusBadge tone={item.isActive ? "success" : "muted"}>
+                      {item.isActive ? t("transactions.active") : t("transactions.inactive")}
+                    </StatusBadge>
+                  </td>
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[
-                        {
+                        ...(canUpdate
+                          ? [{
                           key: "edit",
                           label: t("common.edit"),
                           onClick: () => {
@@ -102,8 +110,11 @@ function ProjectsPage() {
                             next.delete("create");
                             setSearchParams(next);
                           }
-                        },
-                        { key: "deactivate", label: t("transactions.deactivate"), onClick: () => handleDeactivate(item.id), danger: true }
+                        }]
+                          : []),
+                        ...(canUpdate
+                          ? [{ key: "deactivate", label: t("transactions.deactivate"), onClick: () => handleDeactivate(item.id), danger: true }]
+                          : [])
                       ]}
                     />
                   </td>

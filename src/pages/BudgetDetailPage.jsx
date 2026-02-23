@@ -86,9 +86,9 @@ function BudgetDetailPage() {
             <thead>
               <tr>
                 <th>{t("transactions.concept")}</th>
-                <th>{t("budgets.budgetAmount")}</th>
-                <th>{t("reports.executed")}</th>
-                <th>{t("reports.variance")}</th>
+                <th className="num-col">{t("budgets.budgetAmount")}</th>
+                <th className="num-col">{t("reports.executed")}</th>
+                <th className="num-col">{t("reports.variance")}</th>
               </tr>
             </thead>
             <tbody>
@@ -100,11 +100,11 @@ function BudgetDetailPage() {
                 rows.map((row) => (
                   <tr key={row.id}>
                     <td>{row.conceptName}</td>
-                    <td>{formatNumber(row.budgeted)}</td>
-                    <td className={Number(row.executed || 0) > Number(row.budgeted || 0) ? "text-danger" : ""}>
+                    <td className="num-col">{formatNumber(row.budgeted)}</td>
+                    <td className={`num-col ${Number(row.executed || 0) > Number(row.budgeted || 0) ? "text-danger" : ""}`.trim()}>
                       {formatNumber(row.executed)}
                     </td>
-                    <td>{formatNumber(row.variance)}</td>
+                    <td className="num-col">{formatNumber(row.variance)}</td>
                   </tr>
                 ))
               )}

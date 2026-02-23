@@ -13,15 +13,41 @@ const initialForm = {
   canCreateProfiles: false,
   canVoidTransactions: false,
   permissions: {
+    dashboard: { read: true, create: false, update: false },
     transactions: { read: true, create: false, update: false },
     concepts: { read: true, create: false, update: false },
     clients: { read: true, create: false, update: false },
-    providers: { read: true, create: false, update: false }
+    providers: { read: true, create: false, update: false },
+    employees: { read: true, create: false, update: false },
+    appointments: { read: true, create: false, update: false },
+    paymentForms: { read: true, create: false, update: false },
+    planning: { read: true, create: false, update: false },
+    catalogs: { read: true, create: false, update: false },
+    reports: { read: true, create: false, update: false },
+    reportAccess: {
+      sales: true,
+      receivable: true,
+      payable: true,
+      internal_obligations: true,
+      budget_execution: true,
+      project_execution: true,
+      expenses: true,
+      cashflow: true
+    }
   }
 };
 
 function clonePermissions(permissions) {
-  return JSON.parse(JSON.stringify(permissions ?? initialForm.permissions));
+  const next = JSON.parse(JSON.stringify(initialForm.permissions));
+  const source = permissions ?? {};
+  Object.entries(source).forEach(([key, value]) => {
+    if (value && typeof value === "object" && !Array.isArray(value) && next[key] && typeof next[key] === "object") {
+      next[key] = { ...next[key], ...value };
+      return;
+    }
+    next[key] = value;
+  });
+  return next;
 }
 
 function ProfilesPage() {
@@ -45,8 +71,18 @@ function ProfilesPage() {
     return items.slice(start, start + pageSize);
   }, [items, page]);
 
-  const modules = ["transactions", "concepts", "clients", "providers"];
+  const modules = ["dashboard", "transactions", "concepts", "clients", "providers", "employees", "appointments", "paymentForms", "planning", "catalogs", "reports"];
   const actions = ["read", "create", "update"];
+  const reportIds = [
+    { id: "sales", titleKey: "reports.sales" },
+    { id: "receivable", titleKey: "reports.accountsReceivable" },
+    { id: "payable", titleKey: "reports.accountsPayable" },
+    { id: "internal_obligations", titleKey: "reports.internalObligations" },
+    { id: "budget_execution", titleKey: "reports.budgetExecution" },
+    { id: "project_execution", titleKey: "reports.projectExecution" },
+    { id: "expenses", titleKey: "reports.expenses" },
+    { id: "cashflow", titleKey: "reports.cashflow" }
+  ];
 
   const loadData = async () => {
     try {
@@ -112,6 +148,51 @@ function ProfilesPage() {
       }
     }));
   };
+
+  const handleReportPermissionChange = (reportId, checked) => {
+    setForm((prev) => ({
+      ...prev,
+      permissions: {
+        ...prev.permissions,
+        reportAccess: {
+          ...prev.permissions.reportAccess,
+          [reportId]: checked
+        }
+      }
+    }));
+  };
+
+  const handleSelectAllByAction = (action, checked) => {
+    setForm((prev) => ({
+      ...prev,
+      permissions: {
+        ...prev.permissions,
+        ...modules.reduce((acc, moduleKey) => {
+          acc[moduleKey] = {
+            ...prev.permissions[moduleKey],
+            [action]: checked
+          };
+          return acc;
+        }, {})
+      }
+    }));
+  };
+
+  const handleSelectAllReports = (checked) => {
+    setForm((prev) => ({
+      ...prev,
+      permissions: {
+        ...prev.permissions,
+        reportAccess: reportIds.reduce((acc, report) => {
+          acc[report.id] = checked;
+          return acc;
+        }, { ...prev.permissions.reportAccess })
+      }
+    }));
+  };
+
+  const isAllSelectedByAction = (action) => modules.every((moduleKey) => Boolean(form.permissions?.[moduleKey]?.[action]));
+  const isAllReportsSelected = reportIds.every((report) => Boolean(form.permissions?.reportAccess?.[report.id]));
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -230,9 +311,39 @@ function ProfilesPage() {
             <thead>
               <tr>
                 <th>{t("profiles.module")}</th>
-                <th>{t("profiles.read")}</th>
-                <th>{t("profiles.write")}</th>
-                <th>{t("profiles.update")}</th>
+                <th>
+                  {t("profiles.read")}
+                  <label className="checkbox-field">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelectedByAction("read")}
+                      onChange={(event) => handleSelectAllByAction("read", event.target.checked)}
+                    />
+                    {t("profiles.selectAll")}
+                  </label>
+                </th>
+                <th>
+                  {t("profiles.write")}
+                  <label className="checkbox-field">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelectedByAction("create")}
+                      onChange={(event) => handleSelectAllByAction("create", event.target.checked)}
+                    />
+                    {t("profiles.selectAll")}
+                  </label>
+                </th>
+                <th>
+                  {t("profiles.update")}
+                  <label className="checkbox-field">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelectedByAction("update")}
+                      onChange={(event) => handleSelectAllByAction("update", event.target.checked)}
+                    />
+                    {t("profiles.selectAll")}
+                  </label>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -248,6 +359,40 @@ function ProfilesPage() {
                       />
                     </td>
                   ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <h4>{t("profiles.reportAccessTitle")}</h4>
+          <table className="crud-table">
+            <thead>
+              <tr>
+                <th>{t("reports.title")}</th>
+                <th>
+                  {t("profiles.access")}
+                  <label className="checkbox-field">
+                    <input
+                      type="checkbox"
+                      checked={isAllReportsSelected}
+                      onChange={(event) => handleSelectAllReports(event.target.checked)}
+                    />
+                    {t("profiles.selectAll")}
+                  </label>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {reportIds.map((report) => (
+                <tr key={report.id}>
+                  <td>{t(report.titleKey)}</td>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.permissions?.reportAccess?.[report.id])}
+                      onChange={(event) => handleReportPermissionChange(report.id, event.target.checked)}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>

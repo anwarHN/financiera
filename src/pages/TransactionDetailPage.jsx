@@ -15,6 +15,7 @@ function TransactionDetailPage({ moduleType }) {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const showTaxDiscountDetail = moduleType === "sale";
 
   const backPath = moduleType === "sale" ? "/sales" : "/purchases";
 
@@ -43,6 +44,9 @@ function TransactionDetailPage({ moduleType }) {
 
   if (isLoading) return <p>{t("common.loading")}</p>;
 
+  const taxesTotal = details.reduce((acc, line) => acc + Number(line.tax || 0), 0);
+  const discountsTotal = details.reduce((acc, line) => acc + Number(line.discount || 0), 0);
+
   return (
     <div className="module-page">
       <div className="page-header-row">
@@ -69,6 +73,16 @@ function TransactionDetailPage({ moduleType }) {
           <p>
             {t("transactions.total")}: {formatNumber(transaction.total)}
           </p>
+          {showTaxDiscountDetail ? (
+            <>
+              <p>
+                {t("transactions.tax")}: {formatNumber(taxesTotal)}
+              </p>
+              <p>
+                {t("transactions.discount")}: {formatNumber(discountsTotal)}
+              </p>
+            </>
+          ) : null}
           <p>
             {t("transactions.balance")}: {formatNumber(transaction.balance)}
           </p>
@@ -84,23 +98,31 @@ function TransactionDetailPage({ moduleType }) {
           <thead>
             <tr>
               <th>{t("transactions.concept")}</th>
-              <th>{t("transactions.quantity")}</th>
-              <th>{t("transactions.price")}</th>
-              <th>{t("transactions.total")}</th>
+              <th className="num-col">{t("transactions.quantity")}</th>
+              <th className="num-col">{t("transactions.price")}</th>
+              {showTaxDiscountDetail ? <th className="num-col">{t("transactions.taxPercentage")}</th> : null}
+              {showTaxDiscountDetail ? <th className="num-col">{t("transactions.tax")}</th> : null}
+              {showTaxDiscountDetail ? <th className="num-col">{t("transactions.discountPercentage")}</th> : null}
+              {showTaxDiscountDetail ? <th className="num-col">{t("transactions.discount")}</th> : null}
+              <th className="num-col">{t("transactions.total")}</th>
             </tr>
           </thead>
           <tbody>
             {details.length === 0 ? (
               <tr>
-                <td colSpan={4}>{t("common.empty")}</td>
+                <td colSpan={showTaxDiscountDetail ? 8 : 4}>{t("common.empty")}</td>
               </tr>
             ) : (
               details.map((line) => (
                 <tr key={line.id}>
                   <td>{line.concepts?.name ?? "-"}</td>
-                  <td>{line.quantity}</td>
-                  <td>{formatNumber(line.price)}</td>
-                  <td>{formatNumber(line.total)}</td>
+                  <td className="num-col">{line.quantity}</td>
+                  <td className="num-col">{formatNumber(line.price)}</td>
+                  {showTaxDiscountDetail ? <td className="num-col">{formatNumber(line.taxPercentage || 0, { showCurrency: false })}</td> : null}
+                  {showTaxDiscountDetail ? <td className="num-col">{formatNumber(line.tax || 0)}</td> : null}
+                  {showTaxDiscountDetail ? <td className="num-col">{formatNumber(line.discountPercentage || 0, { showCurrency: false })}</td> : null}
+                  {showTaxDiscountDetail ? <td className="num-col">{formatNumber(line.discount || 0)}</td> : null}
+                  <td className="num-col">{formatNumber(line.total)}</td>
                 </tr>
               ))
             )}
@@ -113,10 +135,10 @@ function TransactionDetailPage({ moduleType }) {
         <table className="crud-table">
           <thead>
             <tr>
-                <th>ID</th>
+                <th className="num-col">ID</th>
                 <th>{t("transactions.date")}</th>
                 <th>{t("transactions.referenceNumber")}</th>
-                <th>{t("transactions.total")}</th>
+                <th className="num-col">{t("transactions.total")}</th>
               </tr>
             </thead>
           <tbody>
@@ -127,10 +149,10 @@ function TransactionDetailPage({ moduleType }) {
             ) : (
               payments.map((payment) => (
                 <tr key={payment.id}>
-                  <td>{payment.transactionId}</td>
+                  <td className="num-col">{payment.transactionId}</td>
                   <td>{formatDate(payment.transactions?.date, language)}</td>
                   <td>{payment.transactions?.referenceNumber ?? "-"}</td>
-                  <td>{formatNumber(payment.total)}</td>
+                  <td className="num-col">{formatNumber(payment.total)}</td>
                 </tr>
               ))
             )}

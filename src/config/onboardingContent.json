@@ -41,6 +41,17 @@
         { "name": "Empleados", "description": "Listado y mantenimiento de empleados." }
       ]
     },
+    "appointments": {
+      "intro": "En este módulo gestionas citas y ausencias por empleado.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Opciones disponibles para control de citas.",
+      "appMenuOptions": [
+        { "name": "Calendario", "description": "Vista general de citas." },
+        { "name": "Por empleado", "description": "Calendario agrupado por empleado." },
+        { "name": "Tabla de citas", "description": "Listado de citas con edición rápida." },
+        { "name": "Ausencias", "description": "Control de ausencias por empleado." }
+      ]
+    },
     "products": {
       "intro": "En este módulo administras el catálogo de productos.",
       "appMenuTitle": "Accesos del app-menu",
@@ -58,17 +69,6 @@
         { "name": "Compras", "description": "Registro y control de compras." },
         { "name": "Gastos", "description": "Registro de gastos operativos." },
         { "name": "Ingresos", "description": "Registro de ingresos adicionales." }
-      ]
-    },
-    "concepts": {
-      "intro": "En este módulo defines conceptos y su clasificación.",
-      "appMenuTitle": "Accesos del app-menu",
-      "appMenuText": "Opciones disponibles para conceptos.",
-      "appMenuOptions": [
-        { "name": "Conceptos ingreso", "description": "Conceptos para ingresos." },
-        { "name": "Conceptos gasto", "description": "Conceptos para gastos." },
-        { "name": "Conceptos CxP", "description": "Conceptos para cuentas por pagar." },
-        { "name": "Grupos", "description": "Agrupadores para organizar conceptos." }
       ]
     },
     "payments": {
@@ -90,6 +90,17 @@
       "appMenuOptions": [
         { "name": "Proyectos", "description": "Creación y seguimiento de proyectos." },
         { "name": "Presupuestos", "description": "Definición y ejecución presupuestaria." }
+      ]
+    },
+    "catalogs": {
+      "intro": "En este módulo puedes modificar los diferentes catálogos disponibles en el sistema, incluyendo conceptos y monedas.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Opciones disponibles para catálogos.",
+      "appMenuOptions": [
+        { "name": "Conceptos ingreso", "description": "Define conceptos para clasificar ingresos." },
+        { "name": "Conceptos gasto", "description": "Define conceptos para clasificar gastos." },
+        { "name": "Grupos de conceptos de ingreso/gasto", "description": "Agrupa y organiza los conceptos de ingreso y gasto." },
+        { "name": "Monedas", "description": "Gestiona el catálogo de monedas disponibles por cuenta." }
       ]
     },
     "reports": {
@@ -154,6 +165,17 @@
         { "name": "Employees", "description": "Employee list and maintenance." }
       ]
     },
+    "appointments": {
+      "intro": "This module manages appointments and employee absences.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Available options for appointment control.",
+      "appMenuOptions": [
+        { "name": "Calendar", "description": "General appointments view." },
+        { "name": "By employee", "description": "Calendar grouped by employee." },
+        { "name": "Appointments table", "description": "Appointments list with quick edits." },
+        { "name": "Absences", "description": "Employee absences control." }
+      ]
+    },
     "products": {
       "intro": "This module manages your product catalog.",
       "appMenuTitle": "App-menu entries",
@@ -171,17 +193,6 @@
         { "name": "Purchases", "description": "Purchase registration and control." },
         { "name": "Expenses", "description": "Operational expense registration." },
         { "name": "Incomes", "description": "Additional income registration." }
-      ]
-    },
-    "concepts": {
-      "intro": "This module defines concepts and their classification.",
-      "appMenuTitle": "App-menu entries",
-      "appMenuText": "Available concept options.",
-      "appMenuOptions": [
-        { "name": "Income concepts", "description": "Concepts used for income." },
-        { "name": "Expense concepts", "description": "Concepts used for expenses." },
-        { "name": "A/P concepts", "description": "Concepts used for accounts payable." },
-        { "name": "Groups", "description": "Groupers to organize concepts." }
       ]
     },
     "payments": {
@@ -203,6 +214,17 @@
       "appMenuOptions": [
         { "name": "Projects", "description": "Project creation and tracking." },
         { "name": "Budgets", "description": "Budget definition and execution." }
+      ]
+    },
+    "catalogs": {
+      "intro": "In this module you can update the different catalogs available in the system, including concepts and currencies.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Available catalog options.",
+      "appMenuOptions": [
+        { "name": "Income concepts", "description": "Define concepts used to classify incomes." },
+        { "name": "Expense concepts", "description": "Define concepts used to classify expenses." },
+        { "name": "Income/expense concept groups", "description": "Group and organize income and expense concepts." },
+        { "name": "Currencies", "description": "Manage the account currency catalog." }
       ]
     },
     "reports": {

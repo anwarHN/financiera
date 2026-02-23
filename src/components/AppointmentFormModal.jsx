@@ -6,6 +6,7 @@ import TextField from "./form/TextField";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import EmployeeFormPage from "../pages/EmployeeFormPage";
+import PeopleFormPage from "../pages/PeopleFormPage";
 import { listEmployees } from "../services/employeesService";
 import { listPersons } from "../services/personsService";
 
@@ -32,12 +33,24 @@ function toIso(value) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-function AppointmentFormModal({ isOpen, appointment, defaultStart, defaultEnd, onClose, onSave, isSaving = false }) {
+function AppointmentFormModal({
+  isOpen,
+  appointment,
+  defaultStart,
+  defaultEnd,
+  defaultEmployeeId = "",
+  defaultEmployeeName = "",
+  availabilityAlert = "",
+  onClose,
+  onSave,
+  isSaving = false
+}) {
   const { t } = useI18n();
   const { account } = useAuth();
   const [form, setForm] = useState(initialForm);
   const [persons, setPersons] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [clientLookupValue, setClientLookupValue] = useState("");
   const [employeeLookupValue, setEmployeeLookupValue] = useState("");
   const [error, setError] = useState("");
 
@@ -51,6 +64,7 @@ function AppointmentFormModal({ isOpen, appointment, defaultStart, defaultEnd, o
   useEffect(() => {
     if (!isOpen) return;
     if (appointment) {
+      const clientName = appointment.persons?.name || "";
       const employeeName = appointment.employes?.name || "";
       setForm({
         personId: appointment.personId ? String(appointment.personId) : "",
@@ -61,17 +75,20 @@ function AppointmentFormModal({ isOpen, appointment, defaultStart, defaultEnd, o
         endsAt: toLocalInput(appointment.endsAt),
         status: appointment.status || "pending"
       });
+      setClientLookupValue(clientName);
       setEmployeeLookupValue(employeeName);
     } else {
       setForm({
         ...initialForm,
+        employeeId: defaultEmployeeId ? String(defaultEmployeeId) : "",
         startsAt: toLocalInput(defaultStart),
         endsAt: toLocalInput(defaultEnd)
       });
-      setEmployeeLookupValue("");
+      setClientLookupValue("");
+      setEmployeeLookupValue(defaultEmployeeName || "");
     }
     setError("");
-  }, [isOpen, appointment, defaultStart, defaultEnd]);
+  }, [isOpen, appointment, defaultStart, defaultEnd, defaultEmployeeId, defaultEmployeeName]);
 
   const loadOptions = async () => {
     try {
@@ -104,6 +121,10 @@ function AppointmentFormModal({ isOpen, appointment, defaultStart, defaultEnd, o
       setError(t("appointments.invalidRange"));
       return;
     }
+    if (!form.personId) {
+      setError(t("common.requiredFields"));
+      return;
+    }
 
     await onSave?.({
       personId: Number(form.personId),
@@ -119,6 +140,7 @@ function AppointmentFormModal({ isOpen, appointment, defaultStart, defaultEnd, o
   if (!isOpen) return null;
 
   const selectedEmployee = form.employeeId ? employees.find((item) => Number(item.id) === Number(form.employeeId)) ?? null : null;
+  const selectedClient = form.personId ? clientOptions.find((item) => Number(item.id) === Number(form.personId)) ?? null : null;
 
   return (
     <div className="modal-backdrop">
@@ -126,22 +148,56 @@ function AppointmentFormModal({ isOpen, appointment, defaultStart, defaultEnd, o
         <form className="crud-form" onSubmit={handleSubmit}>
           <h3>{appointment ? t("appointments.edit") : t("appointments.new")}</h3>
           {error ? <p className="error-text">{error}</p> : null}
+          {!appointment && availabilityAlert ? <p className="warning-text">{availabilityAlert}</p> : null}
 
           <div className="form-grid-2">
-            <SelectField
+            <LookupCombobox
               label={t("appointments.client")}
-              name="personId"
-              value={form.personId}
-              onChange={handleChange}
+              value={clientLookupValue}
+              onValueChange={(nextValue) => {
+                setClientLookupValue(nextValue);
+                if (form.personId) {
+                  setForm((prev) => ({ ...prev, personId: "" }));
+                }
+              }}
+              options={clientOptions}
+              getOptionLabel={(item) => item.name}
+              onSelect={(item) => {
+                setForm((prev) => ({ ...prev, personId: String(item.id) }));
+                setClientLookupValue(item.name);
+              }}
+              placeholder={`-- ${t("appointments.selectClient")} --`}
+              noResultsText={t("common.empty")}
+              selectedPillText={selectedClient?.name || ""}
+              onClearSelection={() => {
+                setForm((prev) => ({ ...prev, personId: "" }));
+                setClientLookupValue("");
+              }}
               required
-            >
-              <option value="">{`-- ${t("appointments.selectClient")} --`}</option>
-              {clientOptions.map((person) => (
-                <option key={person.id} value={person.id}>
-                  {person.name}
-                </option>
-              ))}
-            </SelectField>
+              hasError={Boolean(error) && !form.personId}
+              renderCreateModal={({ isOpen: isCreateModalOpen, onClose, onCreated }) =>
+                isCreateModalOpen ? (
+                  <div className="modal-backdrop">
+                    <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+                      <PeopleFormPage
+                        embedded
+                        personType={1}
+                        titleKey="actions.newClient"
+                        basePath="/clients"
+                        onCancel={onClose}
+                        onCreated={(record) => onCreated(record)}
+                      />
+                    </div>
+                  </div>
+                ) : null
+              }
+              onCreateRecord={async (record) => {
+                if (!record) return;
+                await loadOptions();
+                setForm((prev) => ({ ...prev, personId: String(record.id) }));
+                setClientLookupValue(record.name || "");
+              }}
+            />
 
             <LookupCombobox
               label={t("appointments.employee")}

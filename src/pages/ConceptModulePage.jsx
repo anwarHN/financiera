@@ -5,21 +5,24 @@ import ConceptModuleFormPage from "./ConceptModuleFormPage";
 import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import { useModulePermissions } from "../hooks/useModulePermissions";
 import { deleteConcept, listConceptsByModule } from "../services/conceptsService";
+import { formatNumber } from "../utils/numberFormat";
 
 const pageSize = 10;
 
 function ConceptModulePage({ moduleType, titleKey, basePath }) {
   const { t } = useI18n();
   const { account } = useAuth();
+  const { canCreate, canUpdate } = useModulePermissions("concepts");
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [searchParams, setSearchParams] = useSearchParams();
-  const isCreateModalOpen = searchParams.get("create") === "1";
+  const isCreateModalOpen = searchParams.get("create") === "1" && canCreate;
   const editId = searchParams.get("edit");
-  const isEditModalOpen = Boolean(editId);
+  const isEditModalOpen = Boolean(editId) && canUpdate;
 
   useEffect(() => {
     if (!account?.accountId) {
@@ -81,7 +84,7 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
               <tr>
                 <th>{t("common.name")}</th>
                 <th>{t("concepts.group")}</th>
-                <th>{t("concepts.taxPercentage")}</th>
+                {moduleType === "products" && <th>{t("concepts.taxPercentage")}</th>}
                 {moduleType === "products" && <th>{t("transactions.price")}</th>}
                 {moduleType === "products" && <th>{t("transactions.additionalCharges")}</th>}
                 <th>{t("common.actions")}</th>
@@ -92,13 +95,13 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
                 <tr key={item.id}>
                   <td>{item.name}</td>
                   <td>{item.parentConcept?.name ?? "-"}</td>
-                  <td>{item.taxPercentage}</td>
-                  {moduleType === "products" && <td>{Number(item.price || 0).toFixed(2)}</td>}
-                  {moduleType === "products" && <td>{Number(item.additionalCharges || 0).toFixed(2)}</td>}
+                  {moduleType === "products" && <td>{formatNumber(item.taxPercentage || 0, { showCurrency: false })}</td>}
+                  {moduleType === "products" && <td>{formatNumber(item.price || 0)}</td>}
+                  {moduleType === "products" && <td>{formatNumber(item.additionalCharges || 0)}</td>}
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[
-                        ...(item.isSystem
+                        ...(item.isSystem || !canUpdate
                           ? []
                           : [
                               {
@@ -112,7 +115,7 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
                                 }
                               }
                             ]),
-                        ...(item.isSystem
+                        ...(item.isSystem || !canUpdate
                           ? []
                           : [{ key: "delete", label: t("common.delete"), onClick: () => handleDelete(item.id), danger: true }])
                       ]}

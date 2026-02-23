@@ -15,6 +15,7 @@ import TransactionsPage from "./pages/TransactionsPage";
 import TransactionCreatePage from "./pages/TransactionCreatePage";
 import TransactionDetailPage from "./pages/TransactionDetailPage";
 import ReportsPage from "./pages/ReportsPage";
+import CurrenciesPage from "./pages/CurrenciesPage";
 import ProfilesPage from "./pages/ProfilesPage";
 import AdminPage from "./pages/AdminPage";
 import AccountManagePage from "./pages/AccountManagePage";
@@ -37,6 +38,7 @@ import BudgetsPage from "./pages/BudgetsPage";
 import BudgetFormPage from "./pages/BudgetFormPage";
 import BudgetDetailPage from "./pages/BudgetDetailPage";
 import AppointmentsPage from "./pages/AppointmentsPage";
+import EmployeeAbsencesPage from "./pages/EmployeeAbsencesPage";
 
 function App() {
   return (
@@ -167,6 +169,7 @@ function App() {
         <Route path="appointments/calendar" element={<AppointmentsPage mode="calendar" />} />
         <Route path="appointments/by-employee" element={<AppointmentsPage mode="by-employee" />} />
         <Route path="appointments/table" element={<AppointmentsPage mode="table" />} />
+        <Route path="employee-absences" element={<EmployeeAbsencesPage />} />
         <Route path="expenses" element={<TransactionsPage moduleType="expense" />} />
         <Route path="expenses/new" element={<TransactionCreatePage moduleType="expense" />} />
         <Route path="incomes" element={<TransactionsPage moduleType="income" />} />
@@ -194,6 +197,7 @@ function App() {
         <Route path="budgets/:id" element={<BudgetDetailPage />} />
         <Route path="budgets/:id/edit" element={<BudgetFormPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="currencies" element={<CurrenciesPage />} />
         <Route path="account" element={<AccountManagePage />}>
           <Route index element={<Navigate to="/account/users" replace />} />
           <Route path="billing" element={<AccountBillingPage />} />

@@ -4,9 +4,11 @@ import { useSearchParams } from "react-router-dom";
 import Pagination from "../components/Pagination";
 import PaymentRegisterModal from "../components/PaymentRegisterModal";
 import RowActionsMenu from "../components/RowActionsMenu";
+import StatusBadge from "../components/StatusBadge";
 import TransactionCreatePage from "./TransactionCreatePage";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import { useModulePermissions } from "../hooks/useModulePermissions";
 import {
   deactivateTransaction,
   listPrimaryConceptsByTransactionIds,
@@ -47,7 +49,8 @@ const pageSize = 10;
 
 function TransactionsPage({ moduleType }) {
   const { t, language } = useI18n();
-  const { account } = useAuth();
+  const { account, canVoidTransactions } = useAuth();
+  const { canCreate, canUpdate } = useModulePermissions("transactions");
   const config = moduleConfig[moduleType];
   const supportsTableFilters = ["sale", "purchase", "expense", "income"].includes(moduleType);
 
@@ -65,9 +68,9 @@ function TransactionsPage({ moduleType }) {
     maxAmount: ""
   });
   const [searchParams, setSearchParams] = useSearchParams();
-  const isCreateModalOpen = searchParams.get("create") === "1";
+  const isCreateModalOpen = searchParams.get("create") === "1" && canCreate;
   const editId = searchParams.get("edit");
-  const isEditModalOpen = Boolean(editId);
+  const isEditModalOpen = Boolean(editId) && canUpdate;
 
   useEffect(() => {
     if (!account?.accountId) {
@@ -260,15 +263,15 @@ function TransactionsPage({ moduleType }) {
           <table className="crud-table">
             <thead>
               <tr>
-                <th>ID</th>
+                <th className="num-col">ID</th>
                 <th>{t("transactions.date")}</th>
                 <th>{t("common.name")}</th>
                 {(moduleType === "income" || moduleType === "expense") && <th>{t("transactions.concept")}</th>}
                 <th>{t("transactions.person")}</th>
                 {(moduleType === "income" || moduleType === "expense") && <th>{t("transactions.employee")}</th>}
                 <th>{t("projects.project")}</th>
-                <th>{t("transactions.total")}</th>
-                <th>{t("transactions.balance")}</th>
+                <th className="num-col">{t("transactions.total")}</th>
+                <th className="num-col">{t("transactions.balance")}</th>
                 <th>{t("transactions.referenceNumber")}</th>
                 <th>{t("transactions.status")}</th>
                 <th>{t("common.actions")}</th>
@@ -277,7 +280,7 @@ function TransactionsPage({ moduleType }) {
             <tbody>
               {paginatedItems.map((item) => (
                 <tr key={item.id}>
-                  <td>
+                  <td className="num-col">
                     {moduleType === "sale" || moduleType === "purchase" ? (
                       <Link to={`/${moduleType === "sale" ? "sales" : "purchases"}/${item.id}`}>{item.id}</Link>
                     ) : (
@@ -290,10 +293,14 @@ function TransactionsPage({ moduleType }) {
                   <td>{item.persons?.name ?? "-"}</td>
                   {(moduleType === "income" || moduleType === "expense") && <td>{item.employes?.name ?? "-"}</td>}
                   <td>{item.projects?.name ?? "-"}</td>
-                  <td>{formatNumber(item.total)}</td>
-                  <td>{formatNumber(item.balance)}</td>
+                  <td className="num-col">{formatNumber(item.total)}</td>
+                  <td className="num-col">{formatNumber(item.balance)}</td>
                   <td>{item.referenceNumber ?? "-"}</td>
-                  <td>{item.isActive ? t("transactions.active") : t("transactions.inactive")}</td>
+                  <td>
+                    <StatusBadge tone={item.isActive ? "success" : "muted"}>
+                      {item.isActive ? t("transactions.active") : t("transactions.inactive")}
+                    </StatusBadge>
+                  </td>
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[
@@ -318,7 +325,7 @@ function TransactionsPage({ moduleType }) {
                               }
                             ]
                           : []),
-                        ...(["sale", "purchase", "expense", "income"].includes(moduleType)
+                        ...(["sale", "purchase", "expense", "income"].includes(moduleType) && canUpdate
                           ? [
                               {
                                 key: "edit",
@@ -332,13 +339,15 @@ function TransactionsPage({ moduleType }) {
                               }
                             ]
                           : []),
-                        {
+                        ...(canVoidTransactions
+                          ? [{
                           key: "deactivate",
                           label: t("transactions.deactivate"),
                           onClick: () => handleDeactivate(item.id),
                           disabled: !item.isActive,
                           danger: true
-                        }
+                        }]
+                          : [])
                       ]}
                     />
                   </td>

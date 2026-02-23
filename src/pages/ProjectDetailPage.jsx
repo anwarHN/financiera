@@ -89,9 +89,9 @@ function ProjectDetailPage() {
               <thead>
                 <tr>
                   <th>{t("transactions.concept")}</th>
-                  <th>{t("budgets.budgetAmount")}</th>
-                  <th>{t("reports.executed")}</th>
-                  <th>{t("reports.variance")}</th>
+                  <th className="num-col">{t("budgets.budgetAmount")}</th>
+                  <th className="num-col">{t("reports.executed")}</th>
+                  <th className="num-col">{t("reports.variance")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -103,11 +103,11 @@ function ProjectDetailPage() {
                   executionRows.map((row) => (
                     <tr key={row.id}>
                       <td>{row.conceptName}</td>
-                      <td>{formatNumber(row.budgeted)}</td>
-                      <td className={Number(row.executed || 0) > Number(row.budgeted || 0) ? "text-danger" : ""}>
+                      <td className="num-col">{formatNumber(row.budgeted)}</td>
+                      <td className={`num-col ${Number(row.executed || 0) > Number(row.budgeted || 0) ? "text-danger" : ""}`.trim()}>
                         {formatNumber(row.executed)}
                       </td>
-                      <td>{formatNumber(row.variance)}</td>
+                      <td className="num-col">{formatNumber(row.variance)}</td>
                     </tr>
                   ))
                 )}
@@ -120,10 +120,10 @@ function ProjectDetailPage() {
             <table className="crud-table">
               <thead>
                 <tr>
-                  <th>ID</th>
+                  <th className="num-col">ID</th>
                   <th>{t("transactions.date")}</th>
                   <th>{t("common.name")}</th>
-                  <th>{t("transactions.total")}</th>
+                  <th className="num-col">{t("transactions.total")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -134,10 +134,10 @@ function ProjectDetailPage() {
                 ) : (
                   transactions.map((tx) => (
                     <tr key={tx.id}>
-                      <td>{tx.id}</td>
+                      <td className="num-col">{tx.id}</td>
                       <td>{formatDate(tx.date, language)}</td>
                       <td>{tx.name || "-"}</td>
-                      <td>{formatNumber(tx.total)}</td>
+                      <td className="num-col">{formatNumber(tx.total)}</td>
                     </tr>
                   ))
                 )}

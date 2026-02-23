@@ -61,7 +61,9 @@ export async function assignUserProfile({ accountId, userId, profileId }) {
 export async function getCurrentUserProfile(accountId, userId) {
   const { data, error } = await supabase
     .from("users_to_profiles")
-    .select('id, "profileId", account_profiles(id, name, "isSystemAdmin")')
+    .select(
+      'id, "profileId", account_profiles(id, name, "isSystemAdmin", "canCreateUsers", "canCreateProfiles", "canVoidTransactions", permissions)'
+    )
     .eq("accountId", accountId)
     .eq("userId", userId)
     .maybeSingle();

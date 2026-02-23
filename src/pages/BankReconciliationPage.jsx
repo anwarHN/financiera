@@ -151,7 +151,18 @@ function BankReconciliationPage() {
           </label>
           <label className="field-block">
             <span>{t("reports.dateTo")}</span>
-            <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(event) => {
+                const nextDateTo = event.target.value;
+                setDateTo(nextDateTo);
+                setReconcileDate(nextDateTo);
+                if (error === t("reconciliation.reconcileDateOutOfRange")) {
+                  setError("");
+                }
+              }}
+            />
           </label>
         </div>
         <div className="reconciliation-summary-row">
@@ -188,10 +199,10 @@ function BankReconciliationPage() {
       <table className="crud-table">
         <thead>
           <tr>
-            <th>ID</th>
+            <th className="num-col">ID</th>
             <th>{t("transactions.date")}</th>
             <th>{t("transactions.referenceNumber")}</th>
-            <th>{t("transactions.total")}</th>
+            <th className="num-col">{t("transactions.total")}</th>
             <th>{t("reconciliation.reconciled")}</th>
             <th>{t("common.actions")}</th>
           </tr>
@@ -204,10 +215,10 @@ function BankReconciliationPage() {
           ) : (
             transactionsInRange.map((row) => (
               <tr key={row.id}>
-                <td>{row.id}</td>
+                <td className="num-col">{row.id}</td>
                 <td>{formatDate(row.date, language)}</td>
                 <td>{row.referenceNumber || "-"}</td>
-                <td>{formatNumber(row.total)}</td>
+                <td className="num-col">{formatNumber(row.total)}</td>
                 <td>{row.isReconciled ? formatDate(row.reconciledAt, language) : "-"}</td>
                 <td className="table-actions reconciliation-actions">
                   {!row.isReconciled ? (

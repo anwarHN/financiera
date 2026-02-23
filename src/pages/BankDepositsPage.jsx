@@ -5,6 +5,7 @@ import BankDepositFormPage from "./BankDepositFormPage";
 import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import { useModulePermissions } from "../hooks/useModulePermissions";
 import { deactivateBankDepositGroup, listBankDeposits } from "../services/transactionsService";
 import { formatDate } from "../utils/dateFormat";
 import { formatNumber } from "../utils/numberFormat";
@@ -14,12 +15,13 @@ const pageSize = 10;
 function BankDepositsPage() {
   const { t, language } = useI18n();
   const { account } = useAuth();
+  const { canCreate, canUpdate, canVoidTransactions } = useModulePermissions("transactions");
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [searchParams, setSearchParams] = useSearchParams();
-  const isCreateModalOpen = searchParams.get("create") === "1";
+  const isCreateModalOpen = searchParams.get("create") === "1" && canCreate;
 
   useEffect(() => {
     if (!account?.accountId) return;
@@ -67,33 +69,35 @@ function BankDepositsPage() {
           <table className="crud-table">
             <thead>
               <tr>
-                <th>ID</th>
+                <th className="num-col">ID</th>
                 <th>{t("transactions.date")}</th>
                 <th>{t("common.name")}</th>
                 <th>{t("transactions.accountPaymentForm")}</th>
                 <th>{t("transactions.referenceNumber")}</th>
-                <th>{t("transactions.total")}</th>
+                <th className="num-col">{t("transactions.total")}</th>
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
               {paginatedItems.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.id}</td>
+                  <td className="num-col">{item.id}</td>
                   <td>{formatDate(item.date, language)}</td>
                   <td>{item.name || "-"}</td>
                   <td>{item.account_payment_forms?.name || "-"}</td>
                   <td>{item.referenceNumber || "-"}</td>
-                  <td>{formatNumber(item.total)}</td>
+                  <td className="num-col">{formatNumber(item.total)}</td>
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[
-                        {
+                        ...(canVoidTransactions || canUpdate
+                          ? [{
                           key: "deactivate",
                           label: t("transactions.deactivate"),
                           onClick: () => handleDeactivate(item.id),
                           danger: true
-                        }
+                        }]
+                          : [])
                       ]}
                     />
                   </td>

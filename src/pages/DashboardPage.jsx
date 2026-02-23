@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ChartCanvas from "../components/ChartCanvas";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
@@ -27,7 +28,8 @@ function buildDoughnutData(series) {
 
 function DashboardPage() {
   const { t } = useI18n();
-  const { account } = useAuth();
+  const { account, hasDashboardAccess, hasModulePermission } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -87,6 +89,27 @@ function DashboardPage() {
     };
   }, [data, t]);
 
+  useEffect(() => {
+    if (hasDashboardAccess()) return;
+    const fallbackModules = ["clients", "providers", "employees", "appointments", "concepts", "transactions", "paymentForms", "planning", "catalogs", "reports"];
+    const fallbackPathByModule = {
+      clients: "/clients",
+      providers: "/providers",
+      employees: "/employees",
+      appointments: "/appointments/calendar",
+      concepts: "/products",
+      transactions: "/sales",
+      paymentForms: "/payment-forms",
+      planning: "/projects",
+      catalogs: "/currencies",
+      reports: "/reports"
+    };
+    const nextModule = fallbackModules.find((moduleKey) => hasModulePermission(moduleKey, "read"));
+    navigate(nextModule ? fallbackPathByModule[nextModule] : "/account", { replace: true });
+  }, [hasDashboardAccess, hasModulePermission, navigate]);
+
+  if (!hasDashboardAccess()) return null;
+
   if (isLoading) return <p>{t("common.loading")}</p>;
 
   return (
@@ -104,7 +127,7 @@ function DashboardPage() {
                 <tr>
                   <th>{t("common.name")}</th>
                   <th>{t("paymentForms.provider")}</th>
-                  <th>{t("transactions.balance")}</th>
+                  <th className="num-col">{t("transactions.balance")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -117,7 +140,7 @@ function DashboardPage() {
                     <tr key={item.id}>
                       <td>{item.name}</td>
                       <td>{item.provider || "-"}</td>
-                      <td>{formatNumber(item.balance)}</td>
+                      <td className="num-col">{formatNumber(item.balance)}</td>
                     </tr>
                   ))
                 )}
