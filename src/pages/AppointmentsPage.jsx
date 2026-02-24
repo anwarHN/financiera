@@ -298,6 +298,77 @@ function AppointmentsPage({ mode = "calendar" }) {
 
   const showCalendarControls = mode !== "table";
 
+  if (mode === "table") {
+    return (
+      <div className="module-page">
+        <h1>{t("appointments.title")}</h1>
+        {error ? <p className="error-text">{error}</p> : null}
+
+        {loading ? (
+          <p>{t("common.loading")}</p>
+        ) : filteredAppointments.length === 0 ? (
+          <p>{t("common.empty")}</p>
+        ) : (
+          <>
+            <table className="crud-table">
+              <thead>
+                <tr>
+                  <th>{t("appointments.startsAt")}</th>
+                  <th>{t("appointments.endsAt")}</th>
+                  <th>{t("appointments.client")}</th>
+                  <th>{t("appointments.employee")}</th>
+                  <th>{t("appointments.reason")}</th>
+                  <th>{t("appointments.status")}</th>
+                  <th>{t("common.actions")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedTableRows.map((row) => (
+                  <tr key={row.id}>
+                    <td>{formatDateTime(row.startsAt, language)}</td>
+                    <td>{formatDateTime(row.endsAt, language)}</td>
+                    <td>{row.persons?.name || "-"}</td>
+                    <td>{row.employes?.name || "-"}</td>
+                    <td>{row.title}</td>
+                    <td>
+                      <StatusBadge tone={statusClass(row.status)}>{statusLabel(t, row.status)}</StatusBadge>
+                    </td>
+                    <td className="table-actions">
+                      <RowActionsMenu
+                        actions={[
+                          ...(canUpdate ? [{ key: "edit", label: t("common.edit"), onClick: () => setEditingItem(row) }] : []),
+                          ...(canUpdate
+                            ? [{
+                            key: "toggle-status",
+                            label: row.status === "attended" ? t("appointments.markPending") : t("appointments.markAttended"),
+                            onClick: () => handleToggleStatus(row)
+                          }]
+                            : [])
+                        ]}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Pagination page={page} pageSize={pageSize} totalItems={filteredAppointments.length} onPageChange={setPage} />
+          </>
+        )}
+
+        <AppointmentFormModal
+          isOpen={Boolean(editingItem) && canUpdate}
+          appointment={editingItem}
+          defaultStart={defaultStart}
+          defaultEnd={defaultEnd}
+          availabilityAlert=""
+          onClose={() => setEditingItem(null)}
+          onSave={handleSave}
+          isSaving={saving}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className={`module-page appointments-module-page ${mode === "by-employee" ? "is-by-employee" : ""}`.trim()}>
       <h1>{t("appointments.title")}</h1>
@@ -307,7 +378,7 @@ function AppointmentsPage({ mode = "calendar" }) {
         <section className="appointments-content-pane">
           {showCalendarControls ? (
             <div className="appointments-shared-controls">
-              <div className="appointments-shared-controls-group">
+              <div className="appointments-shared-controls-group appointments-view-group" role="group" aria-label={t("appointments.range")}>
                 {mode !== "by-employee" ? (
                   <button type="button" className={`action-btn ${rangeMode === "day" ? "main" : ""}`} onClick={() => setParam("range", "day")}>
                     {t("appointments.rangeDay")}
@@ -344,51 +415,6 @@ function AppointmentsPage({ mode = "calendar" }) {
 
           {loading ? (
             <p>{t("common.loading")}</p>
-          ) : mode === "table" ? (
-            <>
-              <table className="crud-table">
-                <thead>
-                  <tr>
-                    <th>{t("appointments.startsAt")}</th>
-                    <th>{t("appointments.endsAt")}</th>
-                    <th>{t("appointments.client")}</th>
-                    <th>{t("appointments.employee")}</th>
-                    <th>{t("appointments.reason")}</th>
-                    <th>{t("appointments.status")}</th>
-                    <th>{t("common.actions")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedTableRows.map((row) => (
-                    <tr key={row.id}>
-                      <td>{formatDateTime(row.startsAt, language)}</td>
-                      <td>{formatDateTime(row.endsAt, language)}</td>
-                      <td>{row.persons?.name || "-"}</td>
-                      <td>{row.employes?.name || "-"}</td>
-                      <td>{row.title}</td>
-                      <td>
-                        <StatusBadge tone={statusClass(row.status)}>{statusLabel(t, row.status)}</StatusBadge>
-                      </td>
-                      <td className="table-actions">
-                        <RowActionsMenu
-                          actions={[
-                            ...(canUpdate ? [{ key: "edit", label: t("common.edit"), onClick: () => setEditingItem(row) }] : []),
-                            ...(canUpdate
-                              ? [{
-                              key: "toggle-status",
-                              label: row.status === "attended" ? t("appointments.markPending") : t("appointments.markAttended"),
-                              onClick: () => handleToggleStatus(row)
-                            }]
-                              : [])
-                          ]}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <Pagination page={page} pageSize={pageSize} totalItems={filteredAppointments.length} onPageChange={setPage} />
-            </>
           ) : (
             <div className={`appointments-viewport ${mode === "by-employee" ? "is-by-employee" : ""}`.trim()}>
               {mode === "by-employee" ? (

@@ -1264,6 +1264,33 @@ button:disabled,
   gap: 0.45rem;
 }
 
+.appointments-view-group {
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.appointments-view-group .action-btn {
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  min-height: 34px;
+  box-shadow: none;
+}
+
+.appointments-view-group .action-btn:last-child {
+  border-right: 0;
+}
+
+.appointments-view-group .action-btn:not(.main) {
+  background: var(--bg-panel);
+}
+
+.appointments-view-group .action-btn.main {
+  border-color: transparent;
+}
+
 .appointments-shared-controls-group input[type="date"] {
   width: auto;
   min-width: 150px;
@@ -1356,6 +1383,8 @@ button:disabled,
 
 .appointments-viewport {
   min-height: 0;
+  width: 100%;
+  min-width: 0;
 }
 
 .appointments-legend {
@@ -1423,8 +1452,10 @@ button:disabled,
   gap: 0;
   border: 1px solid var(--line);
   border-radius: 10px;
-  overflow: hidden;
+  width: 100%;
+  min-width: 0;
   overflow-x: auto;
+  overflow-y: visible;
 }
 
 .appointments-month-grid {
@@ -1433,8 +1464,10 @@ button:disabled,
   gap: 0;
   border: 1px solid var(--line);
   border-radius: 10px;
-  overflow: hidden;
+  width: 100%;
+  min-width: 0;
   overflow-x: auto;
+  overflow-y: visible;
 }
 
 .appointments-year-grid {
@@ -1443,8 +1476,11 @@ button:disabled,
   gap: 0;
   border: 1px solid var(--line);
   border-radius: 10px;
-  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+  overflow: auto;
 }
+
 
 .appointments-calendar-cell {
   border-right: 1px solid var(--line);
@@ -1819,11 +1855,13 @@ button:disabled,
   }
 
   .appointments-week-grid {
-    grid-template-columns: repeat(7, minmax(130px, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    overflow-x: hidden;
   }
 
   .appointments-month-grid {
-    grid-template-columns: repeat(7, minmax(124px, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    overflow-x: hidden;
   }
 
   .appointments-shared-controls {
@@ -1834,6 +1872,16 @@ button:disabled,
   .appointments-shared-controls-group {
     width: 100%;
     flex-wrap: wrap;
+  }
+
+  .appointments-view-group {
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+
+  .appointments-view-group .action-btn {
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .appointments-shared-controls-group > .action-btn,
@@ -1854,7 +1902,8 @@ button:disabled,
   }
 
   .appointments-year-grid {
-    grid-template-columns: repeat(2, minmax(180px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-x: hidden;
   }
 
   .appointments-calendar-cell {
@@ -1952,17 +2001,19 @@ button:disabled,
   }
 
   .appointments-grouped-week-wrap {
-    max-height: calc(100dvh - 320px);
+    max-height: none;
+    height: auto;
   }
+
 }
 
 @media (max-width: 720px) {
   .appointments-week-grid {
-    grid-template-columns: repeat(7, minmax(112px, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 
   .appointments-month-grid {
-    grid-template-columns: repeat(7, minmax(106px, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 
   .appointments-year-grid {
@@ -1998,6 +2049,7 @@ button:disabled,
     min-width: 78px;
     font-size: 0.68rem;
   }
+
 }
 
 .lookup-wrap {
