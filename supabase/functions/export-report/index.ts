@@ -3,7 +3,15 @@ import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 
 interface ExportPayload {
   accountId: number;
-  reportId: "sales" | "receivable" | "payable" | "internal_obligations" | "expenses" | "cashflow" | "employee_absences";
+  reportId:
+    | "sales"
+    | "receivable"
+    | "payable"
+    | "internal_obligations"
+    | "expenses"
+    | "cashflow"
+    | "employee_absences"
+    | "sales_by_employee";
   dateFrom?: string | null;
   dateTo?: string | null;
   currencyId?: number | null;
@@ -66,6 +74,23 @@ type ExportBuildResult = {
   extras?: Array<[string, string | number]>;
 };
 
+type SalesByEmployeeTxRow = {
+  id: number;
+};
+
+type SalesByEmployeeDetailRow = {
+  transactionId: number;
+  quantity: number;
+  total: number;
+  sellerId: number | null;
+  concepts: {
+    name: string;
+  } | null;
+  employes: {
+    name: string;
+  } | null;
+};
+
 const reportTitles: Record<ExportPayload["reportId"], string> = {
   sales: "Ventas",
   receivable: "Cuentas por cobrar",
@@ -73,7 +98,8 @@ const reportTitles: Record<ExportPayload["reportId"], string> = {
   internal_obligations: "Obligaciones internas",
   expenses: "Gastos",
   cashflow: "Flujo de caja",
-  employee_absences: "Ausencias por empleado"
+  employee_absences: "Ausencias por empleado",
+  sales_by_employee: "Ventas por empleado"
 };
 
 const corsHeaders = {
@@ -389,6 +415,105 @@ async function buildEmployeeAbsencesReport(
   };
 }
 
+async function buildSalesByEmployeeReport(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payload: ExportPayload
+): Promise<ExportBuildResult> {
+  let txQuery = supabaseAdmin
+    .from("transactions")
+    .select("id")
+    .eq("accountId", payload.accountId)
+    .eq("isActive", true)
+    .eq("type", 1);
+
+  if (payload.dateFrom) txQuery = txQuery.gte("date", payload.dateFrom);
+  if (payload.dateTo) txQuery = txQuery.lte("date", payload.dateTo);
+  if (payload.currencyId != null) txQuery = txQuery.eq("currencyId", payload.currencyId);
+
+  const { data: salesTx, error: txError } = await txQuery;
+  if (txError) throw txError;
+
+  const txIds = ((salesTx ?? []) as SalesByEmployeeTxRow[])
+    .map((row) => Number(row.id))
+    .filter((id) => Number.isFinite(id) && id > 0);
+  if (!txIds.length) {
+    return { rows: [], total: 0, balance: 0 };
+  }
+
+  const { data: details, error: detailsError } = await supabaseAdmin
+    .from("transactionDetails")
+    .select("transactionId, quantity, total, sellerId, concepts(name), employes(name)")
+    .in("transactionId", txIds);
+  if (detailsError) throw detailsError;
+
+  const groupedBySeller = new Map<
+    string,
+    {
+      sellerId: number;
+      sellerName: string;
+      total: number;
+      products: Map<string, { productName: string; quantity: number; total: number }>;
+    }
+  >();
+
+  ((details ?? []) as SalesByEmployeeDetailRow[]).forEach((row) => {
+    const sellerId = Number(row.sellerId || 0);
+    const sellerName = row.employes?.name || "Sin vendedor";
+    const productName = row.concepts?.name || "-";
+    const sellerKey = `${sellerId}-${sellerName}`;
+
+    if (!groupedBySeller.has(sellerKey)) {
+      groupedBySeller.set(sellerKey, {
+        sellerId,
+        sellerName,
+        total: 0,
+        products: new Map()
+      });
+    }
+
+    const sellerBucket = groupedBySeller.get(sellerKey)!;
+    const amount = Number(row.total || 0);
+    const quantity = Number(row.quantity || 0);
+    sellerBucket.total += amount;
+
+    const productBucket = sellerBucket.products.get(productName) || {
+      productName,
+      quantity: 0,
+      total: 0
+    };
+    productBucket.quantity += quantity;
+    productBucket.total += amount;
+    sellerBucket.products.set(productName, productBucket);
+  });
+
+  const rows: Record<string, string | number>[] = [];
+  const sellers = Array.from(groupedBySeller.values()).sort((a, b) => a.sellerName.localeCompare(b.sellerName));
+  sellers.forEach((seller) => {
+    rows.push({
+      empleado: seller.sellerName,
+      producto: "(Total empleado)",
+      cantidad: "",
+      total: sanitizeNumber(seller.total)
+    });
+    Array.from(seller.products.values())
+      .sort((a, b) => a.productName.localeCompare(b.productName))
+      .forEach((product) => {
+        rows.push({
+          empleado: seller.sellerName,
+          producto: product.productName,
+          cantidad: sanitizeNumber(product.quantity),
+          total: sanitizeNumber(product.total)
+        });
+      });
+  });
+
+  return {
+    rows,
+    total: sellers.reduce((acc, seller) => acc + Number(seller.total || 0), 0),
+    balance: 0
+  };
+}
+
 async function buildReportData(supabaseAdmin: ReturnType<typeof createClient>, payload: ExportPayload): Promise<ExportBuildResult> {
   if (payload.reportId === "internal_obligations") {
     return buildInternalObligationsReport(supabaseAdmin, payload);
@@ -398,6 +523,9 @@ async function buildReportData(supabaseAdmin: ReturnType<typeof createClient>, p
   }
   if (payload.reportId === "employee_absences") {
     return buildEmployeeAbsencesReport(supabaseAdmin, payload);
+  }
+  if (payload.reportId === "sales_by_employee") {
+    return buildSalesByEmployeeReport(supabaseAdmin, payload);
   }
   return buildStandardReport(supabaseAdmin, payload);
 }

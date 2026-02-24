@@ -303,6 +303,7 @@ export const translations = {
     reports: {
       title: "Reportes",
       sales: "Ventas",
+      salesByEmployee: "Ventas por empleado",
       expenses: "Gastos",
       incomes: "Ingresos",
       budgetExecution: "Ejecución de presupuesto",
@@ -848,6 +849,7 @@ export const translations = {
     reports: {
       title: "Reports",
       sales: "Sales",
+      salesByEmployee: "Sales by employee",
       expenses: "Expenses",
       incomes: "Incomes",
       budgetExecution: "Budget execution",

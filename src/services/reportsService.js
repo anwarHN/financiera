@@ -180,6 +180,71 @@ export async function getEmployeeAbsenceTotals(accountId, { dateFrom, dateTo } =
   return Array.from(grouped.values()).sort((a, b) => a.employeeName.localeCompare(b.employeeName));
 }
 
+export async function getSalesByEmployeeTotals(accountId, { dateFrom, dateTo, currencyId } = {}) {
+  let txQuery = supabase
+    .from("transactions")
+    .select("id, currencyId, isActive, type")
+    .eq("accountId", accountId)
+    .eq("isActive", true)
+    .eq("type", 1);
+
+  if (dateFrom) txQuery = txQuery.gte("date", dateFrom);
+  if (dateTo) txQuery = txQuery.lte("date", dateTo);
+  if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
+
+  const { data: transactions, error: txError } = await txQuery;
+  if (txError) throw txError;
+
+  const txIds = (transactions ?? []).map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
+  if (txIds.length === 0) return [];
+
+  const { data: details, error: detailsError } = await supabase
+    .from("transactionDetails")
+    .select("transactionId, quantity, total, sellerId, concepts(name), employes(name)")
+    .in("transactionId", txIds);
+  if (detailsError) throw detailsError;
+
+  const bySeller = new Map();
+  (details ?? []).forEach((row) => {
+    const sellerId = Number(row.sellerId || 0);
+    const sellerName = row.employes?.name || "Sin vendedor";
+    const productName = row.concepts?.name || "-";
+    const sellerKey = `${sellerId}-${sellerName}`;
+
+    if (!bySeller.has(sellerKey)) {
+      bySeller.set(sellerKey, {
+        sellerId,
+        sellerName,
+        total: 0,
+        products: new Map()
+      });
+    }
+
+    const sellerGroup = bySeller.get(sellerKey);
+    const amount = Number(row.total || 0);
+    const quantity = Number(row.quantity || 0);
+    sellerGroup.total += amount;
+
+    const currentProduct = sellerGroup.products.get(productName) || {
+      productName,
+      quantity: 0,
+      total: 0
+    };
+    currentProduct.quantity += quantity;
+    currentProduct.total += amount;
+    sellerGroup.products.set(productName, currentProduct);
+  });
+
+  return Array.from(bySeller.values())
+    .sort((a, b) => a.sellerName.localeCompare(b.sellerName))
+    .map((seller) => ({
+      sellerId: seller.sellerId,
+      sellerName: seller.sellerName,
+      total: seller.total,
+      products: Array.from(seller.products.values()).sort((a, b) => a.productName.localeCompare(b.productName))
+    }));
+}
+
 export async function exportReportXlsx({
   accountId,
   reportId,

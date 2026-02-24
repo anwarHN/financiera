@@ -33,7 +33,8 @@ const initialForm = {
       project_execution: true,
       expenses: true,
       cashflow: true,
-      employee_absences: true
+      employee_absences: true,
+      sales_by_employee: true
     }
   }
 };
@@ -83,7 +84,8 @@ function ProfilesPage() {
     { id: "project_execution", titleKey: "reports.projectExecution" },
     { id: "expenses", titleKey: "reports.expenses" },
     { id: "cashflow", titleKey: "reports.cashflow" },
-    { id: "employee_absences", titleKey: "reports.employeeAbsences" }
+    { id: "employee_absences", titleKey: "reports.employeeAbsences" },
+    { id: "sales_by_employee", titleKey: "reports.salesByEmployee" }
   ];
 
   const loadData = async () => {

@@ -9,6 +9,7 @@ import {
   getCashflowBankBalances,
   getCashflowConceptTotals,
   getEmployeeAbsenceTotals,
+  getSalesByEmployeeTotals,
   getTransactionsForReports
 } from "../services/reportsService";
 import { listInternalObligationsForReport } from "../services/transactionsService";
@@ -24,7 +25,8 @@ const fullReportCatalog = [
   { id: "project_execution", titleKey: "reports.projectExecution", filters: ["project", "dateRange"] },
   { id: "expenses", titleKey: "reports.expenses", filters: ["dateRange", "currency"] },
   { id: "cashflow", titleKey: "reports.cashflow", filters: ["dateRange", "currency"] },
-  { id: "employee_absences", titleKey: "reports.employeeAbsences", filters: ["dateRange"] }
+  { id: "employee_absences", titleKey: "reports.employeeAbsences", filters: ["dateRange"] },
+  { id: "sales_by_employee", titleKey: "reports.salesByEmployee", filters: ["dateRange", "currency"] }
 ];
 
 function ReportsPage() {
@@ -220,6 +222,19 @@ function ReportsPage() {
           newBalance: 0
         });
         setCashflowBankBalances([]);
+      } else if (selectedReport === "sales_by_employee") {
+        const rows = await getSalesByEmployeeTotals(account.accountId, {
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined,
+          currencyId: filters.currencyId || undefined
+        });
+        setResults(rows);
+        setCashflowSummary({
+          previousBalance: 0,
+          periodMovements: 0,
+          newBalance: 0
+        });
+        setCashflowBankBalances([]);
       } else {
         const transactions = await getTransactionsForReports(account.accountId, {
           dateFrom: filters.dateFrom || undefined,
@@ -289,6 +304,10 @@ function ReportsPage() {
       return acc + groupCount + conceptCount;
     }, 0);
   }, [results, selectedReport]);
+  const salesByEmployeeRowCount = useMemo(() => {
+    if (selectedReport !== "sales_by_employee") return 0;
+    return results.reduce((acc, seller) => acc + (seller.products?.length || 0), 0);
+  }, [results, selectedReport]);
 
   const appliedFilters = useMemo(() => {
     const currencyName = currencies.find((c) => String(c.id) === String(filters.currencyId))?.name || t("reports.currencyFilterHint");
@@ -306,6 +325,9 @@ function ReportsPage() {
   const total = useMemo(() => {
     if (selectedReport === "employee_absences") {
       return results.reduce((acc, item) => acc + Number(item.totalAbsences || 0), 0);
+    }
+    if (selectedReport === "sales_by_employee") {
+      return results.reduce((acc, item) => acc + Number(item.total || 0), 0);
     }
     if (selectedReport === "cashflow") {
       return results.reduce((acc, section) => acc + Number(section.total || 0), 0);
@@ -471,10 +493,13 @@ function ReportsPage() {
           ))}
           <p>
             {t("reports.totalRecords")}:{" "}
-            {formatNumber(selectedReport === "cashflow" ? cashflowRowCount : results.length, {
+            {formatNumber(
+              selectedReport === "cashflow" ? cashflowRowCount : selectedReport === "sales_by_employee" ? salesByEmployeeRowCount : results.length,
+              {
               minimumFractionDigits: 0,
               maximumFractionDigits: 0
-            })}
+              }
+            )}
           </p>
 
           {budgetExecutionTotals ? (
@@ -494,6 +519,11 @@ function ReportsPage() {
               {selectedReport === "employee_absences" ? (
                 <p>
                   {t("transactions.total")}: {formatNumber(total, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </p>
+              ) : null}
+              {selectedReport === "sales_by_employee" ? (
+                <p>
+                  {t("transactions.total")}: {formatNumber(total)}
                 </p>
               ) : null}
               {(selectedReport === "receivable" ||
@@ -567,6 +597,13 @@ function ReportsPage() {
                   <th>{t("transactions.concept")}</th>
                   <th className="num-col">{t("transactions.total")}</th>
                 </tr>
+              ) : selectedReport === "sales_by_employee" ? (
+                <tr>
+                  <th>{t("transactions.seller")}</th>
+                  <th>{t("nav.products")}</th>
+                  <th className="num-col">{t("transactions.quantity")}</th>
+                  <th className="num-col">{t("transactions.total")}</th>
+                </tr>
               ) : selectedReport === "employee_absences" ? (
                 <tr>
                   <th>{t("appointments.employee")}</th>
@@ -585,7 +622,11 @@ function ReportsPage() {
             <tbody>
               {(selectedReport === "cashflow" ? cashflowRowCount === 0 : rowsWithTypeLabel.length === 0) ? (
                 <tr>
-                  <td colSpan={budgetExecutionTotals ? 4 : selectedReport === "cashflow" ? 4 : selectedReport === "employee_absences" ? 2 : 5}>
+                  <td
+                    colSpan={
+                      budgetExecutionTotals ? 4 : selectedReport === "cashflow" ? 4 : selectedReport === "employee_absences" ? 2 : selectedReport === "sales_by_employee" ? 4 : 5
+                    }
+                  >
                     {t("common.empty")}
                   </td>
                 </tr>
@@ -624,6 +665,25 @@ function ReportsPage() {
                       </tr>
                     ))
                   ])
+                ])
+              ) : selectedReport === "sales_by_employee" ? (
+                results.flatMap((seller) => [
+                  <tr key={`sales-seller-${seller.sellerId}-${seller.sellerName}`} className="report-group-row">
+                    <td>{seller.sellerName || "-"}</td>
+                    <td>-</td>
+                    <td className="num-col">{formatNumber(0, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                    <td className="num-col">{formatNumber(seller.total || 0)}</td>
+                  </tr>,
+                  ...(seller.products || []).map((product) => (
+                    <tr key={`sales-seller-product-${seller.sellerId}-${seller.sellerName}-${product.productName}`} className="report-concept-row">
+                      <td>{seller.sellerName || "-"}</td>
+                      <td>{product.productName || "-"}</td>
+                      <td className="num-col">
+                        {formatNumber(product.quantity || 0, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="num-col">{formatNumber(product.total || 0)}</td>
+                    </tr>
+                  ))
                 ])
               ) : selectedReport === "employee_absences" ? (
                 results.map((row) => (

@@ -1798,6 +1798,27 @@ button:disabled,
 }
 
 @media (max-width: 980px) {
+  .appointments-shared-controls {
+    align-items: stretch;
+    gap: 0.55rem;
+  }
+
+  .appointments-shared-controls-group {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .appointments-shared-controls-group > .action-btn,
+  .appointments-shared-controls-group > select,
+  .appointments-shared-controls-group > input[type="date"] {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+
+  .appointments-shared-controls-group > input[type="date"] {
+    width: 100%;
+  }
+
   .appointments-resource-column {
     min-width: min(560px, calc(100vw - 1.5rem));
     width: min(560px, calc(100vw - 1.5rem));
@@ -1814,15 +1835,23 @@ button:disabled,
   }
 
   .appointments-grouped-week-resource {
-    width: 380px;
-    min-width: 380px;
-    max-width: 380px;
+    width: 320px;
+    min-width: 320px;
+    max-width: 320px;
   }
 
   .appointments-grouped-month-resource {
     min-width: min(620px, calc(100vw - 1.5rem));
     width: min(620px, calc(100vw - 1.5rem));
     flex-basis: min(620px, calc(100vw - 1.5rem));
+  }
+
+  .appointments-viewport.is-by-employee {
+    min-height: 0;
+  }
+
+  .appointments-grouped-week-wrap {
+    max-height: calc(100dvh - 320px);
   }
 }
 
