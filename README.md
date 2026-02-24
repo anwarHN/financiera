@@ -94,17 +94,22 @@ Para enviar invitaciones por correo usando Supabase:
 5. Se crea limpieza diaria automática (`pg_cron`) y la retención se configura por cuenta con:
    - `accounts.reportRetentionDays`
 
-## Membresía con Stripe ($5 por usuario)
+## Membresía y pagos (PayPal / Stripe)
+
+### PayPal (flujo actual en este repositorio)
 
 1. Ejecuta SQL:
    - `supabase/membership_stripe.sql`
-2. Crea en Stripe un precio mensual por usuario (ej. USD 5) y copia su `price_id`.
-3. Configura secrets:
+   - `supabase/membership_paypal.sql`
+2. Crea en PayPal un plan mensual por usuario y guarda su `plan_id`.
+3. Configura secrets de funciones:
    - `SERVICE_ROLE_KEY`
-   - `STRIPE_SECRET_KEY`
-   - `STRIPE_PRICE_ID_MONTHLY`
-   - `STRIPE_BILLING_CURRENCY` (opcional, default `usd`)
-   - `STRIPE_WEBHOOK_SECRET`
+   - `PAYPAL_ENV` (`sandbox` o `live`)
+   - `PAYPAL_CLIENT_ID`
+   - `PAYPAL_CLIENT_SECRET`
+   - `PAYPAL_PLAN_ID_MONTHLY` (o `PAYPAL_PLAN_ID`)
+   - `PAYPAL_WEBHOOK_ID`
+   - `PAYPAL_MANAGE_SUBSCRIPTION_URL_TEMPLATE` (opcional)
 4. Despliega funciones:
    - `supabase functions deploy create-billing-checkout`
    - `supabase functions deploy create-billing-portal`
@@ -114,9 +119,40 @@ Para enviar invitaciones por correo usando Supabase:
    - `supabase functions deploy create-billing-setup-session`
    - `supabase functions deploy set-default-billing-payment-method`
    - `supabase functions deploy stripe-webhook`
-5. Configura webhook en Stripe apuntando a:
+5. Configura webhook en PayPal apuntando a:
    - `https://<project-ref>.functions.supabase.co/stripe-webhook`
-   - Eventos: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
+   - Nota: el endpoint se llama `stripe-webhook` por compatibilidad histórica, pero procesa eventos de PayPal.
+6. Eventos recomendados en PayPal webhook:
+   - `BILLING.SUBSCRIPTION.CREATED`
+   - `BILLING.SUBSCRIPTION.ACTIVATED`
+   - `BILLING.SUBSCRIPTION.UPDATED`
+   - `BILLING.SUBSCRIPTION.SUSPENDED`
+   - `BILLING.SUBSCRIPTION.CANCELLED`
+   - `BILLING.SUBSCRIPTION.EXPIRED`
+   - `PAYMENT.SALE.DENIED`
+
+### Stripe (referencia)
+
+Si deseas operar con Stripe, deja configurado el SQL base y las claves de Stripe:
+
+1. Ejecuta SQL:
+   - `supabase/membership_stripe.sql`
+2. Configura secrets:
+   - `SERVICE_ROLE_KEY`
+   - `STRIPE_SECRET_KEY`
+   - `STRIPE_PRICE_ID_MONTHLY`
+   - `STRIPE_BILLING_CURRENCY` (opcional, default `usd`)
+   - `STRIPE_WEBHOOK_SECRET`
+3. Si vas a usar webhook de Stripe, registra los eventos:
+   - `checkout.session.completed`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+   - `invoice.payment_failed`
+4. URL webhook:
+   - `https://<project-ref>.functions.supabase.co/stripe-webhook`
+5. Importante:
+   - En el estado actual del código, el flujo de checkout/portal/webhook está implementado para PayPal.
+   - Si habilitas Stripe end-to-end, ajusta o crea handlers específicos para Stripe antes de pasar a producción.
 
 ## Siguiente fase recomendada
 
