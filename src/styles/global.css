@@ -1798,6 +1798,34 @@ button:disabled,
 }
 
 @media (max-width: 980px) {
+  .appointments-legend-item {
+    font-size: 0.78rem;
+  }
+
+  .appointments-day-row {
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 0.35rem;
+  }
+
+  .appointments-day-hour {
+    font-size: 0.72rem;
+    padding-top: 0.25rem;
+  }
+
+  .appointments-day-slot {
+    min-height: 28px;
+    padding: 0.2rem;
+    gap: 0.2rem;
+  }
+
+  .appointments-week-grid {
+    grid-template-columns: repeat(7, minmax(130px, 1fr));
+  }
+
+  .appointments-month-grid {
+    grid-template-columns: repeat(7, minmax(124px, 1fr));
+  }
+
   .appointments-shared-controls {
     align-items: stretch;
     gap: 0.55rem;
@@ -1826,12 +1854,43 @@ button:disabled,
   }
 
   .appointments-year-grid {
-    grid-template-columns: repeat(2, minmax(220px, 1fr));
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+
+  .appointments-calendar-cell {
+    min-height: 116px;
+  }
+
+  .appointments-calendar-cell-head {
+    padding: 0.3rem 0.35rem;
+    font-size: 0.74rem;
+  }
+
+  .appointments-calendar-cell-body {
+    padding: 0.25rem;
+    gap: 0.22rem;
+  }
+
+  .appointments-pill {
+    padding: 0.25rem 0.32rem;
+    border-radius: 6px;
+    gap: 0.08rem;
+  }
+
+  .appointments-pill strong {
+    font-size: 0.7rem;
+  }
+
+  .appointments-pill span,
+  .appointments-pill small,
+  .appointments-more {
+    font-size: 0.66rem;
   }
 
   .appointments-grouped-grid th,
   .appointments-grouped-grid td {
-    min-width: 100px;
+    min-width: 86px;
+    padding: 0.14rem;
   }
 
   .appointments-grouped-week-resource {
@@ -1844,6 +1903,48 @@ button:disabled,
     min-width: min(620px, calc(100vw - 1.5rem));
     width: min(620px, calc(100vw - 1.5rem));
     flex-basis: min(620px, calc(100vw - 1.5rem));
+    padding: 0.45rem;
+  }
+
+  .appointments-grouped-time-head {
+    height: 72px;
+    font-size: 0.66rem;
+  }
+
+  .appointments-grouped-time-cell {
+    font-size: 0.62rem;
+  }
+
+  .appointments-grouped-week-resource-head {
+    height: 40px;
+    font-size: 0.7rem;
+    padding: 0 0.3rem;
+  }
+
+  .appointments-grouped-week-days-head {
+    top: 40px;
+  }
+
+  .appointments-grouped-week-day-head-cell {
+    min-height: 31px;
+    padding: 0.12rem;
+  }
+
+  .appointments-grouped-week-day-head-cell strong {
+    font-size: 0.58rem;
+  }
+
+  .appointments-grouped-week-day-head-cell span {
+    font-size: 0.56rem;
+  }
+
+  .appointments-float-event strong {
+    font-size: 0.54rem;
+  }
+
+  .appointments-float-event span,
+  .appointments-float-event small {
+    font-size: 0.52rem;
   }
 
   .appointments-viewport.is-by-employee {
@@ -1852,6 +1953,50 @@ button:disabled,
 
   .appointments-grouped-week-wrap {
     max-height: calc(100dvh - 320px);
+  }
+}
+
+@media (max-width: 720px) {
+  .appointments-week-grid {
+    grid-template-columns: repeat(7, minmax(112px, 1fr));
+  }
+
+  .appointments-month-grid {
+    grid-template-columns: repeat(7, minmax(106px, 1fr));
+  }
+
+  .appointments-year-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  .appointments-calendar-cell {
+    min-height: 98px;
+  }
+
+  .appointments-calendar-cell-head {
+    font-size: 0.7rem;
+  }
+
+  .appointments-pill strong {
+    font-size: 0.66rem;
+  }
+
+  .appointments-pill span,
+  .appointments-pill small,
+  .appointments-more {
+    font-size: 0.62rem;
+  }
+
+  .appointments-grouped-week-resource {
+    width: 284px;
+    min-width: 284px;
+    max-width: 284px;
+  }
+
+  .appointments-grouped-grid th,
+  .appointments-grouped-grid td {
+    min-width: 78px;
+    font-size: 0.68rem;
   }
 }
 
