@@ -115,6 +115,114 @@ Rutas sugeridas:
 
 ---
 
+## Estructura de menus (obligatoria)
+Implementa 3 niveles de navegacion y define claramente su rol:
+
+1. `Topbar` (contexto global de sesion)
+- Busqueda global.
+- Cambio de cuenta.
+- Notificaciones.
+- Menu de usuario (idioma, tema, tamano, densidad, logout).
+- Home (volver a dashboard).
+
+2. `icons-menu` (navegacion primaria por modulo)
+- Menu lateral por grupos/modulos.
+- Al hacer click en un modulo:
+  - se navega a su ruta base.
+  - se selecciona automaticamente la **primer tab** del `app-menu` de ese modulo.
+  - si no existe tab previa en URL, siempre setear primer tab como default.
+
+3. `app-menu` (navegacion secundaria del modulo actual)
+- Tabs del modulo seleccionado.
+- Sticky en parte superior del workspace.
+- En responsive usa scroll horizontal (no colapsar a menu oculto).
+- Debe mantener estado activo visible.
+
+4. `actions-menu` (acciones de pantalla/modulo)
+- Botones para crear, refrescar, exportar, etc.
+- Se renderiza debajo de `app-menu`.
+- Boton primario: clase `action-btn main`.
+- Botones secundarios: `action-btn`.
+
+---
+
+## Estructura de layout (obligatoria)
+
+### 1) Layout principal (`Layout.jsx`)
+- Estructura:
+  - `app-shell`
+  - `topbar`
+  - `content`
+    - `icons-menu` (izquierda)
+    - `workspace` (derecha)
+      - `app-menu` (sticky)
+      - `actions-menu`
+      - `workspace-body`
+- Uso:
+  - para todos los modulos normales.
+
+### 2) Layout administrativo (`AccountLayout.jsx` / modo gestionar cuenta)
+- Estructura:
+  - `app-shell`
+  - `topbar`
+  - `content account-route`
+    - solo `workspace` full width (sin `icons-menu`).
+      - `account app-menu` horizontal (sticky y con scroll horizontal en mobile).
+      - `actions-menu`
+      - `workspace-body`
+- Uso:
+  - exclusivamente para rutas `/account/*`.
+
+---
+
+## Estructura obligatoria por pagina
+Todas las pantallas CRUD deben seguir este orden:
+
+1. `module-page`
+- `h1` titulo.
+- mensaje de error si aplica.
+
+2. `module-panel-shell` + `generic-panel`
+- **Siempre renderizar primero la tabla (`crud-table`) con paginacion**.
+- La tabla es la vista principal por defecto.
+- Formularios de crear/editar van en modal o segunda capa, no reemplazan la tabla como vista inicial.
+
+3. `crud-table`
+- encabezados claros.
+- hover por fila.
+- columna numerica a la derecha.
+- columna acciones centrada.
+- acciones por fila usando `RowActionsMenu`.
+
+4. `Pagination`
+- siempre debajo de la tabla.
+
+5. Modales CRUD
+- crear/editar en modal.
+- no cerrar por click fuera.
+- footer estandar:
+  - primario a la izquierda (`Crear`/`Actualizar`).
+  - cancelar a la derecha.
+
+---
+
+## Patron de botones de accion
+
+### A) Acciones de pantalla (`actions-menu`)
+- Izquierda: boton principal (`Nuevo`, `Ejecutar`, etc) usando `action-btn main`.
+- Secundarios con `action-btn`.
+- Si hay permisos, ocultar los botones sin permiso.
+
+### B) Acciones por fila (`RowActionsMenu`)
+- Boton disparador en ultima columna (`table-actions`).
+- Opciones tipicas:
+  - `Editar`
+  - `Duplicar` (opcional)
+  - `Anular` / `Desactivar` (danger)
+- Respetar permisos `update`.
+
+---
+
 ## UX/UI base obligatoria
 1. Tema light/dark via `data-theme`.
 2. Tamano texto: `sm | md | lg` via `data-text-size`.
@@ -133,6 +241,55 @@ Rutas sugeridas:
 7. Modales:
 - no cerrar al click fuera.
 - footer estandar: primario a la izquierda, cancelar a la derecha.
+
+---
+
+## Global CSS: tokens y para que sirven
+Define en `:root` (y override en `[data-theme=\"dark\"]`) estos tokens minimos:
+
+### Color/brand
+- `--brand`: color principal de accion (botones main, foco de marca).
+- `--brand-soft`: fondo suave para estados activos/seleccionados.
+
+### Fondos
+- `--bg-main`: fondo general del app.
+- `--bg-grad-start`: inicio de gradiente del fondo global.
+- `--bg-panel`: fondo de cards/paneles.
+- `--bg-muted`: fondo de headers de tabla, bloques secundarios.
+- `--bg-sidebar`: fondo del icons-menu.
+- `--bg-workspace`: fondo del area de trabajo.
+- `--bg-app-menu`: fondo del menu secundario.
+- `--bg-actions`: fondo del contenedor de botones de accion.
+- `--bg-search`: fondo del buscador global.
+
+### Bordes/sombras
+- `--line`: borde base.
+- `--row-border`: separador entre filas de tabla.
+- `--floating-border`: borde de panel flotante.
+- `--shadow`: sombra base de panel.
+- `--shadow-soft`: sombra suave de botones/paneles chicos.
+- `--shadow-float`: sombra de modales/popovers.
+
+### Texto
+- `--text`: texto principal.
+- `--text-muted`: texto secundario.
+- `--text-strong`: texto fuerte.
+- `--text-ui`: texto de controles.
+- `--topbar-text`: texto sobre topbar.
+
+### Escalas globales
+- `--font-scale`: factor de tamano de fuente global.
+- `--density-scale`: factor de espaciado global.
+
+### Configuracion por atributos de documento
+- `[data-theme=\"dark\"]`: redefine paleta.
+- `[data-text-size=\"sm|md|lg\"]`: ajusta `--font-scale`.
+- `[data-density=\"compact|comfortable\"]`: ajusta `--density-scale`.
+
+### Reglas de uso
+- No hardcodear colores en componentes; consumir tokens.
+- Espaciados/paddings usan `calc(valor * var(--density-scale))`.
+- Tipografia global usa `calc(base * var(--font-scale))`.
 
 ---
 
@@ -383,4 +540,3 @@ Regla:
 8. Pantallas de gestion de cuenta.
 9. Permisos en frontend.
 10. Pulido visual + responsive + README.
-

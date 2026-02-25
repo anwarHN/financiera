@@ -11,7 +11,8 @@ interface ExportPayload {
     | "expenses"
     | "cashflow"
     | "employee_absences"
-    | "sales_by_employee";
+    | "sales_by_employee"
+    | "expenses_by_tag_payment_form";
   dateFrom?: string | null;
   dateTo?: string | null;
   currencyId?: number | null;
@@ -91,6 +92,15 @@ type SalesByEmployeeDetailRow = {
   } | null;
 };
 
+type ExpensesByTagAndPaymentFormRow = {
+  id: number;
+  total: number;
+  tags: string[] | null;
+  account_payment_forms: {
+    name: string;
+  } | null;
+};
+
 const reportTitles: Record<ExportPayload["reportId"], string> = {
   sales: "Ventas",
   receivable: "Cuentas por cobrar",
@@ -99,7 +109,8 @@ const reportTitles: Record<ExportPayload["reportId"], string> = {
   expenses: "Gastos",
   cashflow: "Flujo de caja",
   employee_absences: "Ausencias por empleado",
-  sales_by_employee: "Ventas por empleado"
+  sales_by_employee: "Ventas por empleado",
+  expenses_by_tag_payment_form: "Gastos por etiqueta y forma de pago"
 };
 
 const corsHeaders = {
@@ -514,6 +525,54 @@ async function buildSalesByEmployeeReport(
   };
 }
 
+async function buildExpensesByTagPaymentFormReport(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payload: ExportPayload
+): Promise<ExportBuildResult> {
+  let query = supabaseAdmin
+    .from("transactions")
+    .select("id, total, tags, account_payment_forms(name)")
+    .eq("accountId", payload.accountId)
+    .eq("isActive", true)
+    .eq("type", 2);
+
+  if (payload.dateFrom) query = query.gte("date", payload.dateFrom);
+  if (payload.dateTo) query = query.lte("date", payload.dateTo);
+  if (payload.currencyId != null) query = query.eq("currencyId", payload.currencyId);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const grouped = new Map<string, { tag: string; paymentForm: string; total: number }>();
+  ((data ?? []) as ExpensesByTagAndPaymentFormRow[]).forEach((row) => {
+    const paymentForm = row.account_payment_forms?.name || "Sin forma de pago";
+    const tags = Array.isArray(row.tags) && row.tags.length > 0 ? row.tags : ["Sin etiqueta"];
+    const amount = Math.abs(Number(row.total || 0));
+
+    tags.forEach((rawTag) => {
+      const tag = String(rawTag || "").trim() || "Sin etiqueta";
+      const key = `${tag}::${paymentForm}`;
+      const current = grouped.get(key) || { tag, paymentForm, total: 0 };
+      current.total += amount;
+      grouped.set(key, current);
+    });
+  });
+
+  const rows = Array.from(grouped.values())
+    .sort((a, b) => (a.tag === b.tag ? a.paymentForm.localeCompare(b.paymentForm) : a.tag.localeCompare(b.tag)))
+    .map((row) => ({
+      etiqueta: row.tag,
+      forma_pago: row.paymentForm,
+      total: sanitizeNumber(row.total)
+    }));
+
+  return {
+    rows,
+    total: rows.reduce((acc, row) => acc + Number(row.total || 0), 0),
+    balance: 0
+  };
+}
+
 async function buildReportData(supabaseAdmin: ReturnType<typeof createClient>, payload: ExportPayload): Promise<ExportBuildResult> {
   if (payload.reportId === "internal_obligations") {
     return buildInternalObligationsReport(supabaseAdmin, payload);
@@ -526,6 +585,9 @@ async function buildReportData(supabaseAdmin: ReturnType<typeof createClient>, p
   }
   if (payload.reportId === "sales_by_employee") {
     return buildSalesByEmployeeReport(supabaseAdmin, payload);
+  }
+  if (payload.reportId === "expenses_by_tag_payment_form") {
+    return buildExpensesByTagPaymentFormReport(supabaseAdmin, payload);
   }
   return buildStandardReport(supabaseAdmin, payload);
 }

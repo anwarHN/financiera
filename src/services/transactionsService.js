@@ -13,7 +13,7 @@ export async function listTransactions({ accountId, type, excludeInternalObligat
   let query = supabase
     .from("transactions")
     .select(
-      'id, personId, "employeeId", date, type, status, total, balance, payments, name, currencyId, "projectId", "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "sourceTransactionId", "isInternalTransfer", "isDeposit", isActive, persons(name), employes(name), projects(name), account_payment_forms(name)'
+      'id, personId, "employeeId", date, type, status, total, balance, payments, name, tags, currencyId, "projectId", "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "sourceTransactionId", "isInternalTransfer", "isDeposit", isActive, persons(name), employes(name), projects(name), account_payment_forms(name)'
     )
     .eq("accountId", accountId)
     .eq("type", type);
@@ -149,7 +149,7 @@ export async function getTransactionById(id) {
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      'id, accountId, personId, "employeeId", date, type, name, total, balance, payments, "projectId", "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "sourceTransactionId", "isInternalTransfer", "isDeposit", isActive, currencyId, persons(name), employes(name), projects(name), account_payment_forms(name)'
+      'id, accountId, personId, "employeeId", date, type, name, tags, total, balance, payments, "projectId", "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "sourceTransactionId", "isInternalTransfer", "isDeposit", isActive, currencyId, persons(name), employes(name), projects(name), account_payment_forms(name)'
     )
     .eq("id", id)
     .single();
@@ -252,6 +252,33 @@ export async function reconcileTransaction(id, reconciledAt) {
 export async function unreconcileTransaction(id) {
   const { error } = await supabase.from("transactions").update({ isReconciled: false, reconciledAt: null }).eq("id", id);
   if (error) throw error;
+}
+
+export async function listUsedTransactionTags(accountId) {
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("tags")
+    .eq("accountId", accountId)
+    .eq("isActive", true)
+    .not("tags", "is", null)
+    .order("id", { ascending: false })
+    .limit(2000);
+
+  if (error) throw error;
+
+  const tagsByNormalized = new Map();
+  for (const row of data ?? []) {
+    const tags = Array.isArray(row.tags) ? row.tags : [];
+    for (const rawTag of tags) {
+      const normalized = String(rawTag || "").trim().toLowerCase();
+      if (!normalized) continue;
+      if (!tagsByNormalized.has(normalized)) {
+        tagsByNormalized.set(normalized, String(rawTag).trim());
+      }
+    }
+  }
+
+  return Array.from(tagsByNormalized.values()).sort((a, b) => a.localeCompare(b));
 }
 
 export async function listInternalObligations(accountId) {

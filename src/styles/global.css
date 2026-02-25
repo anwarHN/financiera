@@ -2188,6 +2188,72 @@ button:disabled,
   line-height: 1;
 }
 
+.table-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.table-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--text-strong);
+  font-size: 0.72rem;
+  line-height: 1.2;
+  padding: 0.2rem 0.5rem;
+}
+
+.tags-lookup-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  padding: calc(0.52rem * var(--density-scale)) calc(0.56rem * var(--density-scale));
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.tags-lookup-control:focus-within {
+  background: var(--bg-muted);
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px var(--brand-soft);
+}
+
+.tags-lookup-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  background: var(--brand-soft);
+  color: var(--text-strong);
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.tags-lookup-pill button {
+  border: none;
+  background: transparent;
+  color: inherit;
+  line-height: 1;
+  min-height: auto;
+  min-width: auto;
+  padding: 0;
+}
+
+.tags-lookup-input {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  min-width: 140px;
+  flex: 1;
+  padding: 0.35rem 0.1rem !important;
+}
+
 .onboarding-overlay {
   position: fixed;
   inset: 0;

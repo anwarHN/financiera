@@ -266,6 +266,7 @@ function TransactionsPage({ moduleType }) {
                 <th className="num-col">ID</th>
                 <th>{t("transactions.date")}</th>
                 <th>{t("common.name")}</th>
+                <th>{t("transactions.tags")}</th>
                 {(moduleType === "income" || moduleType === "expense") && <th>{t("transactions.concept")}</th>}
                 <th>{t("transactions.person")}</th>
                 {(moduleType === "income" || moduleType === "expense") && <th>{t("transactions.employee")}</th>}
@@ -289,6 +290,19 @@ function TransactionsPage({ moduleType }) {
                   </td>
                   <td>{formatDate(item.date, language)}</td>
                   <td>{item.name ?? "-"}</td>
+                  <td>
+                    {Array.isArray(item.tags) && item.tags.length > 0 ? (
+                      <div className="table-tags">
+                        {item.tags.map((tag, index) => (
+                          <span key={`${item.id}-tag-${index}`} className="table-tag-pill">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      "-"
+                    )}
+                  </td>
                   {(moduleType === "income" || moduleType === "expense") && <td>{item.conceptName ?? "-"}</td>}
                   <td>{item.persons?.name ?? "-"}</td>
                   {(moduleType === "income" || moduleType === "expense") && <td>{item.employes?.name ?? "-"}</td>}

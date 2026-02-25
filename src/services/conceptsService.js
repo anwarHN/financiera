@@ -1,7 +1,38 @@
 import { supabase } from "../lib/supabase";
 
 const selectColumns =
-  "id, name, parentConceptId, parentConcept:concepts(name), isGroup, isIncome, isExpense, isProduct, isPaymentForm, isAccountPayableConcept, isIncomingPaymentConcept, isOutgoingPaymentConcept, isSystem, taxPercentage, price, additionalCharges";
+  "id, name, parentConceptId, isGroup, isIncome, isExpense, isProduct, isPaymentForm, isAccountPayableConcept, isIncomingPaymentConcept, isOutgoingPaymentConcept, isSystem, taxPercentage, price, additionalCharges";
+
+async function attachParentConcept(rows) {
+  const source = Array.isArray(rows) ? rows : [];
+  if (!source.length) return source;
+
+  const parentIds = Array.from(
+    new Set(
+      source
+        .map((row) => Number(row.parentConceptId || 0))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    )
+  );
+
+  if (!parentIds.length) {
+    return source.map((row) => ({ ...row, parentConcept: null }));
+  }
+
+  const { data: parentRows, error: parentError } = await supabase.from("concepts").select("id, name").in("id", parentIds);
+  if (parentError) {
+    throw parentError;
+  }
+
+  const parentById = new Map((parentRows ?? []).map((row) => [Number(row.id), row]));
+  return source.map((row) => {
+    const parent = parentById.get(Number(row.parentConceptId || 0));
+    return {
+      ...row,
+      parentConcept: parent ? { name: parent.name } : null
+    };
+  });
+}
 
 export async function listConcepts(accountId) {
   const { data, error } = await supabase
@@ -14,7 +45,7 @@ export async function listConcepts(accountId) {
     throw error;
   }
 
-  return data ?? [];
+  return attachParentConcept(data ?? []);
 }
 
 export async function listConceptsByModule(accountId, moduleType) {
@@ -50,7 +81,7 @@ export async function listConceptsByModule(accountId, moduleType) {
     throw error;
   }
 
-  return data ?? [];
+  return attachParentConcept(data ?? []);
 }
 
 export async function getConceptById(id) {
@@ -60,7 +91,8 @@ export async function getConceptById(id) {
     throw error;
   }
 
-  return data;
+  const enriched = await attachParentConcept(data ? [data] : []);
+  return enriched[0] ?? null;
 }
 
 export async function createConcept(payload) {
@@ -70,7 +102,8 @@ export async function createConcept(payload) {
     throw error;
   }
 
-  return data;
+  const enriched = await attachParentConcept(data ? [data] : []);
+  return enriched[0] ?? null;
 }
 
 export async function updateConcept(id, payload) {
@@ -85,7 +118,8 @@ export async function updateConcept(id, payload) {
     throw error;
   }
 
-  return data;
+  const enriched = await attachParentConcept(data ? [data] : []);
+  return enriched[0] ?? null;
 }
 
 export async function deleteConcept(id) {

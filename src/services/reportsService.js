@@ -245,6 +245,42 @@ export async function getSalesByEmployeeTotals(accountId, { dateFrom, dateTo, cu
     }));
 }
 
+export async function getExpensesByTagAndPaymentForm(accountId, { dateFrom, dateTo, currencyId } = {}) {
+  let query = supabase
+    .from("transactions")
+    .select('id, total, tags, "accountPaymentFormId", account_payment_forms(name)')
+    .eq("accountId", accountId)
+    .eq("isActive", true)
+    .eq("type", 2);
+
+  if (dateFrom) query = query.gte("date", dateFrom);
+  if (dateTo) query = query.lte("date", dateTo);
+  if (currencyId) query = query.eq("currencyId", Number(currencyId));
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const grouped = new Map();
+  (data ?? []).forEach((row) => {
+    const paymentForm = row.account_payment_forms?.name || "Sin forma de pago";
+    const tags = Array.isArray(row.tags) && row.tags.length > 0 ? row.tags : ["Sin etiqueta"];
+    const amount = Math.abs(Number(row.total || 0));
+
+    tags.forEach((rawTag) => {
+      const tag = String(rawTag || "").trim() || "Sin etiqueta";
+      const key = `${tag}::${paymentForm}`;
+      const current = grouped.get(key) || { tag, paymentForm, total: 0 };
+      current.total += amount;
+      grouped.set(key, current);
+    });
+  });
+
+  return Array.from(grouped.values()).sort((a, b) => {
+    if (a.tag !== b.tag) return a.tag.localeCompare(b.tag);
+    return a.paymentForm.localeCompare(b.paymentForm);
+  });
+}
+
 export async function exportReportXlsx({
   accountId,
   reportId,

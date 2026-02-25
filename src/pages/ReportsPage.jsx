@@ -9,6 +9,7 @@ import {
   getCashflowBankBalances,
   getCashflowConceptTotals,
   getEmployeeAbsenceTotals,
+  getExpensesByTagAndPaymentForm,
   getSalesByEmployeeTotals,
   getTransactionsForReports
 } from "../services/reportsService";
@@ -26,7 +27,8 @@ const fullReportCatalog = [
   { id: "expenses", titleKey: "reports.expenses", filters: ["dateRange", "currency"] },
   { id: "cashflow", titleKey: "reports.cashflow", filters: ["dateRange", "currency"] },
   { id: "employee_absences", titleKey: "reports.employeeAbsences", filters: ["dateRange"] },
-  { id: "sales_by_employee", titleKey: "reports.salesByEmployee", filters: ["dateRange", "currency"] }
+  { id: "sales_by_employee", titleKey: "reports.salesByEmployee", filters: ["dateRange", "currency"] },
+  { id: "expenses_by_tag_payment_form", titleKey: "reports.expensesByTagPaymentForm", filters: ["dateRange", "currency"] }
 ];
 
 function ReportsPage() {
@@ -224,6 +226,19 @@ function ReportsPage() {
         setCashflowBankBalances([]);
       } else if (selectedReport === "sales_by_employee") {
         const rows = await getSalesByEmployeeTotals(account.accountId, {
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined,
+          currencyId: filters.currencyId || undefined
+        });
+        setResults(rows);
+        setCashflowSummary({
+          previousBalance: 0,
+          periodMovements: 0,
+          newBalance: 0
+        });
+        setCashflowBankBalances([]);
+      } else if (selectedReport === "expenses_by_tag_payment_form") {
+        const rows = await getExpensesByTagAndPaymentForm(account.accountId, {
           dateFrom: filters.dateFrom || undefined,
           dateTo: filters.dateTo || undefined,
           currencyId: filters.currencyId || undefined
@@ -604,6 +619,12 @@ function ReportsPage() {
                   <th className="num-col">{t("transactions.quantity")}</th>
                   <th className="num-col">{t("transactions.total")}</th>
                 </tr>
+              ) : selectedReport === "expenses_by_tag_payment_form" ? (
+                <tr>
+                  <th>{t("reports.tag")}</th>
+                  <th>{t("transactions.accountPaymentForm")}</th>
+                  <th className="num-col">{t("transactions.total")}</th>
+                </tr>
               ) : selectedReport === "employee_absences" ? (
                 <tr>
                   <th>{t("appointments.employee")}</th>
@@ -624,7 +645,17 @@ function ReportsPage() {
                 <tr>
                   <td
                     colSpan={
-                      budgetExecutionTotals ? 4 : selectedReport === "cashflow" ? 4 : selectedReport === "employee_absences" ? 2 : selectedReport === "sales_by_employee" ? 4 : 5
+                      budgetExecutionTotals
+                        ? 4
+                        : selectedReport === "cashflow"
+                          ? 4
+                          : selectedReport === "employee_absences"
+                            ? 2
+                            : selectedReport === "sales_by_employee"
+                              ? 4
+                              : selectedReport === "expenses_by_tag_payment_form"
+                                ? 3
+                                : 5
                     }
                   >
                     {t("common.empty")}
@@ -685,6 +716,14 @@ function ReportsPage() {
                     </tr>
                   ))
                 ])
+              ) : selectedReport === "expenses_by_tag_payment_form" ? (
+                results.map((row) => (
+                  <tr key={`expenses-by-tag-${row.tag}-${row.paymentForm}`}>
+                    <td>{row.tag || "-"}</td>
+                    <td>{row.paymentForm || "-"}</td>
+                    <td className="num-col">{formatNumber(row.total || 0)}</td>
+                  </tr>
+                ))
               ) : selectedReport === "employee_absences" ? (
                 results.map((row) => (
                   <tr key={`employee-absence-${row.employeeId}`}>

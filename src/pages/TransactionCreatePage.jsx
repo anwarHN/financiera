@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import LookupCombobox from "../components/LookupCombobox";
+import TagsLookupField from "../components/TagsLookupField";
 import AccountPaymentFormPage from "./AccountPaymentFormPage";
 import ConceptModuleFormPage from "./ConceptModuleFormPage";
 import EmployeeFormPage from "./EmployeeFormPage";
@@ -18,6 +19,7 @@ import { listProjects } from "../services/projectsService";
 import {
   createTransactionWithDetails,
   getTransactionById,
+  listUsedTransactionTags,
   listTransactionDetails,
   TRANSACTION_TYPES,
   updateTransactionWithDetails
@@ -69,7 +71,8 @@ const initialSimpleForm = {
   paymentMethodId: "",
   accountPaymentFormId: "",
   projectId: "",
-  employeeId: ""
+  employeeId: "",
+  tags: []
 };
 
 const initialSaleHeader = {
@@ -80,7 +83,8 @@ const initialSaleHeader = {
   referenceNumber: "",
   paymentMethodId: "",
   accountPaymentFormId: "",
-  projectId: ""
+  projectId: "",
+  tags: []
 };
 
 function calculateLineAmounts(line) {
@@ -177,6 +181,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [accountPaymentForms, setAccountPaymentForms] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [tagOptions, setTagOptions] = useState([]);
 
   const [simpleForm, setSimpleForm] = useState(initialSimpleForm);
   const [saleHeader, setSaleHeader] = useState(initialSaleHeader);
@@ -188,7 +193,9 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
   const [clientLookup, setClientLookup] = useState("");
   const [simpleProjectLookup, setSimpleProjectLookup] = useState("");
   const [simpleEmployeeLookup, setSimpleEmployeeLookup] = useState("");
+  const [simpleTagLookup, setSimpleTagLookup] = useState("");
   const [saleProjectLookup, setSaleProjectLookup] = useState("");
+  const [saleTagLookup, setSaleTagLookup] = useState("");
   const [productLookup, setProductLookup] = useState("");
   const [saleLines, setSaleLines] = useState([]);
 
@@ -262,14 +269,15 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
   const loadDependencies = async () => {
     try {
       setIsLoading(true);
-      const [personsRes, conceptsRes, employeesRes, currenciesRes, paymentMethodsRes, accountPaymentFormsRes, projectsRes] = await Promise.allSettled([
+      const [personsRes, conceptsRes, employeesRes, currenciesRes, paymentMethodsRes, accountPaymentFormsRes, projectsRes, tagsRes] = await Promise.allSettled([
         listPersons(account.accountId),
         listConcepts(account.accountId),
         listEmployees(account.accountId),
         listCurrencies(account.accountId),
         listPaymentMethods(account.accountId),
         listAccountPaymentForms(account.accountId),
-        listProjects(account.accountId)
+        listProjects(account.accountId),
+        listUsedTransactionTags(account.accountId)
       ]);
 
       setPersons(personsRes.status === "fulfilled" ? personsRes.value : []);
@@ -279,6 +287,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
       setPaymentMethods(paymentMethodsRes.status === "fulfilled" ? paymentMethodsRes.value : []);
       setAccountPaymentForms(accountPaymentFormsRes.status === "fulfilled" ? accountPaymentFormsRes.value : []);
       setProjects(projectsRes.status === "fulfilled" ? projectsRes.value : []);
+      setTagOptions(tagsRes.status === "fulfilled" ? tagsRes.value : []);
       setError("");
     } catch {
       setError(t("common.genericLoadError"));
@@ -360,7 +369,8 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
           referenceNumber: tx.referenceNumber || "",
           paymentMethodId: tx.paymentMethodId ? String(tx.paymentMethodId) : "",
           accountPaymentFormId: tx.accountPaymentFormId ? String(tx.accountPaymentFormId) : "",
-          projectId: tx.projectId ? String(tx.projectId) : ""
+          projectId: tx.projectId ? String(tx.projectId) : "",
+          tags: Array.isArray(tx.tags) ? tx.tags : []
         });
         setSelectedClient(
           tx.personId
@@ -403,7 +413,8 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
           paymentMethodId: tx.paymentMethodId ? String(tx.paymentMethodId) : "",
           accountPaymentFormId: tx.accountPaymentFormId ? String(tx.accountPaymentFormId) : "",
           projectId: tx.projectId ? String(tx.projectId) : "",
-          employeeId: tx.employeeId ? String(tx.employeeId) : ""
+          employeeId: tx.employeeId ? String(tx.employeeId) : "",
+          tags: Array.isArray(tx.tags) ? tx.tags : []
         });
       }
       setError("");
@@ -497,6 +508,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
     accountPaymentFormId,
     projectId,
     employeeId,
+    tags = [],
     incomingPayment = false,
     includeCreatedById = true
   }) => {
@@ -529,6 +541,11 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
       currencyId: currencyId ? Number(currencyId) : null,
       projectId: projectId ? Number(projectId) : null,
       employeeId: employeeId ? Number(employeeId) : null,
+      tags: Array.isArray(tags)
+        ? tags
+            .map((item) => String(item || "").trim())
+            .filter(Boolean)
+        : [],
       paymentMethodId: paymentMethodId ? Number(paymentMethodId) : null,
       accountPaymentFormId: parsedAccountPaymentFormId,
       isReconciled: shouldAutoReconcile,
@@ -590,6 +607,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
       accountPaymentFormId: shouldPersistPayment ? simpleForm.accountPaymentFormId : null,
       projectId: simpleForm.projectId,
       employeeId: moduleType === "income" || moduleType === "expense" ? simpleForm.employeeId : null,
+      tags: simpleForm.tags,
       incomingPayment: moduleType === "income",
       includeCreatedById: !isEdit
     });
@@ -669,6 +687,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
       paymentMethodId: isCredit ? null : saleHeader.paymentMethodId,
       accountPaymentFormId: isCredit ? null : saleHeader.accountPaymentFormId,
       projectId: saleHeader.projectId,
+      tags: saleHeader.tags,
       incomingPayment: false,
       includeCreatedById: !isEdit
     });
@@ -881,6 +900,18 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                 <span>{t("transactions.description")}</span>
                 <input name="description" value={simpleForm.description} onChange={handleSimpleChange} />
               </label>
+              <div className="form-span-2">
+                <TagsLookupField
+                  label={t("transactions.tags")}
+                  value={simpleTagLookup}
+                  onValueChange={setSimpleTagLookup}
+                  options={tagOptions}
+                  selectedTags={simpleForm.tags}
+                  onSelectedTagsChange={(tags) => setSimpleForm((prev) => ({ ...prev, tags }))}
+                  placeholder={t("transactions.tagsPlaceholder")}
+                  noResultsText={t("common.empty")}
+                />
+              </div>
               <label className="field-block">
                 <span>{t("transactions.referenceNumber")}</span>
                 <input name="referenceNumber" value={simpleForm.referenceNumber} onChange={handleSimpleChange} />
@@ -1192,6 +1223,18 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                 <span>{t("transactions.description")}</span>
                 <input name="description" value={saleHeader.description} onChange={handleSaleHeaderChange} />
               </label>
+              <div className="form-span-2">
+                <TagsLookupField
+                  label={t("transactions.tags")}
+                  value={saleTagLookup}
+                  onValueChange={setSaleTagLookup}
+                  options={tagOptions}
+                  selectedTags={saleHeader.tags}
+                  onSelectedTagsChange={(tags) => setSaleHeader((prev) => ({ ...prev, tags }))}
+                  placeholder={t("transactions.tagsPlaceholder")}
+                  noResultsText={t("common.empty")}
+                />
+              </div>
               <label className="field-block">
                 <span>{t("transactions.referenceNumber")}</span>
                 <input name="referenceNumber" value={saleHeader.referenceNumber} onChange={handleSaleHeaderChange} />
