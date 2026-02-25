@@ -46,6 +46,8 @@ declare
   local_currency_symbol text;
   incoming_payment_concept_id bigint;
   outgoing_payment_concept_id bigint;
+  loan_concept_id bigint;
+  loan_payment_concept_id bigint;
 begin
   company_name := coalesce(nullif(new.raw_user_meta_data ->> 'company_name', ''), 'Empresa');
   country_code := upper(coalesce(new.raw_user_meta_data ->> 'country_code', 'US'));
@@ -129,7 +131,7 @@ begin
       true,
       true,
       true,
-      '{"dashboard":{"read":true,"create":true,"update":true},"transactions":{"read":true,"create":true,"update":true},"concepts":{"read":true,"create":true,"update":true},"clients":{"read":true,"create":true,"update":true},"providers":{"read":true,"create":true,"update":true},"employees":{"read":true,"create":true,"update":true},"appointments":{"read":true,"create":true,"update":true},"paymentForms":{"read":true,"create":true,"update":true},"planning":{"read":true,"create":true,"update":true},"catalogs":{"read":true,"create":true,"update":true},"reports":{"read":true,"create":true,"update":true},"reportAccess":{"sales":true,"receivable":true,"payable":true,"internal_obligations":true,"budget_execution":true,"project_execution":true,"expenses":true,"cashflow":true,"employee_absences":true,"sales_by_employee":true,"expenses_by_tag_payment_form":true}}'::jsonb,
+      '{"dashboard":{"read":true,"create":true,"update":true},"transactions":{"read":true,"create":true,"update":true},"concepts":{"read":true,"create":true,"update":true},"clients":{"read":true,"create":true,"update":true},"providers":{"read":true,"create":true,"update":true},"employees":{"read":true,"create":true,"update":true},"appointments":{"read":true,"create":true,"update":true},"paymentForms":{"read":true,"create":true,"update":true},"planning":{"read":true,"create":true,"update":true},"catalogs":{"read":true,"create":true,"update":true},"reports":{"read":true,"create":true,"update":true},"reportAccess":{"sales":true,"receivable":true,"payable":true,"internal_obligations":true,"budget_execution":true,"project_execution":true,"expenses":true,"cashflow":true,"employee_absences":true,"sales_by_employee":true,"expenses_by_tag_payment_form":true,"employee_loans":true}}'::jsonb,
       new.id
     )
     returning id into admin_profile_id;
@@ -173,8 +175,9 @@ begin
        where table_schema = 'public'
          and table_name = 'concepts'
          and column_name = 'isSystem'
-     ) then
-    insert into public.concepts (
+     )
+     then
+      insert into public.concepts (
       "accountId",
       name,
       "parentConceptId",
@@ -266,6 +269,123 @@ begin
       where "accountId" = new_account_id
         and "isOutgoingPaymentConcept" = true
       limit 1;
+    end if;
+
+    if exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'concepts'
+        and column_name = 'isLoanConcept'
+    )
+    and exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'concepts'
+        and column_name = 'isLoanPaymentConcept'
+    ) then
+      insert into public.concepts (
+      "accountId",
+      name,
+      "parentConceptId",
+      "isGroup",
+      "isIncome",
+      "isExpense",
+      "isProduct",
+      "isPaymentForm",
+      "isAccountPayableConcept",
+      "isIncomingPaymentConcept",
+      "isOutgoingPaymentConcept",
+      "isLoanConcept",
+      "isLoanPaymentConcept",
+      "isSystem",
+      "taxPercentage",
+      price,
+      "additionalCharges",
+      "createdById"
+    )
+    values (
+      new_account_id,
+      'Préstamo',
+      null,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      0,
+      0,
+      0,
+      new.id
+      )
+      on conflict do nothing
+      returning id into loan_concept_id;
+
+      if loan_concept_id is null then
+        select id into loan_concept_id
+        from public.concepts
+        where "accountId" = new_account_id
+          and "isLoanConcept" = true
+        limit 1;
+      end if;
+
+      insert into public.concepts (
+      "accountId",
+      name,
+      "parentConceptId",
+      "isGroup",
+      "isIncome",
+      "isExpense",
+      "isProduct",
+      "isPaymentForm",
+      "isAccountPayableConcept",
+      "isIncomingPaymentConcept",
+      "isOutgoingPaymentConcept",
+      "isLoanConcept",
+      "isLoanPaymentConcept",
+      "isSystem",
+      "taxPercentage",
+      price,
+      "additionalCharges",
+      "createdById"
+    )
+    values (
+      new_account_id,
+      'Pagos a préstamos',
+      null,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      0,
+      0,
+      0,
+      new.id
+      )
+      on conflict do nothing
+      returning id into loan_payment_concept_id;
+
+      if loan_payment_concept_id is null then
+        select id into loan_payment_concept_id
+        from public.concepts
+        where "accountId" = new_account_id
+          and "isLoanPaymentConcept" = true
+        limit 1;
+      end if;
     end if;
   end if;
 

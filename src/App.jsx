@@ -39,6 +39,8 @@ import BudgetFormPage from "./pages/BudgetFormPage";
 import BudgetDetailPage from "./pages/BudgetDetailPage";
 import AppointmentsPage from "./pages/AppointmentsPage";
 import EmployeeAbsencesPage from "./pages/EmployeeAbsencesPage";
+import EmployeeLoansPage from "./pages/EmployeeLoansPage";
+import EmployeeLoanFormPage from "./pages/EmployeeLoanFormPage";
 
 function App() {
   return (
@@ -187,6 +189,9 @@ function App() {
         <Route path="internal-obligations" element={<InternalAccountPayablesPage />} />
         <Route path="internal-obligations/new" element={<InternalAccountPayableFormPage />} />
         <Route path="internal-obligations/:id/edit" element={<InternalAccountPayableFormPage />} />
+        <Route path="employee-loans" element={<EmployeeLoansPage />} />
+        <Route path="employee-loans/new" element={<EmployeeLoanFormPage />} />
+        <Route path="employee-loans/:id/edit" element={<EmployeeLoanFormPage />} />
         <Route path="bank-reconciliation" element={<BankReconciliationPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="projects/new" element={<ProjectFormPage />} />

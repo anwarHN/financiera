@@ -281,6 +281,24 @@ export async function getExpensesByTagAndPaymentForm(accountId, { dateFrom, date
   });
 }
 
+export async function getEmployeeLoansReport(accountId, { dateFrom, dateTo, currencyId } = {}) {
+  let query = supabase
+    .from("transactions")
+    .select('id, date, name, total, payments, balance, currencyId, "employeeId", employes(name)')
+    .eq("accountId", accountId)
+    .eq("isEmployeeLoan", true)
+    .is("sourceTransactionId", null)
+    .eq("isActive", true);
+
+  if (dateFrom) query = query.gte("date", dateFrom);
+  if (dateTo) query = query.lte("date", dateTo);
+  if (currencyId) query = query.eq("currencyId", Number(currencyId));
+
+  const { data, error } = await query.order("date", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function exportReportXlsx({
   accountId,
   reportId,

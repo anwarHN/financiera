@@ -16,7 +16,7 @@ const initialForm = {
   accountPaymentFormId: ""
 };
 
-function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved }) {
+function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved, paymentMode = "default" }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const [form, setForm] = useState(initialForm);
@@ -96,9 +96,10 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
       return;
     }
 
-    const paymentConcept = concepts.find((item) =>
-      direction === "incoming" ? item.isIncomingPaymentConcept : item.isOutgoingPaymentConcept
-    );
+    const paymentConcept =
+      paymentMode === "employeeLoan"
+        ? concepts.find((item) => item.isLoanPaymentConcept)
+        : concepts.find((item) => (direction === "incoming" ? item.isIncomingPaymentConcept : item.isOutgoingPaymentConcept));
     if (!paymentConcept) {
       setError(t("transactions.missingSystemPaymentConcept"));
       return;
@@ -106,7 +107,8 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
 
     const paymentTransaction = {
       accountId: account.accountId,
-      personId: transaction.personId,
+      personId: paymentMode === "employeeLoan" ? null : transaction.personId,
+      employeeId: paymentMode === "employeeLoan" ? transaction.employeeId ?? null : null,
       date: form.date,
       type: direction === "incoming" ? TRANSACTION_TYPES.incomingPayment : TRANSACTION_TYPES.outgoingPayment,
       name: form.description?.trim() || null,
@@ -129,7 +131,9 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
       isActive: true,
       currencyId: transaction.currencyId ?? null,
       paymentMethodId: Number(form.paymentMethodId),
-      accountPaymentFormId: form.accountPaymentFormId ? Number(form.accountPaymentFormId) : null
+      accountPaymentFormId: form.accountPaymentFormId ? Number(form.accountPaymentFormId) : null,
+      sourceTransactionId: paymentMode === "employeeLoan" ? transaction.id : null,
+      isEmployeeLoan: paymentMode === "employeeLoan"
     };
 
     const paymentDetail = {

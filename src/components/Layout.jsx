@@ -89,6 +89,12 @@ const navGroups = [
     ]
   },
   {
+    id: "employee-loans",
+    titleKey: "nav.employeeLoans",
+    icon: FiFileText,
+    items: [{ path: "/employee-loans", key: "nav.employeeLoans", icon: FiFileText }]
+  },
+  {
     id: "planning",
     titleKey: "nav.planning",
     icon: FiFolder,
@@ -154,6 +160,7 @@ function resolveCreateModuleByPath(pathname) {
   if (pathname.startsWith("/bank-deposits")) return "transactions";
   if (pathname.startsWith("/bank-transfers")) return "transactions";
   if (pathname.startsWith("/internal-obligations")) return "transactions";
+  if (pathname.startsWith("/employee-loans")) return "transactions";
   if (pathname.startsWith("/sales")) return "transactions";
   if (pathname.startsWith("/purchases")) return "transactions";
   if (pathname.startsWith("/expenses")) return "transactions";
@@ -179,6 +186,7 @@ function resolveReadModuleByPath(pathname) {
   if (pathname.startsWith("/bank-deposits")) return "transactions";
   if (pathname.startsWith("/bank-transfers")) return "transactions";
   if (pathname.startsWith("/internal-obligations")) return "transactions";
+  if (pathname.startsWith("/employee-loans")) return "transactions";
   if (pathname.startsWith("/bank-reconciliation")) return "transactions";
   if (pathname.startsWith("/sales")) return "transactions";
   if (pathname.startsWith("/purchases")) return "transactions";
@@ -384,6 +392,9 @@ function Layout() {
     }
     if (pathname.startsWith("/internal-obligations")) {
       return { createPath: "/internal-obligations?create=1", createLabel: t("actions.newInternalObligation") };
+    }
+    if (pathname.startsWith("/employee-loans")) {
+      return { createPath: "/employee-loans?create=1", createLabel: t("actions.newEmployeeLoan") };
     }
     if (pathname.startsWith("/income-concepts")) {
       return { createPath: "/income-concepts?create=1", createLabel: t("actions.newIncomeConcept") };

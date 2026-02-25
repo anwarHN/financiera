@@ -9,5 +9,5 @@ set permissions = coalesce(permissions, '{}'::jsonb)
     'planning', coalesce(permissions->'planning', '{"read":true,"create":false,"update":false}'::jsonb),
     'catalogs', coalesce(permissions->'catalogs', '{"read":true,"create":false,"update":false}'::jsonb),
     'reports', coalesce(permissions->'reports', '{"read":true,"create":false,"update":false}'::jsonb),
-    'reportAccess', coalesce(permissions->'reportAccess', '{"sales":true,"receivable":true,"payable":true,"internal_obligations":true,"budget_execution":true,"project_execution":true,"expenses":true,"cashflow":true,"employee_absences":true,"sales_by_employee":true,"expenses_by_tag_payment_form":true}'::jsonb)
+    'reportAccess', coalesce(permissions->'reportAccess', '{}'::jsonb) || '{"sales":true,"receivable":true,"payable":true,"internal_obligations":true,"budget_execution":true,"project_execution":true,"expenses":true,"cashflow":true,"employee_absences":true,"sales_by_employee":true,"expenses_by_tag_payment_form":true,"employee_loans":true}'::jsonb
   );

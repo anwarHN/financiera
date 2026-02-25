@@ -9,6 +9,7 @@ import {
   getCashflowBankBalances,
   getCashflowConceptTotals,
   getEmployeeAbsenceTotals,
+  getEmployeeLoansReport,
   getExpensesByTagAndPaymentForm,
   getSalesByEmployeeTotals,
   getTransactionsForReports
@@ -28,7 +29,8 @@ const fullReportCatalog = [
   { id: "cashflow", titleKey: "reports.cashflow", filters: ["dateRange", "currency"] },
   { id: "employee_absences", titleKey: "reports.employeeAbsences", filters: ["dateRange"] },
   { id: "sales_by_employee", titleKey: "reports.salesByEmployee", filters: ["dateRange", "currency"] },
-  { id: "expenses_by_tag_payment_form", titleKey: "reports.expensesByTagPaymentForm", filters: ["dateRange", "currency"] }
+  { id: "expenses_by_tag_payment_form", titleKey: "reports.expensesByTagPaymentForm", filters: ["dateRange", "currency"] },
+  { id: "employee_loans", titleKey: "reports.employeeLoans", filters: ["dateRange", "currency"] }
 ];
 
 function ReportsPage() {
@@ -239,6 +241,19 @@ function ReportsPage() {
         setCashflowBankBalances([]);
       } else if (selectedReport === "expenses_by_tag_payment_form") {
         const rows = await getExpensesByTagAndPaymentForm(account.accountId, {
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined,
+          currencyId: filters.currencyId || undefined
+        });
+        setResults(rows);
+        setCashflowSummary({
+          previousBalance: 0,
+          periodMovements: 0,
+          newBalance: 0
+        });
+        setCashflowBankBalances([]);
+      } else if (selectedReport === "employee_loans") {
+        const rows = await getEmployeeLoansReport(account.accountId, {
           dateFrom: filters.dateFrom || undefined,
           dateTo: filters.dateTo || undefined,
           currencyId: filters.currencyId || undefined
@@ -541,6 +556,11 @@ function ReportsPage() {
                   {t("transactions.total")}: {formatNumber(total)}
                 </p>
               ) : null}
+              {selectedReport === "employee_loans" ? (
+                <p>
+                  {t("transactions.balance")}: {formatNumber(balance)}
+                </p>
+              ) : null}
               {(selectedReport === "receivable" ||
                 selectedReport === "payable" ||
                 selectedReport === "internal_obligations") && (
@@ -625,6 +645,16 @@ function ReportsPage() {
                   <th>{t("transactions.accountPaymentForm")}</th>
                   <th className="num-col">{t("transactions.total")}</th>
                 </tr>
+              ) : selectedReport === "employee_loans" ? (
+                <tr>
+                  <th className="num-col">ID</th>
+                  <th>{t("transactions.date")}</th>
+                  <th>{t("transactions.employee")}</th>
+                  <th>{t("common.name")}</th>
+                  <th className="num-col">{t("transactions.total")}</th>
+                  <th className="num-col">{t("transactions.paymentsApplied")}</th>
+                  <th className="num-col">{t("transactions.balance")}</th>
+                </tr>
               ) : selectedReport === "employee_absences" ? (
                 <tr>
                   <th>{t("appointments.employee")}</th>
@@ -655,6 +685,8 @@ function ReportsPage() {
                               ? 4
                               : selectedReport === "expenses_by_tag_payment_form"
                                 ? 3
+                                : selectedReport === "employee_loans"
+                                  ? 7
                                 : 5
                     }
                   >
@@ -722,6 +754,18 @@ function ReportsPage() {
                     <td>{row.tag || "-"}</td>
                     <td>{row.paymentForm || "-"}</td>
                     <td className="num-col">{formatNumber(row.total || 0)}</td>
+                  </tr>
+                ))
+              ) : selectedReport === "employee_loans" ? (
+                results.map((row) => (
+                  <tr key={`employee-loan-${row.id}`}>
+                    <td className="num-col">{row.id}</td>
+                    <td>{formatDate(row.date, language)}</td>
+                    <td>{row.employes?.name || "-"}</td>
+                    <td>{row.name || "-"}</td>
+                    <td className="num-col">{formatNumber(row.total || 0)}</td>
+                    <td className="num-col">{formatNumber(row.payments || 0)}</td>
+                    <td className="num-col">{formatNumber(row.balance || 0)}</td>
                   </tr>
                 ))
               ) : selectedReport === "employee_absences" ? (

@@ -12,7 +12,8 @@ interface ExportPayload {
     | "cashflow"
     | "employee_absences"
     | "sales_by_employee"
-    | "expenses_by_tag_payment_form";
+    | "expenses_by_tag_payment_form"
+    | "employee_loans";
   dateFrom?: string | null;
   dateTo?: string | null;
   currencyId?: number | null;
@@ -101,6 +102,18 @@ type ExpensesByTagAndPaymentFormRow = {
   } | null;
 };
 
+type EmployeeLoanReportRow = {
+  id: number;
+  date: string;
+  name: string;
+  total: number;
+  payments: number;
+  balance: number;
+  employes: {
+    name: string;
+  } | null;
+};
+
 const reportTitles: Record<ExportPayload["reportId"], string> = {
   sales: "Ventas",
   receivable: "Cuentas por cobrar",
@@ -110,7 +123,8 @@ const reportTitles: Record<ExportPayload["reportId"], string> = {
   cashflow: "Flujo de caja",
   employee_absences: "Ausencias por empleado",
   sales_by_employee: "Ventas por empleado",
-  expenses_by_tag_payment_form: "Gastos por etiqueta y forma de pago"
+  expenses_by_tag_payment_form: "Gastos por etiqueta y forma de pago",
+  employee_loans: "Préstamos a empleados"
 };
 
 const corsHeaders = {
@@ -573,6 +587,42 @@ async function buildExpensesByTagPaymentFormReport(
   };
 }
 
+async function buildEmployeeLoansReport(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payload: ExportPayload
+): Promise<ExportBuildResult> {
+  let query = supabaseAdmin
+    .from("transactions")
+    .select('id, date, name, total, payments, balance, employes(name)')
+    .eq("accountId", payload.accountId)
+    .eq("isEmployeeLoan", true)
+    .is("sourceTransactionId", null)
+    .eq("isActive", true);
+
+  if (payload.dateFrom) query = query.gte("date", payload.dateFrom);
+  if (payload.dateTo) query = query.lte("date", payload.dateTo);
+  if (payload.currencyId != null) query = query.eq("currencyId", payload.currencyId);
+
+  const { data, error } = await query.order("date", { ascending: false });
+  if (error) throw error;
+
+  const rows = ((data ?? []) as EmployeeLoanReportRow[]).map((row) => ({
+    id: row.id,
+    fecha: row.date,
+    empleado: row.employes?.name || "-",
+    descripcion: row.name || "-",
+    total: sanitizeNumber(row.total),
+    pagos: sanitizeNumber(row.payments),
+    saldo: sanitizeNumber(row.balance)
+  }));
+
+  return {
+    rows,
+    total: rows.reduce((acc, row) => acc + Number(row.total || 0), 0),
+    balance: rows.reduce((acc, row) => acc + Number(row.saldo || 0), 0)
+  };
+}
+
 async function buildReportData(supabaseAdmin: ReturnType<typeof createClient>, payload: ExportPayload): Promise<ExportBuildResult> {
   if (payload.reportId === "internal_obligations") {
     return buildInternalObligationsReport(supabaseAdmin, payload);
@@ -588,6 +638,9 @@ async function buildReportData(supabaseAdmin: ReturnType<typeof createClient>, p
   }
   if (payload.reportId === "expenses_by_tag_payment_form") {
     return buildExpensesByTagPaymentFormReport(supabaseAdmin, payload);
+  }
+  if (payload.reportId === "employee_loans") {
+    return buildEmployeeLoansReport(supabaseAdmin, payload);
   }
   return buildStandardReport(supabaseAdmin, payload);
 }

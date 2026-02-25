@@ -125,7 +125,8 @@ function TransactionsPage({ moduleType }) {
       const data = await listTransactions({
         accountId: account.accountId,
         type: config.type,
-        excludeInternalObligations: moduleType === "purchase"
+        excludeInternalObligations: moduleType === "purchase",
+        excludeEmployeeLoans: moduleType === "purchase"
       });
       if (moduleType === "income" || moduleType === "expense") {
         const conceptByTxId = await listPrimaryConceptsByTransactionIds(data.map((row) => row.id));

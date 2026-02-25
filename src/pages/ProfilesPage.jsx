@@ -35,7 +35,8 @@ const initialForm = {
       cashflow: true,
       employee_absences: true,
       sales_by_employee: true,
-      expenses_by_tag_payment_form: true
+      expenses_by_tag_payment_form: true,
+      employee_loans: true
     }
   }
 };
@@ -87,7 +88,8 @@ function ProfilesPage() {
     { id: "cashflow", titleKey: "reports.cashflow" },
     { id: "employee_absences", titleKey: "reports.employeeAbsences" },
     { id: "sales_by_employee", titleKey: "reports.salesByEmployee" },
-    { id: "expenses_by_tag_payment_form", titleKey: "reports.expensesByTagPaymentForm" }
+    { id: "expenses_by_tag_payment_form", titleKey: "reports.expensesByTagPaymentForm" },
+    { id: "employee_loans", titleKey: "reports.employeeLoans" }
   ];
 
   const loadData = async () => {

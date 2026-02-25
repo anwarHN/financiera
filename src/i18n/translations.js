@@ -116,6 +116,7 @@ export const translations = {
       newBankDeposit: "Nuevo depósito",
       newBankTransfer: "Nuevo traslado",
       newInternalObligation: "Nueva obligación interna",
+      newEmployeeLoan: "Nuevo préstamo",
       newPayableConcept: "Nuevo concepto de cuentas por pagar",
       newProject: "Nuevo proyecto",
       newBudget: "Nuevo presupuesto",
@@ -164,6 +165,7 @@ export const translations = {
       incomingPayments: "Pagos entrantes",
       paymentForms: "Cuentas y tarjetas",
       internalObligations: "Obligaciones internas",
+      employeeLoans: "Préstamos",
       bankDeposits: "Depósitos bancarios",
       bankTransfers: "Traslados bancarios",
       bankReconciliation: "Conciliación bancaria",
@@ -286,6 +288,11 @@ export const translations = {
       title: "Obligaciones internas",
       totalLowerThanPayments: "El total no puede ser menor a los pagos ya registrados."
     },
+    employeeLoans: {
+      title: "Préstamos a empleados",
+      registerPayment: "Registrar pago",
+      loanNameDefault: "Préstamo"
+    },
     bankDeposits: {
       title: "Registrar depósito bancario",
       fromCash: "Caja origen",
@@ -323,6 +330,7 @@ export const translations = {
       cashflow: "Flujo de caja",
       expensesByTagPaymentForm: "Gastos por etiqueta y forma de pago",
       employeeAbsences: "Ausencias por empleado",
+      employeeLoans: "Préstamos a empleados",
       tag: "Etiqueta",
       step1: "1. Selecciona el reporte",
       step2: "2. Define filtros",
@@ -667,6 +675,7 @@ export const translations = {
       newBankDeposit: "New bank deposit",
       newBankTransfer: "New transfer",
       newInternalObligation: "New internal obligation",
+      newEmployeeLoan: "New loan",
       newPayableConcept: "New accounts payable concept",
       newProject: "New project",
       newBudget: "New budget",
@@ -714,6 +723,7 @@ export const translations = {
       incomingPayments: "Incoming payments",
       paymentForms: "Bank accounts & cards",
       internalObligations: "Internal obligations",
+      employeeLoans: "Loans",
       bankDeposits: "Bank deposits",
       bankTransfers: "Bank transfers",
       bankReconciliation: "Bank reconciliation",
@@ -836,6 +846,11 @@ export const translations = {
       title: "Internal obligations",
       totalLowerThanPayments: "Total cannot be lower than already registered payments."
     },
+    employeeLoans: {
+      title: "Employee loans",
+      registerPayment: "Register payment",
+      loanNameDefault: "Loan"
+    },
     bankDeposits: {
       title: "Register bank deposit",
       fromCash: "Source cashbox",
@@ -873,6 +888,7 @@ export const translations = {
       cashflow: "Cashflow",
       expensesByTagPaymentForm: "Expenses by tag and payment form",
       employeeAbsences: "Employee absences",
+      employeeLoans: "Employee loans",
       tag: "Tag",
       step1: "1. Select report",
       step2: "2. Set filters",
