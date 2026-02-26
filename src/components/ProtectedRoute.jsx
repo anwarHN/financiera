@@ -18,10 +18,10 @@ function ProtectedRoute({ children }) {
 
   const trialEndsAtMs = account?.trialEndsAt ? new Date(account.trialEndsAt).getTime() : null;
   const isTrialExpired = trialEndsAtMs ? Date.now() > trialEndsAtMs : false;
-  const hasPaidMembership = account?.billingStatus === "active";
+  const hasConfiguredPaymentMethod = Boolean(account?.paypalSubscriptionId || account?.stripeSubscriptionId);
   const canAccessWithoutMembership = location.pathname.startsWith("/account");
 
-  if (isTrialExpired && !hasPaidMembership && !canAccessWithoutMembership) {
+  if (isTrialExpired && !hasConfiguredPaymentMethod && !canAccessWithoutMembership) {
     return <Navigate to="/account/billing" replace />;
   }
 
