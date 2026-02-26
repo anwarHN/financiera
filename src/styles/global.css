@@ -83,15 +83,15 @@
 }
 
 [data-text-size="sm"] {
-  --font-scale: 0.92;
+  --font-scale: 0.875;
 }
 
 [data-text-size="md"] {
-  --font-scale: 1;
+  --font-scale: 0.9375;
 }
 
 [data-text-size="lg"] {
-  --font-scale: 1.08;
+  --font-scale: 1;
 }
 
 [data-density="compact"] {
@@ -430,8 +430,7 @@ button {
 
 .workspace {
   min-width: 0;
-  display: grid;
-  grid-template-rows: 44px auto 1fr;
+  display: block;
   min-height: 0;
   position: relative;
   z-index: 1;
@@ -460,7 +459,8 @@ button {
 }
 
 .app-menu {
-  margin: calc(1.15rem * var(--density-scale)) calc(1.15rem * var(--density-scale)) 0;
+  margin: calc(1.15rem * var(--density-scale)) calc(1.15rem * var(--density-scale))
+    calc(0.5rem * var(--density-scale));
   display: flex;
   align-items: stretch;
   justify-content: space-between;
@@ -490,6 +490,7 @@ button {
     backdrop-filter: blur(6px);
     padding: calc(0.5rem * var(--density-scale)) calc(1.1rem * var(--density-scale));
     min-height: calc(4.2rem * var(--density-scale));
+    margin-bottom: calc(0.65rem * var(--density-scale));
   }
 
   .app-menu.is-stuck .app-menu-primary {
@@ -535,11 +536,12 @@ button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin: calc(1rem * var(--density-scale)) calc(1rem * var(--density-scale)) calc(0.45rem * var(--density-scale));
+  margin: calc(0.5rem * var(--density-scale)) calc(1rem * var(--density-scale))
+    calc(0.45rem * var(--density-scale));
   padding: calc(0.6rem * var(--density-scale));
   background: var(--bg-actions);
   border-radius: 10px;
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.14);
 }
 
 .actions-primary {
@@ -556,6 +558,7 @@ button {
   padding: calc(1rem * var(--density-scale));
   background: var(--bg-workspace);
   align-content: start;
+  margin-top: calc(0.6rem * var(--density-scale));
 }
 
 .workspace-body.single-column {
@@ -566,8 +569,12 @@ button {
   background: var(--bg-panel);
   border: 1px solid var(--line);
   border-radius: 10px;
-  box-shadow: var(--shadow);
+  box-shadow: none;
   padding: calc(0.75rem * var(--density-scale));
+}
+
+.generic-panel.module-panel-shell {
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.14);
 }
 
 .module-panel-shell {
@@ -610,7 +617,7 @@ button {
   background: var(--bg-panel);
   border: 1px solid var(--floating-border);
   border-radius: 12px;
-  box-shadow: var(--shadow-float);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.14);
   padding: 0.8rem;
   z-index: 80;
   display: none;
