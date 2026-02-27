@@ -1062,7 +1062,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                       )}
                     </div>
                     <div className={`field-block ${simpleRequiresAccountPaymentForm ? "required" : ""}`}>
-                      <span>{t("transactions.accountPaymentForm")}</span>
+                      <span>{selectedSimplePaymentMethod?.code === "cash" ? t("transactions.cashbox") : t("transactions.accountPaymentForm")}</span>
                       {moduleType === "income" || moduleType === "expense" ? (
                         <LookupCombobox
                           label=""
@@ -1298,7 +1298,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                   </select>
                 </label>
                 <label className="field-block">
-                  <span>{t("transactions.accountPaymentForm")}</span>
+                  <span>{selectedSalePaymentMethod?.code === "cash" ? t("transactions.cashbox") : t("transactions.accountPaymentForm")}</span>
                   <select
                     name="accountPaymentFormId"
                     value={saleHeader.accountPaymentFormId}

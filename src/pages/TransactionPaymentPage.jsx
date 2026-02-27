@@ -199,7 +199,7 @@ function TransactionPaymentPage({ direction }) {
               ))}
           </SelectField>
           <SelectField
-              label={t("transactions.accountPaymentForm")}
+              label={selectedPaymentMethod?.code === "cash" ? "Cajaa" : t("transactions.accountPaymentForm")}
               name="accountPaymentFormId"
               value={form.accountPaymentFormId}
               onChange={handleChange}

@@ -38,6 +38,7 @@ function AccountPaymentFormPage({
   const isEdit = Boolean(currentId);
 
   const defaultKind = fixedKind || allowedKinds[0] || "bank_account";
+  const isCashboxOnlyForm = fixedKind === "cashbox";
   const [form, setForm] = useState({ ...initialForm, kind: defaultKind });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(isEdit);
@@ -171,25 +172,29 @@ function AccountPaymentFormPage({
             ) : (
               <TextField label={t("paymentForms.kind")} value={t(`paymentForms.kinds.${fixedKind}`)} readOnly />
             )}
-            <TextField label={t("paymentForms.provider")} name="provider" value={form.provider} onChange={handleChange} />
-            <TextField label={t("paymentForms.reference")} name="reference" value={form.reference} onChange={handleChange} />
-            <SelectField label={t("paymentForms.employee")} name="employeeId" value={form.employeeId} onChange={handleChange}>
-                <option value="">{`-- ${t("transactions.optionalSeller")} --`}</option>
-                {employees.map((employee) => (
-                  <option key={employee.id} value={employee.id}>
-                    {employee.name}
-                  </option>
-                ))}
-            </SelectField>
-            <label className="checkbox-field form-span-2">
-              <input
-                type="checkbox"
-                name="createInternalPayableOnOutgoingPayment"
-                checked={form.createInternalPayableOnOutgoingPayment}
-                onChange={handleChange}
-              />
-              <span>{t("paymentForms.createInternalPayableOnOutgoingPayment")}</span>
-            </label>
+            {!isCashboxOnlyForm ? (
+              <>
+                <TextField label={t("paymentForms.provider")} name="provider" value={form.provider} onChange={handleChange} />
+                <TextField label={t("paymentForms.reference")} name="reference" value={form.reference} onChange={handleChange} />
+                <SelectField label={t("paymentForms.employee")} name="employeeId" value={form.employeeId} onChange={handleChange}>
+                  <option value="">{`-- ${t("transactions.optionalSeller")} --`}</option>
+                  {employees.map((employee) => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.name}
+                    </option>
+                  ))}
+                </SelectField>
+                <label className="checkbox-field form-span-2">
+                  <input
+                    type="checkbox"
+                    name="createInternalPayableOnOutgoingPayment"
+                    checked={form.createInternalPayableOnOutgoingPayment}
+                    onChange={handleChange}
+                  />
+                  <span>{t("paymentForms.createInternalPayableOnOutgoingPayment")}</span>
+                </label>
+              </>
+            ) : null}
           </div>
           <div className="crud-form-actions">
             {embedded ? (

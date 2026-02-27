@@ -194,7 +194,7 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
               </select>
             </label>
             <label className="field-block">
-              <span>{t("transactions.accountPaymentForm")}</span>
+              <span>{selectedPaymentMethod?.code === "cash" ? "Cajaa" : t("transactions.accountPaymentForm")}</span>
               <select
                 name="accountPaymentFormId"
                 value={form.accountPaymentFormId}
