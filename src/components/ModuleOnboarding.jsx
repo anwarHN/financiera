@@ -23,8 +23,10 @@ const MODULES = [
     id: "payments",
     match: (p) =>
       p.startsWith("/payment-forms") ||
+      p.startsWith("/cashboxes") ||
       p.startsWith("/bank-deposits") ||
       p.startsWith("/bank-transfers") ||
+      p.startsWith("/bank-cash-withdrawals") ||
       p.startsWith("/internal-obligations") ||
       p.startsWith("/bank-reconciliation"),
     titleKey: "nav.paymentForms"

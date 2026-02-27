@@ -48,6 +48,7 @@ declare
   outgoing_payment_concept_id bigint;
   loan_concept_id bigint;
   loan_payment_concept_id bigint;
+  cash_withdrawal_concept_id bigint;
 begin
   company_name := coalesce(nullif(new.raw_user_meta_data ->> 'company_name', ''), 'Empresa');
   country_code := upper(coalesce(new.raw_user_meta_data ->> 'country_code', 'US'));
@@ -131,7 +132,7 @@ begin
       true,
       true,
       true,
-      '{"dashboard":{"read":true,"create":true,"update":true},"transactions":{"read":true,"create":true,"update":true},"concepts":{"read":true,"create":true,"update":true},"clients":{"read":true,"create":true,"update":true},"providers":{"read":true,"create":true,"update":true},"employees":{"read":true,"create":true,"update":true},"appointments":{"read":true,"create":true,"update":true},"paymentForms":{"read":true,"create":true,"update":true},"planning":{"read":true,"create":true,"update":true},"catalogs":{"read":true,"create":true,"update":true},"reports":{"read":true,"create":true,"update":true},"reportAccess":{"sales":true,"receivable":true,"payable":true,"internal_obligations":true,"budget_execution":true,"project_execution":true,"expenses":true,"cashflow":true,"employee_absences":true,"sales_by_employee":true,"expenses_by_tag_payment_form":true,"employee_loans":true}}'::jsonb,
+      '{"dashboard":{"read":true,"create":true,"update":true},"transactions":{"read":true,"create":true,"update":true},"concepts":{"read":true,"create":true,"update":true},"clients":{"read":true,"create":true,"update":true},"providers":{"read":true,"create":true,"update":true},"employees":{"read":true,"create":true,"update":true},"appointments":{"read":true,"create":true,"update":true},"paymentForms":{"read":true,"create":true,"update":true},"planning":{"read":true,"create":true,"update":true},"catalogs":{"read":true,"create":true,"update":true},"reports":{"read":true,"create":true,"update":true},"reportAccess":{"sales":true,"receivable":true,"payable":true,"internal_obligations":true,"budget_execution":true,"project_execution":true,"expenses":true,"cashflow":true,"employee_absences":true,"sales_by_employee":true,"expenses_by_tag_payment_form":true,"employee_loans":true,"cashboxes_balance":true}}'::jsonb,
       new.id
     )
     returning id into admin_profile_id;
@@ -384,6 +385,63 @@ begin
         from public.concepts
         where "accountId" = new_account_id
           and "isLoanPaymentConcept" = true
+        limit 1;
+      end if;
+    end if;
+
+    if exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'concepts'
+        and column_name = 'isCashWithdrawalConcept'
+    ) then
+      insert into public.concepts (
+      "accountId",
+      name,
+      "parentConceptId",
+      "isGroup",
+      "isIncome",
+      "isExpense",
+      "isProduct",
+      "isPaymentForm",
+      "isAccountPayableConcept",
+      "isIncomingPaymentConcept",
+      "isOutgoingPaymentConcept",
+      "isCashWithdrawalConcept",
+      "isSystem",
+      "taxPercentage",
+      price,
+      "additionalCharges",
+      "createdById"
+    )
+    values (
+      new_account_id,
+      'Retiro de efectivo',
+      null,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      0,
+      0,
+      0,
+      new.id
+      )
+      on conflict do nothing
+      returning id into cash_withdrawal_concept_id;
+
+      if cash_withdrawal_concept_id is null then
+        select id into cash_withdrawal_concept_id
+        from public.concepts
+        where "accountId" = new_account_id
+          and "isCashWithdrawalConcept" = true
         limit 1;
       end if;
     end if;

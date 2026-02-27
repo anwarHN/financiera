@@ -82,8 +82,10 @@ const navGroups = [
     icon: FiCreditCard,
     items: [
       { path: "/payment-forms", key: "nav.paymentForms", icon: FiCreditCard },
+      { path: "/cashboxes", key: "nav.cashboxes", icon: FiDollarSign },
       { path: "/bank-deposits", key: "nav.bankDeposits", icon: FiDollarSign },
       { path: "/bank-transfers", key: "nav.bankTransfers", icon: FiShare2 },
+      { path: "/bank-cash-withdrawals", key: "nav.cashWithdrawals", icon: FiTrendingDown },
       { path: "/internal-obligations", key: "nav.internalObligations", icon: FiFileText },
       { path: "/bank-reconciliation", key: "nav.bankReconciliation", icon: FiGitMerge }
     ]
@@ -157,8 +159,10 @@ function resolveCreateModuleByPath(pathname) {
   if (pathname.startsWith("/expense-concepts")) return "concepts";
   if (pathname.startsWith("/concept-groups")) return "concepts";
   if (pathname.startsWith("/payment-forms")) return "paymentForms";
+  if (pathname.startsWith("/cashboxes")) return "paymentForms";
   if (pathname.startsWith("/bank-deposits")) return "transactions";
   if (pathname.startsWith("/bank-transfers")) return "transactions";
+  if (pathname.startsWith("/bank-cash-withdrawals")) return "transactions";
   if (pathname.startsWith("/internal-obligations")) return "transactions";
   if (pathname.startsWith("/employee-loans")) return "transactions";
   if (pathname.startsWith("/sales")) return "transactions";
@@ -183,8 +187,10 @@ function resolveReadModuleByPath(pathname) {
   if (pathname.startsWith("/expense-concepts")) return "concepts";
   if (pathname.startsWith("/concept-groups")) return "concepts";
   if (pathname.startsWith("/payment-forms")) return "paymentForms";
+  if (pathname.startsWith("/cashboxes")) return "paymentForms";
   if (pathname.startsWith("/bank-deposits")) return "transactions";
   if (pathname.startsWith("/bank-transfers")) return "transactions";
+  if (pathname.startsWith("/bank-cash-withdrawals")) return "transactions";
   if (pathname.startsWith("/internal-obligations")) return "transactions";
   if (pathname.startsWith("/employee-loans")) return "transactions";
   if (pathname.startsWith("/bank-reconciliation")) return "transactions";
@@ -384,11 +390,17 @@ function Layout() {
     if (pathname.startsWith("/payment-forms")) {
       return { createPath: "/payment-forms?create=1", createLabel: t("actions.newPaymentForm") };
     }
+    if (pathname.startsWith("/cashboxes")) {
+      return { createPath: "/cashboxes?create=1", createLabel: t("actions.newCashbox") };
+    }
     if (pathname.startsWith("/bank-deposits")) {
       return { createPath: "/bank-deposits?create=1", createLabel: t("actions.newBankDeposit") };
     }
     if (pathname.startsWith("/bank-transfers")) {
       return { createPath: "/bank-transfers?create=1", createLabel: t("actions.newBankTransfer") };
+    }
+    if (pathname.startsWith("/bank-cash-withdrawals")) {
+      return { createPath: "/bank-cash-withdrawals?create=1", createLabel: t("actions.newCashWithdrawal") };
     }
     if (pathname.startsWith("/internal-obligations")) {
       return { createPath: "/internal-obligations?create=1", createLabel: t("actions.newInternalObligation") };

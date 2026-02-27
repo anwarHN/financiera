@@ -24,6 +24,8 @@ import AccountBillingPage from "./pages/AccountBillingPage";
 import AccountInvitationsPage from "./pages/AccountInvitationsPage";
 import AccountPaymentFormsPage from "./pages/AccountPaymentFormsPage";
 import AccountPaymentFormPage from "./pages/AccountPaymentFormPage";
+import CashboxesPage from "./pages/CashboxesPage";
+import CashboxFormPage from "./pages/CashboxFormPage";
 import BankReconciliationPage from "./pages/BankReconciliationPage";
 import InternalAccountPayablesPage from "./pages/InternalAccountPayablesPage";
 import InternalAccountPayableFormPage from "./pages/InternalAccountPayableFormPage";
@@ -31,6 +33,8 @@ import BankDepositsPage from "./pages/BankDepositsPage";
 import BankDepositFormPage from "./pages/BankDepositFormPage";
 import BankTransfersPage from "./pages/BankTransfersPage";
 import BankTransferFormPage from "./pages/BankTransferFormPage";
+import BankCashWithdrawalsPage from "./pages/BankCashWithdrawalsPage";
+import BankCashWithdrawalFormPage from "./pages/BankCashWithdrawalFormPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ProjectFormPage from "./pages/ProjectFormPage";
 import ProjectDetailPage from "./pages/ProjectDetailPage";
@@ -182,10 +186,15 @@ function App() {
         <Route path="payment-forms" element={<AccountPaymentFormsPage />} />
         <Route path="payment-forms/new" element={<AccountPaymentFormPage />} />
         <Route path="payment-forms/:id/edit" element={<AccountPaymentFormPage />} />
+        <Route path="cashboxes" element={<CashboxesPage />} />
+        <Route path="cashboxes/new" element={<CashboxFormPage />} />
+        <Route path="cashboxes/:id/edit" element={<CashboxFormPage />} />
         <Route path="bank-deposits" element={<BankDepositsPage />} />
         <Route path="bank-deposits/new" element={<BankDepositFormPage />} />
         <Route path="bank-transfers" element={<BankTransfersPage />} />
         <Route path="bank-transfers/new" element={<BankTransferFormPage />} />
+        <Route path="bank-cash-withdrawals" element={<BankCashWithdrawalsPage />} />
+        <Route path="bank-cash-withdrawals/new" element={<BankCashWithdrawalFormPage />} />
         <Route path="internal-obligations" element={<InternalAccountPayablesPage />} />
         <Route path="internal-obligations/new" element={<InternalAccountPayableFormPage />} />
         <Route path="internal-obligations/:id/edit" element={<InternalAccountPayableFormPage />} />

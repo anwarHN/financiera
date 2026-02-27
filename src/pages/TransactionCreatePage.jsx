@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import LookupCombobox from "../components/LookupCombobox";
 import TagsLookupField from "../components/TagsLookupField";
 import AccountPaymentFormPage from "./AccountPaymentFormPage";
+import CashboxFormPage from "./CashboxFormPage";
 import ConceptModuleFormPage from "./ConceptModuleFormPage";
 import EmployeeFormPage from "./EmployeeFormPage";
 import PeopleFormPage from "./PeopleFormPage";
@@ -1095,7 +1096,11 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                             isOpen ? (
                               <div className="modal-backdrop">
                                 <div className="modal-card" onClick={(event) => event.stopPropagation()}>
-                                  <AccountPaymentFormPage embedded onCancel={onClose} onCreated={onCreated} />
+                                  {selectedSimplePaymentMethod?.code === "cash" ? (
+                                    <CashboxFormPage embedded onCancel={onClose} onCreated={onCreated} />
+                                  ) : (
+                                    <AccountPaymentFormPage embedded onCancel={onClose} onCreated={onCreated} />
+                                  )}
                                 </div>
                               </div>
                             ) : null

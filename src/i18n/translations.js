@@ -113,8 +113,10 @@ export const translations = {
       newOutgoingPayment: "Nuevo pago saliente",
       newIncomingPayment: "Nuevo pago entrante",
       newPaymentForm: "Nueva cuenta/tarjeta",
+      newCashbox: "Nueva caja",
       newBankDeposit: "Nuevo depósito",
       newBankTransfer: "Nuevo traslado",
+      newCashWithdrawal: "Nuevo retiro de efectivo",
       newInternalObligation: "Nueva obligación interna",
       newEmployeeLoan: "Nuevo préstamo",
       newPayableConcept: "Nuevo concepto de cuentas por pagar",
@@ -164,10 +166,12 @@ export const translations = {
       outgoingPayments: "Pagos salientes",
       incomingPayments: "Pagos entrantes",
       paymentForms: "Cuentas y tarjetas",
+      cashboxes: "Cajas",
       internalObligations: "Obligaciones internas",
       employeeLoans: "Préstamos",
       bankDeposits: "Depósitos bancarios",
       bankTransfers: "Traslados bancarios",
+      cashWithdrawals: "Retiros de efectivo",
       bankReconciliation: "Conciliación bancaria",
       currencies: "Monedas",
       payableConcepts: "Conceptos CxP",
@@ -265,6 +269,7 @@ export const translations = {
     },
     paymentForms: {
       title: "Cuentas bancarias y tarjetas",
+      cashboxesTitle: "Cajas",
       kind: "Tipo",
       provider: "Banco / emisor",
       reference: "Referencia",
@@ -307,6 +312,13 @@ export const translations = {
       sameAccountError: "La cuenta origen y destino deben ser diferentes.",
       saved: "Traslado registrado correctamente."
     },
+    bankCashWithdrawals: {
+      title: "Registrar retiro de efectivo",
+      fromBankAccount: "Cuenta bancaria origen",
+      toCash: "Caja destino",
+      sameAccountError: "La cuenta origen y destino deben ser diferentes.",
+      saved: "Retiro de efectivo registrado correctamente."
+    },
     reports: {
       title: "Reportes",
       sales: "Ventas",
@@ -331,6 +343,7 @@ export const translations = {
       expensesByTagPaymentForm: "Gastos por etiqueta y forma de pago",
       employeeAbsences: "Ausencias por empleado",
       employeeLoans: "Préstamos a empleados",
+      cashboxesBalance: "Saldos de cajas",
       tag: "Etiqueta",
       step1: "1. Selecciona el reporte",
       step2: "2. Define filtros",
@@ -347,6 +360,7 @@ export const translations = {
       noAccessAny: "No tienes acceso a ningún reporte.",
       bankBalancesByAccount: "Saldos por cuenta bancaria",
       bankBalancesTotal: "Suma de saldos en cuentas bancarias",
+      cashboxesBalancesTotal: "Suma de saldos en cajas",
       incomeExpenseNet: "Ingresos menos egresos (neto)",
       bankVsNetDifference: "Diferencia (cuentas bancarias - neto)"
     },
@@ -672,8 +686,10 @@ export const translations = {
       newOutgoingPayment: "New outgoing payment",
       newIncomingPayment: "New incoming payment",
       newPaymentForm: "New bank/card account",
+      newCashbox: "New cashbox",
       newBankDeposit: "New bank deposit",
       newBankTransfer: "New transfer",
+      newCashWithdrawal: "New cash withdrawal",
       newInternalObligation: "New internal obligation",
       newEmployeeLoan: "New loan",
       newPayableConcept: "New accounts payable concept",
@@ -722,10 +738,12 @@ export const translations = {
       outgoingPayments: "Outgoing payments",
       incomingPayments: "Incoming payments",
       paymentForms: "Bank accounts & cards",
+      cashboxes: "Cashboxes",
       internalObligations: "Internal obligations",
       employeeLoans: "Loans",
       bankDeposits: "Bank deposits",
       bankTransfers: "Bank transfers",
+      cashWithdrawals: "Cash withdrawals",
       bankReconciliation: "Bank reconciliation",
       currencies: "Currencies",
       payableConcepts: "AP concepts",
@@ -823,6 +841,7 @@ export const translations = {
     },
     paymentForms: {
       title: "Bank accounts and credit cards",
+      cashboxesTitle: "Cashboxes",
       kind: "Type",
       provider: "Bank / issuer",
       reference: "Reference",
@@ -865,6 +884,13 @@ export const translations = {
       sameAccountError: "Source and destination accounts must be different.",
       saved: "Transfer registered successfully."
     },
+    bankCashWithdrawals: {
+      title: "Register cash withdrawal",
+      fromBankAccount: "Source bank account",
+      toCash: "Destination cashbox",
+      sameAccountError: "Source and destination accounts must be different.",
+      saved: "Cash withdrawal registered successfully."
+    },
     reports: {
       title: "Reports",
       sales: "Sales",
@@ -889,6 +915,7 @@ export const translations = {
       expensesByTagPaymentForm: "Expenses by tag and payment form",
       employeeAbsences: "Employee absences",
       employeeLoans: "Employee loans",
+      cashboxesBalance: "Cashbox balances",
       tag: "Tag",
       step1: "1. Select report",
       step2: "2. Set filters",
@@ -905,6 +932,7 @@ export const translations = {
       noAccessAny: "You do not have access to any report.",
       bankBalancesByAccount: "Balances by bank account",
       bankBalancesTotal: "Total balances in bank accounts",
+      cashboxesBalancesTotal: "Total balances in cashboxes",
       incomeExpenseNet: "Income minus expenses (net)",
       bankVsNetDifference: "Difference (bank accounts - net)"
     },

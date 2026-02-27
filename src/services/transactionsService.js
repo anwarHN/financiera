@@ -781,7 +781,8 @@ export async function createBankDeposit({
     isInternalObligation: false,
     sourceTransactionId: null,
     isInternalTransfer: true,
-    isDeposit: true
+    isDeposit: true,
+    isCashWithdrawal: false
   };
 
   const outgoingTx = {
@@ -901,6 +902,7 @@ export async function createBankTransfer({
     isInternalObligation: false,
     isInternalTransfer: true,
     isDeposit: false,
+    isCashWithdrawal: false,
     isReconciled: true,
     reconciledAt: date
   };
@@ -989,6 +991,138 @@ export async function createBankTransfer({
   }
 }
 
+export async function createCashWithdrawal({
+  accountId,
+  userId,
+  date,
+  amount,
+  currencyId,
+  referenceNumber,
+  description,
+  transferPaymentMethodId,
+  cashPaymentMethodId,
+  fromBankFormId,
+  toCashFormId,
+  fromBankLabel,
+  toCashLabel,
+  cashWithdrawalConceptId
+}) {
+  const safeAmount = Math.abs(Number(amount || 0));
+  if (!safeAmount) throw new Error("Invalid amount");
+  if (Number(fromBankFormId) === Number(toCashFormId)) throw new Error("Source and destination must be different.");
+
+  const baseName = description?.trim() || "Retiro de efectivo";
+  const common = {
+    accountId,
+    personId: null,
+    date,
+    referenceNumber: referenceNumber?.trim() || null,
+    status: 1,
+    createdById: userId,
+    discounts: 0,
+    taxes: 0,
+    additionalCharges: 0,
+    isAccountPayable: false,
+    isAccountReceivable: false,
+    balance: 0,
+    isActive: true,
+    currencyId: Number(currencyId),
+    isInternalObligation: false,
+    isInternalTransfer: true,
+    isDeposit: false,
+    isCashWithdrawal: true,
+    isReconciled: true,
+    reconciledAt: date
+  };
+
+  const outgoingTx = {
+    ...common,
+    type: TRANSACTION_TYPES.outgoingPayment,
+    name: `${baseName} (salida)`,
+    deliverTo: fromBankLabel || null,
+    deliveryAddress: toCashLabel || null,
+    net: -safeAmount,
+    total: -safeAmount,
+    isIncomingPayment: false,
+    isOutcomingPayment: true,
+    payments: -safeAmount,
+    paymentMethodId: Number(transferPaymentMethodId),
+    accountPaymentFormId: Number(fromBankFormId),
+    sourceTransactionId: null
+  };
+
+  const { data: outTxRow, error: outTxError } = await supabase.from("transactions").insert(outgoingTx).select("id").single();
+  if (outTxError) throw outTxError;
+
+  const incomingTx = {
+    ...common,
+    type: TRANSACTION_TYPES.incomingPayment,
+    name: `${baseName} (entrada)`,
+    deliverTo: fromBankLabel || null,
+    deliveryAddress: toCashLabel || null,
+    net: safeAmount,
+    total: safeAmount,
+    isIncomingPayment: true,
+    isOutcomingPayment: false,
+    payments: safeAmount,
+    paymentMethodId: Number(cashPaymentMethodId),
+    accountPaymentFormId: Number(toCashFormId),
+    sourceTransactionId: outTxRow.id
+  };
+
+  const { data: inTxRow, error: inTxError } = await supabase.from("transactions").insert(incomingTx).select("id").single();
+  if (inTxError) {
+    await supabase.from("transactions").delete().eq("id", outTxRow.id);
+    throw inTxError;
+  }
+
+  const outgoingDetail = {
+    transactionId: outTxRow.id,
+    conceptId: Number(cashWithdrawalConceptId),
+    quantity: 1,
+    price: -safeAmount,
+    net: -safeAmount,
+    taxPercentage: 0,
+    tax: 0,
+    discountPercentage: 0,
+    discount: 0,
+    total: -safeAmount,
+    additionalCharges: 0,
+    createdById: userId,
+    sellerId: null,
+    transactionPaidId: null
+  };
+
+  const incomingDetail = {
+    transactionId: inTxRow.id,
+    conceptId: Number(cashWithdrawalConceptId),
+    quantity: 1,
+    price: safeAmount,
+    net: safeAmount,
+    taxPercentage: 0,
+    tax: 0,
+    discountPercentage: 0,
+    discount: 0,
+    total: safeAmount,
+    additionalCharges: 0,
+    createdById: userId,
+    sellerId: null,
+    transactionPaidId: null
+  };
+
+  const { error: outgoingDetailError } = await supabase.from("transactionDetails").insert(outgoingDetail);
+  if (outgoingDetailError) {
+    await supabase.from("transactions").delete().in("id", [outTxRow.id, inTxRow.id]);
+    throw outgoingDetailError;
+  }
+
+  const { error: incomingDetailError } = await supabase.from("transactionDetails").insert(incomingDetail);
+  if (incomingDetailError) {
+    await supabase.from("transactions").delete().in("id", [outTxRow.id, inTxRow.id]);
+    throw incomingDetailError;
+  }
+}
+
 export async function listBankDeposits(accountId) {
   const { data, error } = await supabase
     .from("transactions")
@@ -1024,6 +1158,7 @@ export async function listBankTransfers(accountId) {
     .eq("accountId", accountId)
     .eq("isInternalTransfer", true)
     .eq("isDeposit", false)
+    .eq("isCashWithdrawal", false)
     .eq("isIncomingPayment", true)
     .eq("isActive", true)
     .order("id", { ascending: false });
@@ -1036,6 +1171,34 @@ export async function deactivateBankTransfer(incomingTransferId) {
     .from("transactions")
     .select('id, "sourceTransactionId"')
     .eq("id", incomingTransferId)
+    .single();
+  if (incomingError) throw incomingError;
+
+  const ids = [incomingTx.id];
+  if (incomingTx.sourceTransactionId) ids.push(incomingTx.sourceTransactionId);
+
+  const { error } = await supabase.from("transactions").update({ isActive: false }).in("id", ids);
+  if (error) throw error;
+}
+
+export async function listCashWithdrawals(accountId) {
+  const { data, error } = await supabase
+    .from("transactions")
+    .select('id, date, name, total, "referenceNumber", "sourceTransactionId", deliverTo, "deliveryAddress", isActive, account_payment_forms(name)')
+    .eq("accountId", accountId)
+    .eq("isCashWithdrawal", true)
+    .eq("isIncomingPayment", true)
+    .eq("isActive", true)
+    .order("id", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function deactivateCashWithdrawal(incomingCashWithdrawalId) {
+  const { data: incomingTx, error: incomingError } = await supabase
+    .from("transactions")
+    .select('id, "sourceTransactionId"')
+    .eq("id", incomingCashWithdrawalId)
     .single();
   if (incomingError) throw incomingError;
 

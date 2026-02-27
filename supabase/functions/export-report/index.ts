@@ -13,7 +13,8 @@ interface ExportPayload {
     | "employee_absences"
     | "sales_by_employee"
     | "expenses_by_tag_payment_form"
-    | "employee_loans";
+    | "employee_loans"
+    | "cashboxes_balance";
   dateFrom?: string | null;
   dateTo?: string | null;
   currencyId?: number | null;
@@ -114,6 +115,15 @@ type EmployeeLoanReportRow = {
   } | null;
 };
 
+type CashboxBalanceRow = {
+  id: number;
+  name: string;
+  provider: string | null;
+  reference: string | null;
+  kind: string;
+  isActive: boolean;
+};
+
 const reportTitles: Record<ExportPayload["reportId"], string> = {
   sales: "Ventas",
   receivable: "Cuentas por cobrar",
@@ -124,7 +134,8 @@ const reportTitles: Record<ExportPayload["reportId"], string> = {
   employee_absences: "Ausencias por empleado",
   sales_by_employee: "Ventas por empleado",
   expenses_by_tag_payment_form: "Gastos por etiqueta y forma de pago",
-  employee_loans: "Préstamos a empleados"
+  employee_loans: "Préstamos a empleados",
+  cashboxes_balance: "Saldos de cajas"
 };
 
 const corsHeaders = {
@@ -623,6 +634,60 @@ async function buildEmployeeLoansReport(
   };
 }
 
+async function buildCashboxesBalanceReport(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payload: ExportPayload
+): Promise<ExportBuildResult> {
+  const { data: forms, error: formsError } = await supabaseAdmin
+    .from("account_payment_forms")
+    .select("id, name, provider, reference, kind, isActive")
+    .eq("accountId", payload.accountId)
+    .eq("isActive", true)
+    .eq("kind", "cashbox")
+    .order("name", { ascending: true });
+  if (formsError) throw formsError;
+
+  const formRows = (forms ?? []) as CashboxBalanceRow[];
+  if (formRows.length === 0) {
+    return { rows: [], total: 0, balance: 0 };
+  }
+
+  let txQuery = supabaseAdmin
+    .from("transactions")
+    .select('id, total, "accountPaymentFormId", currencyId')
+    .eq("accountId", payload.accountId)
+    .eq("isActive", true)
+    .not("accountPaymentFormId", "is", null);
+
+  if (payload.dateFrom) txQuery = txQuery.gte("date", payload.dateFrom);
+  if (payload.dateTo) txQuery = txQuery.lte("date", payload.dateTo);
+  if (payload.currencyId != null) txQuery = txQuery.eq("currencyId", payload.currencyId);
+
+  const { data: txRows, error: txError } = await txQuery;
+  if (txError) throw txError;
+
+  const totalsByFormId = new Map<number, number>();
+  (txRows ?? []).forEach((row) => {
+    const formId = Number(row.accountPaymentFormId || 0);
+    if (!formId) return;
+    totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + Number(row.total || 0));
+  });
+
+  const rows = formRows.map((row) => ({
+    id: row.id,
+    caja: row.name || "-",
+    entidad: row.provider || "-",
+    referencia: row.reference || "-",
+    saldo: sanitizeNumber(totalsByFormId.get(Number(row.id)) || 0)
+  }));
+
+  return {
+    rows,
+    total: rows.reduce((acc, row) => acc + Number(row.saldo || 0), 0),
+    balance: rows.reduce((acc, row) => acc + Number(row.saldo || 0), 0)
+  };
+}
+
 async function buildReportData(supabaseAdmin: ReturnType<typeof createClient>, payload: ExportPayload): Promise<ExportBuildResult> {
   if (payload.reportId === "internal_obligations") {
     return buildInternalObligationsReport(supabaseAdmin, payload);
@@ -641,6 +706,9 @@ async function buildReportData(supabaseAdmin: ReturnType<typeof createClient>, p
   }
   if (payload.reportId === "employee_loans") {
     return buildEmployeeLoansReport(supabaseAdmin, payload);
+  }
+  if (payload.reportId === "cashboxes_balance") {
+    return buildCashboxesBalanceReport(supabaseAdmin, payload);
   }
   return buildStandardReport(supabaseAdmin, payload);
 }

@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Pagination from "../components/Pagination";
-import AccountPaymentFormPage from "./AccountPaymentFormPage";
 import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { useModulePermissions } from "../hooks/useModulePermissions";
 import { deleteAccountPaymentForm, listAccountPaymentForms } from "../services/accountPaymentFormsService";
+import CashboxFormPage from "./CashboxFormPage";
 
 const pageSize = 10;
 
-function AccountPaymentFormsPage() {
+function CashboxesPage() {
   const { t } = useI18n();
   const { account } = useAuth();
   const { canCreate, canUpdate } = useModulePermissions("paymentForms");
@@ -37,7 +37,7 @@ function AccountPaymentFormsPage() {
     try {
       setIsLoading(true);
       const data = await listAccountPaymentForms(account.accountId);
-      setItems(data.filter((item) => item.kind !== "cashbox"));
+      setItems(data.filter((item) => item.kind === "cashbox"));
       setError("");
       setPage(1);
     } catch {
@@ -65,7 +65,7 @@ function AccountPaymentFormsPage() {
 
   return (
     <div className="module-page">
-      <h1>{t("paymentForms.title")}</h1>
+      <h1>{t("paymentForms.cashboxesTitle")}</h1>
       {error && <p className="error-text">{error}</p>}
       {isLoading ? (
         <p>{t("common.loading")}</p>
@@ -77,10 +77,8 @@ function AccountPaymentFormsPage() {
             <thead>
               <tr>
                 <th>{t("common.name")}</th>
-                <th>{t("paymentForms.kind")}</th>
                 <th>{t("paymentForms.provider")}</th>
                 <th>{t("paymentForms.reference")}</th>
-                <th>{t("paymentForms.createInternalPayableOnOutgoingPaymentShort")}</th>
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
@@ -88,24 +86,24 @@ function AccountPaymentFormsPage() {
               {paginatedItems.map((item) => (
                 <tr key={item.id}>
                   <td>{item.name}</td>
-                  <td>{t(`paymentForms.kinds.${item.kind}`)}</td>
                   <td>{item.provider || "-"}</td>
                   <td>{item.reference || "-"}</td>
-                  <td>{item.createInternalPayableOnOutgoingPayment ? t("common.yes") : t("common.no")}</td>
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[
                         ...(canUpdate
-                          ? [{
-                          key: "edit",
-                          label: t("common.edit"),
-                          onClick: () => {
-                            const next = new URLSearchParams(searchParams);
-                            next.set("edit", String(item.id));
-                            next.delete("create");
-                            setSearchParams(next);
-                          }
-                        }]
+                          ? [
+                              {
+                                key: "edit",
+                                label: t("common.edit"),
+                                onClick: () => {
+                                  const next = new URLSearchParams(searchParams);
+                                  next.set("edit", String(item.id));
+                                  next.delete("create");
+                                  setSearchParams(next);
+                                }
+                              }
+                            ]
                           : []),
                         ...(canUpdate ? [{ key: "delete", label: t("common.delete"), onClick: () => handleDelete(item.id), danger: true }] : [])
                       ]}
@@ -120,11 +118,9 @@ function AccountPaymentFormsPage() {
       )}
 
       {isCreateModalOpen || isEditModalOpen ? (
-        <div
-          className="modal-backdrop"
-        >
+        <div className="modal-backdrop">
           <div className="modal-card" onClick={(event) => event.stopPropagation()}>
-            <AccountPaymentFormPage
+            <CashboxFormPage
               embedded
               itemId={isEditModalOpen ? editId : null}
               onCancel={closeModal}
@@ -140,4 +136,4 @@ function AccountPaymentFormsPage() {
   );
 }
 
-export default AccountPaymentFormsPage;
+export default CashboxesPage;

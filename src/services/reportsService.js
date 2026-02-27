@@ -124,10 +124,10 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
 
   let txQuery = supabase
     .from("transactions")
-    .select('id, total, currencyId, "accountPaymentFormId", isActive')
+    .select('id, total, currencyId, "accountPaymentFormId", "paymentMethodId", isActive, payment_methods(code)')
     .eq("accountId", accountId)
     .eq("isActive", true)
-    .not("accountPaymentFormId", "is", null);
+    .or('accountPaymentFormId.not.is.null,paymentMethodId.not.is.null');
 
   if (dateTo) txQuery = txQuery.lte("date", dateTo);
   if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
@@ -142,9 +142,7 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
     totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + Number(tx.total || 0));
   });
 
-  const bankRows = (forms ?? [])
-    .filter((form) => form.kind === "bank_account")
-    .map((form) => ({
+  const rows = (forms ?? []).map((form) => ({
       id: form.id,
       name: form.name,
       provider: form.provider,
@@ -152,20 +150,23 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
       kind: form.kind
     }));
 
-  const cashTotal = (forms ?? [])
-    .filter((form) => form.kind === "cashbox")
-    .reduce((acc, form) => acc + Number(totalsByFormId.get(Number(form.id)) || 0), 0);
+  const cashTotal = (transactions ?? []).reduce((acc, tx) => {
+    if (tx.payment_methods?.code !== "cash") return acc;
+    return acc + Number(tx.total || 0);
+  }, 0);
 
-  return [
-    ...bankRows,
-    {
+  const hasCashboxRows = rows.some((row) => row.kind === "cashbox");
+  if (!hasCashboxRows) {
+    rows.push({
       id: "cash-summary",
       name: "Efectivo",
       provider: "",
       balance: cashTotal,
       kind: "cashbox"
-    }
-  ];
+    });
+  }
+
+  return rows;
 }
 
 export async function getEmployeeAbsenceTotals(accountId, { dateFrom, dateTo } = {}) {
@@ -315,6 +316,48 @@ export async function getEmployeeLoansReport(accountId, { dateFrom, dateTo, curr
   const { data, error } = await query.order("date", { ascending: false });
   if (error) throw error;
   return data ?? [];
+}
+
+export async function getCashboxesBalanceReport(accountId, { dateFrom, dateTo, currencyId } = {}) {
+  const { data: forms, error: formsError } = await supabase
+    .from("account_payment_forms")
+    .select("id, name, provider, reference, kind, isActive")
+    .eq("accountId", accountId)
+    .eq("isActive", true)
+    .eq("kind", "cashbox")
+    .order("name", { ascending: true });
+
+  if (formsError) throw formsError;
+  if (!forms?.length) return [];
+
+  let txQuery = supabase
+    .from("transactions")
+    .select('id, total, currencyId, "accountPaymentFormId", isActive')
+    .eq("accountId", accountId)
+    .eq("isActive", true)
+    .not("accountPaymentFormId", "is", null);
+
+  if (dateFrom) txQuery = txQuery.gte("date", dateFrom);
+  if (dateTo) txQuery = txQuery.lte("date", dateTo);
+  if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
+
+  const { data: transactions, error: txError } = await txQuery;
+  if (txError) throw txError;
+
+  const totalsByFormId = new Map();
+  (transactions ?? []).forEach((tx) => {
+    const formId = Number(tx.accountPaymentFormId || 0);
+    if (!formId) return;
+    totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + Number(tx.total || 0));
+  });
+
+  return forms.map((form) => ({
+    id: form.id,
+    name: form.name,
+    provider: form.provider,
+    reference: form.reference,
+    balance: Number(totalsByFormId.get(Number(form.id)) || 0)
+  }));
 }
 
 export async function exportReportXlsx({

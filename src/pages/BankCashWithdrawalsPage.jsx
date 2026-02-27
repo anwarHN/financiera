@@ -1,27 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Pagination from "../components/Pagination";
-import AccountPaymentFormPage from "./AccountPaymentFormPage";
+import BankCashWithdrawalFormPage from "./BankCashWithdrawalFormPage";
 import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { useModulePermissions } from "../hooks/useModulePermissions";
-import { deleteAccountPaymentForm, listAccountPaymentForms } from "../services/accountPaymentFormsService";
+import { deactivateCashWithdrawal, listCashWithdrawals } from "../services/transactionsService";
+import { formatDate } from "../utils/dateFormat";
+import { formatNumber } from "../utils/numberFormat";
 
 const pageSize = 10;
 
-function AccountPaymentFormsPage() {
-  const { t } = useI18n();
+function BankCashWithdrawalsPage() {
+  const { t, language } = useI18n();
   const { account } = useAuth();
-  const { canCreate, canUpdate } = useModulePermissions("paymentForms");
+  const { canCreate, canUpdate, canVoidTransactions } = useModulePermissions("transactions");
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [searchParams, setSearchParams] = useSearchParams();
   const isCreateModalOpen = searchParams.get("create") === "1" && canCreate;
-  const editId = searchParams.get("edit");
-  const isEditModalOpen = Boolean(editId) && canUpdate;
 
   useEffect(() => {
     if (!account?.accountId) return;
@@ -36,8 +36,8 @@ function AccountPaymentFormsPage() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const data = await listAccountPaymentForms(account.accountId);
-      setItems(data.filter((item) => item.kind !== "cashbox"));
+      const data = await listCashWithdrawals(account.accountId);
+      setItems(data);
       setError("");
       setPage(1);
     } catch {
@@ -47,25 +47,18 @@ function AccountPaymentFormsPage() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDeactivate = async (id) => {
     try {
-      await deleteAccountPaymentForm(id);
+      await deactivateCashWithdrawal(id);
       await loadData();
     } catch {
       setError(t("common.genericSaveError"));
     }
   };
 
-  const closeModal = () => {
-    const next = new URLSearchParams(searchParams);
-    next.delete("create");
-    next.delete("edit");
-    setSearchParams(next);
-  };
-
   return (
     <div className="module-page">
-      <h1>{t("paymentForms.title")}</h1>
+      <h1>{t("bankCashWithdrawals.title")}</h1>
       {error && <p className="error-text">{error}</p>}
       {isLoading ? (
         <p>{t("common.loading")}</p>
@@ -76,38 +69,39 @@ function AccountPaymentFormsPage() {
           <table className="crud-table">
             <thead>
               <tr>
+                <th className="num-col">ID</th>
+                <th className="num-col">{t("bankTransfers.sourceTransactionId")}</th>
+                <th>{t("transactions.date")}</th>
                 <th>{t("common.name")}</th>
-                <th>{t("paymentForms.kind")}</th>
-                <th>{t("paymentForms.provider")}</th>
-                <th>{t("paymentForms.reference")}</th>
-                <th>{t("paymentForms.createInternalPayableOnOutgoingPaymentShort")}</th>
+                <th>{t("bankCashWithdrawals.fromBankAccount")}</th>
+                <th>{t("bankCashWithdrawals.toCash")}</th>
+                <th>{t("transactions.referenceNumber")}</th>
+                <th className="num-col">{t("transactions.total")}</th>
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
               {paginatedItems.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.name}</td>
-                  <td>{t(`paymentForms.kinds.${item.kind}`)}</td>
-                  <td>{item.provider || "-"}</td>
-                  <td>{item.reference || "-"}</td>
-                  <td>{item.createInternalPayableOnOutgoingPayment ? t("common.yes") : t("common.no")}</td>
+                  <td className="num-col">{item.id}</td>
+                  <td className="num-col">{item.sourceTransactionId || "-"}</td>
+                  <td>{formatDate(item.date, language)}</td>
+                  <td>{item.name || "-"}</td>
+                  <td>{item.deliverTo || "-"}</td>
+                  <td>{item.deliveryAddress || item.account_payment_forms?.name || "-"}</td>
+                  <td>{item.referenceNumber || "-"}</td>
+                  <td className="num-col">{formatNumber(item.total)}</td>
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[
-                        ...(canUpdate
+                        ...(canVoidTransactions || canUpdate
                           ? [{
-                          key: "edit",
-                          label: t("common.edit"),
-                          onClick: () => {
-                            const next = new URLSearchParams(searchParams);
-                            next.set("edit", String(item.id));
-                            next.delete("create");
-                            setSearchParams(next);
-                          }
-                        }]
-                          : []),
-                        ...(canUpdate ? [{ key: "delete", label: t("common.delete"), onClick: () => handleDelete(item.id), danger: true }] : [])
+                              key: "deactivate",
+                              label: t("transactions.deactivate"),
+                              onClick: () => handleDeactivate(item.id),
+                              danger: true
+                            }]
+                          : [])
                       ]}
                     />
                   </td>
@@ -119,18 +113,28 @@ function AccountPaymentFormsPage() {
         </>
       )}
 
-      {isCreateModalOpen || isEditModalOpen ? (
+      {isCreateModalOpen ? (
         <div
           className="modal-backdrop"
+          onClick={() => {
+            const next = new URLSearchParams(searchParams);
+            next.delete("create");
+            setSearchParams(next);
+          }}
         >
           <div className="modal-card" onClick={(event) => event.stopPropagation()}>
-            <AccountPaymentFormPage
+            <BankCashWithdrawalFormPage
               embedded
-              itemId={isEditModalOpen ? editId : null}
-              onCancel={closeModal}
+              onCancel={() => {
+                const next = new URLSearchParams(searchParams);
+                next.delete("create");
+                setSearchParams(next);
+              }}
               onCreated={async () => {
                 await loadData();
-                closeModal();
+                const next = new URLSearchParams(searchParams);
+                next.delete("create");
+                setSearchParams(next);
               }}
             />
           </div>
@@ -140,4 +144,4 @@ function AccountPaymentFormsPage() {
   );
 }
 
-export default AccountPaymentFormsPage;
+export default BankCashWithdrawalsPage;

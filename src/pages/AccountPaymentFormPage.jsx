@@ -20,7 +20,16 @@ const initialForm = {
   createInternalPayableOnOutgoingPayment: false
 };
 
-function AccountPaymentFormPage({ embedded = false, onCancel, onCreated, itemId = null }) {
+function AccountPaymentFormPage({
+  embedded = false,
+  onCancel,
+  onCreated,
+  itemId = null,
+  allowedKinds = ["bank_account", "credit_card"],
+  fixedKind = null,
+  titleKey = "actions.newPaymentForm",
+  backPath = "/payment-forms"
+}) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const navigate = useNavigate();
@@ -28,7 +37,8 @@ function AccountPaymentFormPage({ embedded = false, onCancel, onCreated, itemId 
   const currentId = embedded ? itemId : id;
   const isEdit = Boolean(currentId);
 
-  const [form, setForm] = useState(initialForm);
+  const defaultKind = fixedKind || allowedKinds[0] || "bank_account";
+  const [form, setForm] = useState({ ...initialForm, kind: defaultKind });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(isEdit);
   const [isSaving, setIsSaving] = useState(false);
@@ -60,7 +70,7 @@ function AccountPaymentFormPage({ embedded = false, onCancel, onCreated, itemId 
       const item = await getAccountPaymentFormById(currentId);
       setForm({
         name: item.name || "",
-        kind: item.kind || "bank_account",
+        kind: item.kind || defaultKind,
         provider: item.provider || "",
         reference: item.reference || "",
         employeeId: item.employeeId ? String(item.employeeId) : "",
@@ -79,6 +89,7 @@ function AccountPaymentFormPage({ embedded = false, onCancel, onCreated, itemId 
       setForm((prev) => ({ ...prev, createInternalPayableOnOutgoingPayment: event.target.checked }));
       return;
     }
+    if (name === "kind" && fixedKind) return;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -97,7 +108,7 @@ function AccountPaymentFormPage({ embedded = false, onCancel, onCreated, itemId 
     const payload = {
       accountId: account.accountId,
       name: form.name.trim(),
-      kind: form.kind,
+      kind: fixedKind || form.kind,
       provider: form.provider.trim() || null,
       reference: form.reference.trim() || null,
       createInternalPayableOnOutgoingPayment: Boolean(form.createInternalPayableOnOutgoingPayment)
@@ -118,7 +129,7 @@ function AccountPaymentFormPage({ embedded = false, onCancel, onCreated, itemId 
         onCreated?.(created);
         return;
       }
-      navigate("/payment-forms");
+      navigate(backPath);
     } catch {
       setError(t("common.genericSaveError"));
     } finally {
@@ -130,13 +141,13 @@ function AccountPaymentFormPage({ embedded = false, onCancel, onCreated, itemId 
     <div className={embedded ? "" : "module-page"}>
       {!embedded ? (
         <div className="page-header-row">
-          <h1>{isEdit ? t("common.edit") : t("actions.newPaymentForm")}</h1>
-          <Link to="/payment-forms" className="button-link-secondary">
+          <h1>{isEdit ? t("common.edit") : t(titleKey)}</h1>
+          <Link to={backPath} className="button-link-secondary">
             {t("common.backToList")}
           </Link>
         </div>
       ) : (
-        <h3>{isEdit ? t("common.edit") : t("actions.newPaymentForm")}</h3>
+        <h3>{isEdit ? t("common.edit") : t(titleKey)}</h3>
       )}
       {error && <p className="error-text">{error}</p>}
       {isLoading ? (
@@ -145,11 +156,21 @@ function AccountPaymentFormPage({ embedded = false, onCancel, onCreated, itemId 
         <form className="crud-form" onSubmit={handleSubmit}>
           <div className="form-grid-2">
             <TextField label={t("common.name")} name="name" value={form.name} onChange={handleChange} required />
-            <SelectField label={t("paymentForms.kind")} name="kind" value={form.kind} onChange={handleChange} required>
-                <option value="bank_account">{t("paymentForms.kinds.bank_account")}</option>
-                <option value="credit_card">{t("paymentForms.kinds.credit_card")}</option>
-                <option value="cashbox">{t("paymentForms.kinds.cashbox")}</option>
-            </SelectField>
+            {!fixedKind ? (
+              <SelectField label={t("paymentForms.kind")} name="kind" value={form.kind} onChange={handleChange} required>
+                {allowedKinds.includes("bank_account") ? (
+                  <option value="bank_account">{t("paymentForms.kinds.bank_account")}</option>
+                ) : null}
+                {allowedKinds.includes("credit_card") ? (
+                  <option value="credit_card">{t("paymentForms.kinds.credit_card")}</option>
+                ) : null}
+                {allowedKinds.includes("cashbox") ? (
+                  <option value="cashbox">{t("paymentForms.kinds.cashbox")}</option>
+                ) : null}
+              </SelectField>
+            ) : (
+              <TextField label={t("paymentForms.kind")} value={t(`paymentForms.kinds.${fixedKind}`)} readOnly />
+            )}
             <TextField label={t("paymentForms.provider")} name="provider" value={form.provider} onChange={handleChange} />
             <TextField label={t("paymentForms.reference")} name="reference" value={form.reference} onChange={handleChange} />
             <SelectField label={t("paymentForms.employee")} name="employeeId" value={form.employeeId} onChange={handleChange}>

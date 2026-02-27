@@ -6,6 +6,7 @@ import { listCurrencies } from "../services/currenciesService";
 import { listProjects } from "../services/projectsService";
 import {
   exportReportXlsx,
+  getCashboxesBalanceReport,
   getCashflowBankBalances,
   getCashflowConceptTotals,
   getEmployeeAbsenceTotals,
@@ -30,7 +31,8 @@ const fullReportCatalog = [
   { id: "employee_absences", titleKey: "reports.employeeAbsences", filters: ["dateRange"] },
   { id: "sales_by_employee", titleKey: "reports.salesByEmployee", filters: ["dateRange", "currency"] },
   { id: "expenses_by_tag_payment_form", titleKey: "reports.expensesByTagPaymentForm", filters: ["dateRange", "currency"] },
-  { id: "employee_loans", titleKey: "reports.employeeLoans", filters: ["dateRange", "currency"] }
+  { id: "employee_loans", titleKey: "reports.employeeLoans", filters: ["dateRange", "currency"] },
+  { id: "cashboxes_balance", titleKey: "reports.cashboxesBalance", filters: ["dateRange", "currency"] }
 ];
 
 function ReportsPage() {
@@ -265,6 +267,19 @@ function ReportsPage() {
           newBalance: 0
         });
         setCashflowBankBalances([]);
+      } else if (selectedReport === "cashboxes_balance") {
+        const rows = await getCashboxesBalanceReport(account.accountId, {
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined,
+          currencyId: filters.currencyId || undefined
+        });
+        setResults(rows);
+        setCashflowSummary({
+          previousBalance: 0,
+          periodMovements: 0,
+          newBalance: 0
+        });
+        setCashflowBankBalances([]);
       } else {
         const transactions = await getTransactionsForReports(account.accountId, {
           dateFrom: filters.dateFrom || undefined,
@@ -358,6 +373,9 @@ function ReportsPage() {
     }
     if (selectedReport === "sales_by_employee") {
       return results.reduce((acc, item) => acc + Number(item.total || 0), 0);
+    }
+    if (selectedReport === "cashboxes_balance") {
+      return results.reduce((acc, item) => acc + Number(item.balance || 0), 0);
     }
     if (selectedReport === "cashflow") {
       return results.reduce((acc, section) => acc + Number(section.total || 0), 0);
@@ -561,6 +579,11 @@ function ReportsPage() {
                   {t("transactions.balance")}: {formatNumber(balance)}
                 </p>
               ) : null}
+              {selectedReport === "cashboxes_balance" ? (
+                <p>
+                  {t("reports.cashboxesBalancesTotal")}: {formatNumber(total)}
+                </p>
+              ) : null}
               {(selectedReport === "receivable" ||
                 selectedReport === "payable" ||
                 selectedReport === "internal_obligations") && (
@@ -655,6 +678,13 @@ function ReportsPage() {
                   <th className="num-col">{t("transactions.paymentsApplied")}</th>
                   <th className="num-col">{t("transactions.balance")}</th>
                 </tr>
+              ) : selectedReport === "cashboxes_balance" ? (
+                <tr>
+                  <th>{t("common.name")}</th>
+                  <th>{t("paymentForms.provider")}</th>
+                  <th>{t("paymentForms.reference")}</th>
+                  <th className="num-col">{t("transactions.balance")}</th>
+                </tr>
               ) : selectedReport === "employee_absences" ? (
                 <tr>
                   <th>{t("appointments.employee")}</th>
@@ -687,6 +717,8 @@ function ReportsPage() {
                                 ? 3
                                 : selectedReport === "employee_loans"
                                   ? 7
+                                  : selectedReport === "cashboxes_balance"
+                                    ? 4
                                 : 5
                     }
                   >
@@ -765,6 +797,15 @@ function ReportsPage() {
                     <td>{row.name || "-"}</td>
                     <td className="num-col">{formatNumber(row.total || 0)}</td>
                     <td className="num-col">{formatNumber(row.payments || 0)}</td>
+                    <td className="num-col">{formatNumber(row.balance || 0)}</td>
+                  </tr>
+                ))
+              ) : selectedReport === "cashboxes_balance" ? (
+                results.map((row) => (
+                  <tr key={`cashbox-balance-${row.id}`}>
+                    <td>{row.name || "-"}</td>
+                    <td>{row.provider || "-"}</td>
+                    <td>{row.reference || "-"}</td>
                     <td className="num-col">{formatNumber(row.balance || 0)}</td>
                   </tr>
                 ))
