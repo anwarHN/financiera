@@ -1,5 +1,18 @@
 import { supabase } from "../lib/supabase";
 
+async function parseFunctionError(error, fallback) {
+  try {
+    const response = error?.context;
+    if (response && typeof response.json === "function") {
+      const payload = await response.json();
+      if (payload?.error) return payload.error;
+    }
+  } catch {
+    // ignore JSON parsing errors and use fallback
+  }
+  return error?.message || fallback;
+}
+
 export async function listAccountUsers(accountId) {
   let {
     data: { session }
@@ -65,7 +78,8 @@ export async function sendInvitation(payload) {
   });
 
   if (error) {
-    throw new Error(`Invitation function error: ${error.message ?? "unknown error"}`);
+    const message = await parseFunctionError(error, "unknown error");
+    throw new Error(`Invitation function error: ${message}`);
   }
 
   if (data?.success === false) {
@@ -97,7 +111,8 @@ export async function resendInvitation(payload) {
   });
 
   if (error) {
-    throw new Error(`Invitation resend function error: ${error.message ?? "unknown error"}`);
+    const message = await parseFunctionError(error, "unknown error");
+    throw new Error(`Invitation resend function error: ${message}`);
   }
 
   if (data?.success === false) {

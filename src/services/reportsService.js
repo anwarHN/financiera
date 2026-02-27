@@ -118,7 +118,7 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
     .select("id, name, provider, kind, isActive")
     .eq("accountId", accountId)
     .eq("isActive", true)
-    .eq("kind", "bank_account")
+    .in("kind", ["bank_account", "cashbox"])
     .order("name", { ascending: true });
   if (formsError) throw formsError;
 
@@ -142,12 +142,30 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
     totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + Number(tx.total || 0));
   });
 
-  return (forms ?? []).map((form) => ({
-    id: form.id,
-    name: form.name,
-    provider: form.provider,
-    balance: Number(totalsByFormId.get(Number(form.id)) || 0)
-  }));
+  const bankRows = (forms ?? [])
+    .filter((form) => form.kind === "bank_account")
+    .map((form) => ({
+      id: form.id,
+      name: form.name,
+      provider: form.provider,
+      balance: Number(totalsByFormId.get(Number(form.id)) || 0),
+      kind: form.kind
+    }));
+
+  const cashTotal = (forms ?? [])
+    .filter((form) => form.kind === "cashbox")
+    .reduce((acc, form) => acc + Number(totalsByFormId.get(Number(form.id)) || 0), 0);
+
+  return [
+    ...bankRows,
+    {
+      id: "cash-summary",
+      name: "Efectivo",
+      provider: "",
+      balance: cashTotal,
+      kind: "cashbox"
+    }
+  ];
 }
 
 export async function getEmployeeAbsenceTotals(accountId, { dateFrom, dateTo } = {}) {
