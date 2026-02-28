@@ -1,6 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
-const PRIOR_BALANCE_TAG = "__prior_balance__";
 const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
 
 interface ExportPayload {
@@ -53,6 +52,7 @@ type CashflowTxRow = {
   isIncomingPayment: boolean;
   isOutcomingPayment: boolean;
   isAccountReceivable: boolean;
+  isAccountPayable: boolean;
   isInternalTransfer: boolean;
 };
 
@@ -299,7 +299,9 @@ async function fetchCashflowConceptTotals(
 ) {
   let txQuery = supabaseAdmin
     .from("transactions")
-    .select("id, type, total, currencyId, tags, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isInternalTransfer")
+    .select(
+      "id, type, total, currencyId, tags, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer"
+    )
     .eq("accountId", payload.accountId)
     .eq("isActive", true);
 
@@ -312,15 +314,14 @@ async function fetchCashflowConceptTotals(
 
   const validTransactions = ((transactions ?? []) as CashflowTxRow[]).filter((tx) => {
     if (tx.isInternalTransfer) return false;
+    if (tx.isAccountReceivable || tx.isAccountPayable) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
-    const isPriorBalance = Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG);
     const isCashSale = Number(tx.type) === 1 && !Boolean(tx.isAccountReceivable);
     return (
       Number(tx.type) === 2 ||
       Number(tx.type) === 3 ||
       Number(tx.type) === 4 ||
       isCashSale ||
-      isPriorBalance ||
       tx.isIncomingPayment ||
       tx.isOutcomingPayment
     );

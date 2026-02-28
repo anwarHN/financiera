@@ -31,7 +31,9 @@ export async function getTransactionsForReports(accountId, { dateFrom, dateTo } 
 export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, currencyId } = {}) {
   let txQuery = supabase
     .from("transactions")
-    .select("id, type, currencyId, isActive, tags, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isInternalTransfer")
+    .select(
+      "id, type, currencyId, isActive, tags, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer"
+    )
     .eq("accountId", accountId)
     .eq("isActive", true);
 
@@ -45,10 +47,10 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
   const validTransactions = (transactions ?? []).filter((tx) => {
     const type = Number(tx.type);
     if (Boolean(tx.isInternalTransfer)) return false;
+    if (Boolean(tx.isAccountReceivable) || Boolean(tx.isAccountPayable)) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
-    const isPriorBalance = Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG);
     const isCashSale = type === 1 && !Boolean(tx.isAccountReceivable);
-    return type === 2 || type === 3 || type === 4 || isCashSale || isPriorBalance || Boolean(tx.isIncomingPayment) || Boolean(tx.isOutcomingPayment);
+    return type === 2 || type === 3 || type === 4 || isCashSale || Boolean(tx.isIncomingPayment) || Boolean(tx.isOutcomingPayment);
   });
   if (validTransactions.length === 0) return [];
 
@@ -130,7 +132,9 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
 
   let txQuery = supabase
     .from("transactions")
-    .select('id, type, total, currencyId, "accountPaymentFormId", "paymentMethodId", isActive, isIncomingPayment, isOutcomingPayment, payment_methods(code)')
+    .select(
+      'id, type, total, currencyId, "accountPaymentFormId", "paymentMethodId", isActive, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, tags, payment_methods(code)'
+    )
     .eq("accountId", accountId)
     .eq("isActive", true)
     .or('accountPaymentFormId.not.is.null,paymentMethodId.not.is.null');
@@ -152,8 +156,16 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
     return raw;
   };
 
+  const filteredTransactions = (transactions ?? []).filter((tx) => {
+    if (Boolean(tx.isInternalTransfer)) return false;
+    if (Boolean(tx.isAccountReceivable) || Boolean(tx.isAccountPayable)) return false;
+    if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
+    if (Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG)) return false;
+    return true;
+  });
+
   const totalsByFormId = new Map();
-  (transactions ?? []).forEach((tx) => {
+  filteredTransactions.forEach((tx) => {
     const formId = Number(tx.accountPaymentFormId || 0);
     if (!formId) return;
     totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + normalizeSignedTotal(tx));
@@ -167,7 +179,7 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
       kind: form.kind
     }));
 
-  const cashTotal = (transactions ?? []).reduce((acc, tx) => {
+  const cashTotal = filteredTransactions.reduce((acc, tx) => {
     if (tx.payment_methods?.code !== "cash") return acc;
     return acc + normalizeSignedTotal(tx);
   }, 0);
