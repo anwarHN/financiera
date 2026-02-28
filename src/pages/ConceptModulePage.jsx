@@ -89,6 +89,8 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
                 {moduleType === "products" && <th>{t("transactions.price")}</th>}
                 {moduleType === "products" && <th>{t("transactions.additionalCharges")}</th>}
                 {moduleType === "products" && <th className="num-col">{t("products.stock")}</th>}
+                {moduleType === "products" && <th className="num-col">{t("products.pendingDelivery")}</th>}
+                {moduleType === "products" && <th className="num-col">{t("products.stockFinal")}</th>}
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
@@ -103,6 +105,20 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
                   {moduleType === "products" && <td>{formatNumber(item.additionalCharges || 0)}</td>}
                   {moduleType === "products" && (
                     <td className="num-col">{formatNumber(item.stock || 0, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+                  )}
+                  {moduleType === "products" && (
+                    <td className="num-col">
+                      {formatNumber(item.pendingDelivery || 0, {
+                        showCurrency: false,
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2
+                      })}
+                    </td>
+                  )}
+                  {moduleType === "products" && (
+                    <td className="num-col">
+                      {formatNumber(item.stockFinal || 0, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                    </td>
                   )}
                   <td className="table-actions">
                     <RowActionsMenu

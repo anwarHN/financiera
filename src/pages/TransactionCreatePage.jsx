@@ -412,6 +412,11 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
             conceptId: Number(line.conceptId),
             conceptName: line.concepts?.name || "",
             quantity: Number(line.quantity) || 0,
+            quantityDelivered:
+              line.pendingDelivery
+                ? Math.min(Math.max(Number(line.quantityDelivered || 0), 0), Math.max(Number(line.quantity || 0), 0))
+                : Math.max(Number(line.quantity || 0), 0),
+            pendingDelivery: Boolean(line.pendingDelivery),
             price: Number(line.price) || 0,
             taxPercentage: Number(line.taxPercentage) || 0,
             discountPercentage: Number(line.discountPercentage) || 0,
@@ -505,6 +510,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         conceptId: concept.id,
         conceptName: concept.name,
         quantity: moduleType === "inventoryAdjustment" ? currentStock : 1,
+        quantityDelivered: moduleType === "sale" ? 1 : 0,
+        pendingDelivery: false,
         price: Number(concept.price) || 0,
         taxPercentage: Number(concept.taxPercentage) || 0,
         discountPercentage: 0,
@@ -517,7 +524,31 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   };
 
   const updateSaleLine = (rowId, field, value) => {
-    setSaleLines((prev) => prev.map((line) => (line.rowId === rowId ? { ...line, [field]: value } : line)));
+    setSaleLines((prev) =>
+      prev.map((line) => {
+        if (line.rowId !== rowId) return line;
+        const next = { ...line, [field]: value };
+        const safeQty = Math.max(Number(next.quantity || 0), 0);
+
+        if (field === "pendingDelivery") {
+          const isPending = Boolean(value);
+          next.pendingDelivery = isPending;
+          next.quantityDelivered = isPending
+            ? Math.min(Math.max(Number(next.quantityDelivered || 0), 0), safeQty)
+            : safeQty;
+          return next;
+        }
+
+        if (field === "quantity") {
+          next.quantityDelivered = Boolean(next.pendingDelivery)
+            ? Math.min(Math.max(Number(next.quantityDelivered || 0), 0), safeQty)
+            : safeQty;
+          return next;
+        }
+
+        return next;
+      })
+    );
   };
 
   const removeSaleLine = (rowId) => {
@@ -643,6 +674,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     const detailPayload = {
       conceptId: Number(simpleForm.conceptId),
       quantity: 1,
+      quantityDelivered: 1,
+      pendingDelivery: false,
       price: baseAmount,
       net: baseAmount,
       taxPercentage: 0,
@@ -735,6 +768,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     const detailPayload = {
       conceptId: Number(systemConcept.id),
       quantity: 1,
+      quantityDelivered: 1,
+      pendingDelivery: false,
       price: totalAmount,
       net: totalAmount,
       taxPercentage: 0,
@@ -838,6 +873,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
             return {
               conceptId: Number(line.conceptId),
               quantity: Math.abs(amounts.quantity),
+              quantityDelivered: Math.abs(amounts.quantity),
+              pendingDelivery: false,
               price: Math.abs(amounts.price),
               net: Math.abs(amounts.net),
               taxPercentage: amounts.taxPercentage,
@@ -855,6 +892,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
           ? inventoryAdjustmentLines.map((line) => ({
               conceptId: Number(line.conceptId),
               quantity: Number(line.adjustmentQty),
+              quantityDelivered: 0,
+              pendingDelivery: false,
               price: 0,
               net: 0,
               taxPercentage: 0,
@@ -872,6 +911,10 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
               return {
                 conceptId: Number(line.conceptId),
                 quantity: amounts.quantity,
+                quantityDelivered: Boolean(line.pendingDelivery)
+                  ? Math.min(Math.max(Number(line.quantityDelivered || 0), 0), Math.max(Number(amounts.quantity || 0), 0))
+                  : Math.max(Number(amounts.quantity || 0), 0),
+                pendingDelivery: Boolean(line.pendingDelivery),
                 price: amounts.price,
                 net: amounts.net,
                 taxPercentage: amounts.taxPercentage,
@@ -1625,13 +1668,14 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                   </>
                 )}
                 {moduleType === "sale" ? <th>{t("transactions.seller")}</th> : null}
+                {moduleType === "sale" ? <th>{t("transactions.pendingDeliveryProducts")}</th> : null}
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
               {saleLines.length === 0 ? (
                 <tr>
-                  <td colSpan={moduleType === "sale" ? 9 : moduleType === "inventoryAdjustment" ? 5 : 8}>{t("transactions.noLines")}</td>
+                  <td colSpan={moduleType === "sale" ? 10 : moduleType === "inventoryAdjustment" ? 5 : 8}>{t("transactions.noLines")}</td>
                 </tr>
               ) : (
                 saleLines.map((line) => {
@@ -1703,6 +1747,18 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                               </option>
                             ))}
                           </select>
+                        </td>
+                      ) : null}
+                      {moduleType === "sale" ? (
+                        <td>
+                          <label className="checkbox-field">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(line.pendingDelivery)}
+                              onChange={(event) => updateSaleLine(line.rowId, "pendingDelivery", event.target.checked)}
+                            />
+                            {t("common.yes")}
+                          </label>
                         </td>
                       ) : null}
                       <td>

@@ -12,6 +12,7 @@ import {
   getEmployeeAbsenceTotals,
   getEmployeeLoansReport,
   getExpensesByTagAndPaymentForm,
+  getPendingDeliveriesReport,
   getSalesByEmployeeTotals,
   getTransactionsForReports
 } from "../services/reportsService";
@@ -32,7 +33,8 @@ const fullReportCatalog = [
   { id: "sales_by_employee", titleKey: "reports.salesByEmployee", filters: ["dateRange", "currency"] },
   { id: "expenses_by_tag_payment_form", titleKey: "reports.expensesByTagPaymentForm", filters: ["dateRange", "currency"] },
   { id: "employee_loans", titleKey: "reports.employeeLoans", filters: ["dateRange", "currency"] },
-  { id: "cashboxes_balance", titleKey: "reports.cashboxesBalance", filters: ["dateRange", "currency"] }
+  { id: "cashboxes_balance", titleKey: "reports.cashboxesBalance", filters: ["dateRange", "currency"] },
+  { id: "pending_deliveries", titleKey: "reports.pendingDeliveries", filters: ["dateRange", "currency"] }
 ];
 
 function ReportsPage() {
@@ -311,6 +313,19 @@ function ReportsPage() {
           newBalance: 0
         });
         setCashflowBankBalances([]);
+      } else if (selectedReport === "pending_deliveries") {
+        const rows = await getPendingDeliveriesReport(account.accountId, {
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined,
+          currencyId: filters.currencyId || undefined
+        });
+        setResults(rows);
+        setCashflowSummary({
+          previousBalance: 0,
+          periodMovements: 0,
+          newBalance: 0
+        });
+        setCashflowBankBalances([]);
       } else {
         const transactions = await getTransactionsForReports(account.accountId, {
           dateFrom: filters.dateFrom || undefined,
@@ -412,6 +427,9 @@ function ReportsPage() {
     }
     if (selectedReport === "cashboxes_balance") {
       return results.reduce((acc, item) => acc + Number(item.balance || 0), 0);
+    }
+    if (selectedReport === "pending_deliveries") {
+      return results.reduce((acc, item) => acc + Number(item.pendingQuantity || 0), 0);
     }
     if (selectedReport === "cashflow") {
       return results.reduce((acc, section) => acc + Number(section.total || 0), 0);
@@ -625,6 +643,12 @@ function ReportsPage() {
                   {t("reports.cashboxesBalancesTotal")}: {formatNumber(total)}
                 </p>
               ) : null}
+              {selectedReport === "pending_deliveries" ? (
+                <p>
+                  {t("inventory.deliveries.pendingUnits")}:{" "}
+                  {formatNumber(total, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                </p>
+              ) : null}
               {(selectedReport === "receivable" ||
                 selectedReport === "payable" ||
                 selectedReport === "internal_obligations") && (
@@ -726,6 +750,16 @@ function ReportsPage() {
                   <th>{t("paymentForms.reference")}</th>
                   <th className="num-col">{t("transactions.balance")}</th>
                 </tr>
+              ) : selectedReport === "pending_deliveries" ? (
+                <tr>
+                  <th className="num-col">ID</th>
+                  <th>{t("transactions.date")}</th>
+                  <th>{t("transactions.person")}</th>
+                  <th>{t("transactions.product")}</th>
+                  <th className="num-col">{t("transactions.quantity")}</th>
+                  <th className="num-col">{t("inventory.deliveries.deliveredQuantity")}</th>
+                  <th className="num-col">{t("inventory.deliveries.pendingQuantity")}</th>
+                </tr>
               ) : selectedReport === "employee_absences" ? (
                 <tr>
                   <th>{t("appointments.employee")}</th>
@@ -775,6 +809,8 @@ function ReportsPage() {
                                   ? 7
                                   : selectedReport === "cashboxes_balance"
                                     ? 4
+                                    : selectedReport === "pending_deliveries"
+                                      ? 7
                                 : 5
                     }
                   >
@@ -863,6 +899,32 @@ function ReportsPage() {
                     <td>{row.provider || "-"}</td>
                     <td>{row.reference || "-"}</td>
                     <td className="num-col">{formatNumber(row.balance || 0)}</td>
+                  </tr>
+                ))
+              ) : selectedReport === "pending_deliveries" ? (
+                results.map((row) => (
+                  <tr key={`pending-delivery-${row.transactionId}-${row.conceptName}`}>
+                    <td className="num-col">{row.transactionId}</td>
+                    <td>{formatDate(row.date, language)}</td>
+                    <td>{row.personName || "-"}</td>
+                    <td>{row.conceptName || "-"}</td>
+                    <td className="num-col">
+                      {formatNumber(row.quantity || 0, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="num-col">
+                      {formatNumber(row.quantityDelivered || 0, {
+                        showCurrency: false,
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2
+                      })}
+                    </td>
+                    <td className="num-col">
+                      {formatNumber(row.pendingQuantity || 0, {
+                        showCurrency: false,
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2
+                      })}
+                    </td>
                   </tr>
                 ))
               ) : selectedReport === "employee_absences" ? (

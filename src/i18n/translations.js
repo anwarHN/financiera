@@ -165,6 +165,8 @@ export const translations = {
       purchases: "Compras de mercadería",
       priorBalancePurchase: "Nueva compra para saldo anterior",
       inventoryAdjustments: "Ajuste de inventario de mercadería",
+      inventory: "Inventario",
+      inventoryDeliveries: "Entrega de mercadería",
       expenses: "Otros gastos",
       incomes: "Otros ingresos",
       outgoingPayments: "Pagos salientes",
@@ -241,7 +243,22 @@ export const translations = {
       title: "Clientes"
     },
     products: {
-      stock: "Cantidad en inventario"
+      stock: "Inventario disponible",
+      pendingDelivery: "Pendiente de entrega",
+      stockFinal: "Stock final"
+    },
+    inventory: {
+      deliveries: {
+        title: "Entrega de mercadería",
+        register: "Registrar entrega",
+        invoice: "Factura",
+        selectInvoice: "Seleccionar factura pendiente",
+        pendingUnits: "Unidades pendientes",
+        deliveredQuantity: "Cantidad entregada",
+        pendingQuantity: "Cantidad pendiente",
+        quantityToDeliver: "Cantidad a entregar",
+        invalidQuantityToDeliver: "Debes indicar una cantidad a entregar mayor a cero."
+      }
     },
     providers: {
       title: "Proveedores"
@@ -358,6 +375,7 @@ export const translations = {
       employeeAbsences: "Ausencias por empleado",
       employeeLoans: "Préstamos a empleados",
       cashboxesBalance: "Saldos de cajas",
+      pendingDeliveries: "Pendientes de entrega",
       customerSupplier: "Cliente / Proveedor",
       subtotal: "Subtotal",
       unassignedPerson: "Sin cliente/proveedor",
@@ -544,6 +562,7 @@ export const translations = {
       currency: "Moneda",
       selectCurrency: "Seleccionar moneda",
       paymentMode: "Tipo de pago",
+      pendingDeliveryProducts: "Productos pendiente de entrega",
       paymentMethod: "Método de pago",
       selectPaymentMethod: "Seleccionar método de pago",
       accountPaymentForm: "Cuenta bancaria / tarjeta",
@@ -764,6 +783,8 @@ export const translations = {
       purchases: "Merchandise purchases",
       priorBalancePurchase: "New purchase for prior balance",
       inventoryAdjustments: "Merchandise inventory adjustment",
+      inventory: "Inventory",
+      inventoryDeliveries: "Merchandise delivery",
       expenses: "Other expenses",
       incomes: "Other incomes",
       outgoingPayments: "Outgoing payments",
@@ -840,7 +861,22 @@ export const translations = {
       title: "Clients"
     },
     products: {
-      stock: "Stock"
+      stock: "Available inventory",
+      pendingDelivery: "Pending delivery",
+      stockFinal: "Final stock"
+    },
+    inventory: {
+      deliveries: {
+        title: "Merchandise delivery",
+        register: "Register delivery",
+        invoice: "Invoice",
+        selectInvoice: "Select pending invoice",
+        pendingUnits: "Pending units",
+        deliveredQuantity: "Delivered quantity",
+        pendingQuantity: "Pending quantity",
+        quantityToDeliver: "Quantity to deliver",
+        invalidQuantityToDeliver: "You must enter a quantity to deliver greater than zero."
+      }
     },
     providers: {
       title: "Suppliers"
@@ -957,6 +993,7 @@ export const translations = {
       employeeAbsences: "Employee absences",
       employeeLoans: "Employee loans",
       cashboxesBalance: "Cashbox balances",
+      pendingDeliveries: "Pending deliveries",
       customerSupplier: "Customer / Supplier",
       subtotal: "Subtotal",
       unassignedPerson: "No customer/supplier",
@@ -1143,6 +1180,7 @@ export const translations = {
       currency: "Currency",
       selectCurrency: "Select currency",
       paymentMode: "Payment mode",
+      pendingDeliveryProducts: "Products pending delivery",
       paymentMethod: "Payment method",
       selectPaymentMethod: "Select payment method",
       accountPaymentForm: "Bank account / card",

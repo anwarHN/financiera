@@ -71,10 +71,18 @@ const navGroups = [
     icon: FiDollarSign,
     items: [
       { path: "/sales", key: "nav.sales", icon: FiFileText },
-      { path: "/purchases", key: "nav.purchases", icon: FiPackage },
-      { path: "/inventory-adjustments", key: "nav.inventoryAdjustments", icon: FiTrendingDown },
       { path: "/incomes", key: "nav.incomes", icon: FiDollarSign },
       { path: "/expenses", key: "nav.expenses", icon: FiTrendingDown }
+    ]
+  },
+  {
+    id: "inventory",
+    titleKey: "nav.inventory",
+    icon: FiPackage,
+    items: [
+      { path: "/purchases", key: "nav.purchases", icon: FiPackage },
+      { path: "/inventory-adjustments", key: "nav.inventoryAdjustments", icon: FiTrendingDown },
+      { path: "/inventory-deliveries", key: "nav.inventoryDeliveries", icon: FiShare2 }
     ]
   },
   {
@@ -169,6 +177,7 @@ function resolveCreateModuleByPath(pathname) {
   if (pathname.startsWith("/sales")) return "transactions";
   if (pathname.startsWith("/purchases")) return "transactions";
   if (pathname.startsWith("/inventory-adjustments")) return "transactions";
+  if (pathname.startsWith("/inventory-deliveries")) return "transactions";
   if (pathname.startsWith("/expenses")) return "transactions";
   if (pathname.startsWith("/incomes")) return "transactions";
   if (pathname.startsWith("/projects")) return "planning";
@@ -199,6 +208,7 @@ function resolveReadModuleByPath(pathname) {
   if (pathname.startsWith("/sales")) return "transactions";
   if (pathname.startsWith("/purchases")) return "transactions";
   if (pathname.startsWith("/inventory-adjustments")) return "transactions";
+  if (pathname.startsWith("/inventory-deliveries")) return "transactions";
   if (pathname.startsWith("/expenses")) return "transactions";
   if (pathname.startsWith("/incomes")) return "transactions";
   if (pathname.startsWith("/projects")) return "planning";
@@ -436,6 +446,9 @@ function Layout() {
     }
     if (pathname.startsWith("/inventory-adjustments")) {
       return { createPath: "/inventory-adjustments?create=1", createLabel: t("actions.newInventoryAdjustment") };
+    }
+    if (pathname.startsWith("/inventory-deliveries")) {
+      return { createPath: "/inventory-deliveries?create=1", createLabel: t("inventory.deliveries.register") };
     }
     if (pathname.startsWith("/expenses")) return { createPath: "/expenses?create=1", createLabel: t("actions.newExpense") };
     if (pathname.startsWith("/incomes")) return { createPath: "/incomes?create=1", createLabel: t("actions.newIncome") };

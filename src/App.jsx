@@ -45,6 +45,7 @@ import AppointmentsPage from "./pages/AppointmentsPage";
 import EmployeeAbsencesPage from "./pages/EmployeeAbsencesPage";
 import EmployeeLoansPage from "./pages/EmployeeLoansPage";
 import EmployeeLoanFormPage from "./pages/EmployeeLoanFormPage";
+import InventoryDeliveriesPage from "./pages/InventoryDeliveriesPage";
 
 function App() {
   return (
@@ -185,6 +186,7 @@ function App() {
         <Route path="purchases" element={<TransactionsPage moduleType="purchase" />} />
         <Route path="purchases/new" element={<TransactionCreatePage moduleType="purchase" />} />
         <Route path="purchases/:id" element={<TransactionDetailPage moduleType="purchase" />} />
+        <Route path="inventory-deliveries" element={<InventoryDeliveriesPage />} />
         <Route path="payment-forms" element={<AccountPaymentFormsPage />} />
         <Route path="payment-forms/new" element={<AccountPaymentFormPage />} />
         <Route path="payment-forms/:id/edit" element={<AccountPaymentFormPage />} />

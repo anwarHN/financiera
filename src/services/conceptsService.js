@@ -43,16 +43,16 @@ async function attachProductStock(rows) {
     .map((row) => Number(row.id))
     .filter((id) => Number.isFinite(id) && id > 0);
   const productIds = inventoryProductIds;
-  if (!productIds.length) return source.map((row) => ({ ...row, stock: 0 }));
+  if (!productIds.length) return source.map((row) => ({ ...row, stock: 0, pendingDelivery: 0, stockFinal: 0 }));
 
   const { data: details, error: detailsError } = await supabase
     .from("transactionDetails")
-    .select("transactionId, conceptId, quantity")
+    .select("transactionId, conceptId, quantity, quantityDelivered")
     .in("conceptId", productIds);
   if (detailsError) throw detailsError;
 
   const txIds = Array.from(new Set((details ?? []).map((row) => Number(row.transactionId)).filter((id) => Number.isFinite(id) && id > 0)));
-  if (!txIds.length) return source.map((row) => ({ ...row, stock: 0 }));
+  if (!txIds.length) return source.map((row) => ({ ...row, stock: 0, pendingDelivery: 0, stockFinal: 0 }));
 
   const { data: txRows, error: txError } = await supabase
     .from("transactions")
@@ -63,6 +63,7 @@ async function attachProductStock(rows) {
 
   const txById = new Map((txRows ?? []).map((row) => [Number(row.id), row]));
   const stockByProductId = new Map();
+  const pendingByProductId = new Map();
 
   for (const detail of details ?? []) {
     const productId = Number(detail.conceptId);
@@ -77,6 +78,11 @@ async function attachProductStock(rows) {
       delta = Math.abs(qty);
     } else if (Number(tx.type) === 1) {
       delta = -Math.abs(qty);
+      const delivered = Math.max(Number(detail.quantityDelivered || 0), 0);
+      const pending = Math.max(Math.abs(qty) - delivered, 0);
+      if (pending > 0) {
+        pendingByProductId.set(productId, Number(pendingByProductId.get(productId) || 0) + pending);
+      }
     } else if (Number(tx.type) === 2 && Array.isArray(tx.tags) && tx.tags.includes("__inventory_adjustment__")) {
       delta = qty;
     }
@@ -88,7 +94,10 @@ async function attachProductStock(rows) {
 
   return source.map((row) => ({
     ...row,
-    stock: Number(stockByProductId.get(Number(row.id)) || 0)
+    stock: Number(stockByProductId.get(Number(row.id)) || 0),
+    pendingDelivery: Number(pendingByProductId.get(Number(row.id)) || 0),
+    stockFinal:
+      Number(stockByProductId.get(Number(row.id)) || 0) + Number(pendingByProductId.get(Number(row.id)) || 0)
   }));
 }
 

@@ -377,6 +377,57 @@ export async function getCashboxesBalanceReport(accountId, { dateFrom, dateTo, c
   }));
 }
 
+export async function getPendingDeliveriesReport(accountId, { dateFrom, dateTo, currencyId } = {}) {
+  let txQuery = supabase
+    .from("transactions")
+    .select("id, date, total, currencyId, personId, persons(name)")
+    .eq("accountId", accountId)
+    .eq("isActive", true)
+    .eq("type", 1);
+
+  if (dateFrom) txQuery = txQuery.gte("date", dateFrom);
+  if (dateTo) txQuery = txQuery.lte("date", dateTo);
+  if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
+
+  const { data: txRows, error: txError } = await txQuery.order("date", { ascending: false });
+  if (txError) throw txError;
+
+  const txIds = (txRows ?? []).map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
+  if (!txIds.length) return [];
+
+  const { data: detailRows, error: detailError } = await supabase
+    .from("transactionDetails")
+    .select("transactionId, conceptId, quantity, quantityDelivered, concepts(name)")
+    .in("transactionId", txIds);
+  if (detailError) throw detailError;
+
+  const txById = new Map((txRows ?? []).map((row) => [Number(row.id), row]));
+  const rows = [];
+  (detailRows ?? []).forEach((row) => {
+    const tx = txById.get(Number(row.transactionId));
+    if (!tx) return;
+    const quantity = Math.max(Number(row.quantity || 0), 0);
+    const delivered = Math.max(Number(row.quantityDelivered || 0), 0);
+    const pending = Math.max(quantity - delivered, 0);
+    if (pending <= 0) return;
+    rows.push({
+      transactionId: tx.id,
+      date: tx.date,
+      personName: tx.persons?.name || "-",
+      conceptName: row.concepts?.name || "-",
+      quantity,
+      quantityDelivered: delivered,
+      pendingQuantity: pending,
+      total: Number(tx.total || 0)
+    });
+  });
+
+  return rows.sort((a, b) => {
+    if (Number(b.transactionId || 0) !== Number(a.transactionId || 0)) return Number(b.transactionId || 0) - Number(a.transactionId || 0);
+    return String(a.conceptName || "").localeCompare(String(b.conceptName || ""));
+  });
+}
+
 export async function exportReportXlsx({
   accountId,
   reportId,

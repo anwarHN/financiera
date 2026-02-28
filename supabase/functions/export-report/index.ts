@@ -16,7 +16,8 @@ interface ExportPayload {
     | "sales_by_employee"
     | "expenses_by_tag_payment_form"
     | "employee_loans"
-    | "cashboxes_balance";
+    | "cashboxes_balance"
+    | "pending_deliveries";
   dateFrom?: string | null;
   dateTo?: string | null;
   currencyId?: number | null;
@@ -127,6 +128,21 @@ type CashboxBalanceRow = {
   isActive: boolean;
 };
 
+type PendingDeliveryTxRow = {
+  id: number;
+  date: string;
+  total: number;
+  currencyId: number | null;
+  persons: { name: string } | null;
+};
+
+type PendingDeliveryDetailRow = {
+  transactionId: number;
+  quantity: number;
+  quantityDelivered: number | null;
+  concepts: { name: string } | null;
+};
+
 const reportTitles: Record<ExportPayload["reportId"], string> = {
   sales: "Ventas",
   receivable: "Cuentas por cobrar",
@@ -138,7 +154,8 @@ const reportTitles: Record<ExportPayload["reportId"], string> = {
   sales_by_employee: "Ventas por empleado",
   expenses_by_tag_payment_form: "Gastos por etiqueta y forma de pago",
   employee_loans: "Préstamos a empleados",
-  cashboxes_balance: "Saldos de cajas"
+  cashboxes_balance: "Saldos de cajas",
+  pending_deliveries: "Pendientes de entrega"
 };
 
 const corsHeaders = {
@@ -702,6 +719,72 @@ async function buildCashboxesBalanceReport(
   };
 }
 
+async function buildPendingDeliveriesReport(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payload: ExportPayload
+): Promise<ExportBuildResult> {
+  let txQuery = supabaseAdmin
+    .from("transactions")
+    .select("id, date, total, currencyId, persons(name)")
+    .eq("accountId", payload.accountId)
+    .eq("isActive", true)
+    .eq("type", 1)
+    .order("date", { ascending: false });
+
+  if (payload.dateFrom) txQuery = txQuery.gte("date", payload.dateFrom);
+  if (payload.dateTo) txQuery = txQuery.lte("date", payload.dateTo);
+  if (payload.currencyId != null) txQuery = txQuery.eq("currencyId", payload.currencyId);
+
+  const { data: txRows, error: txError } = await txQuery;
+  if (txError) throw txError;
+
+  const saleRows = (txRows ?? []) as PendingDeliveryTxRow[];
+  const txIds = saleRows.map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
+  if (!txIds.length) return { rows: [], total: 0, balance: 0 };
+
+  const { data: details, error: detailsError } = await supabaseAdmin
+    .from("transactionDetails")
+    .select("transactionId, quantity, quantityDelivered, concepts(name)")
+    .in("transactionId", txIds);
+  if (detailsError) throw detailsError;
+
+  const txById = new Map(saleRows.map((row) => [Number(row.id), row]));
+  const rows: Record<string, string | number>[] = [];
+  let totalPending = 0;
+
+  ((details ?? []) as PendingDeliveryDetailRow[]).forEach((row) => {
+    const tx = txById.get(Number(row.transactionId));
+    if (!tx) return;
+    const quantity = Math.max(Number(row.quantity || 0), 0);
+    const delivered = Math.max(Number(row.quantityDelivered || 0), 0);
+    const pending = Math.max(quantity - delivered, 0);
+    if (pending <= 0) return;
+    totalPending += pending;
+    rows.push({
+      factura_id: tx.id,
+      fecha: tx.date,
+      cliente: tx.persons?.name || "-",
+      producto: row.concepts?.name || "-",
+      cantidad: sanitizeNumber(quantity),
+      cantidad_entregada: sanitizeNumber(delivered),
+      pendiente_entrega: sanitizeNumber(pending)
+    });
+  });
+
+  rows.sort((a, b) => {
+    const txA = Number(a.factura_id || 0);
+    const txB = Number(b.factura_id || 0);
+    if (txA !== txB) return txB - txA;
+    return String(a.producto || "").localeCompare(String(b.producto || ""));
+  });
+
+  return {
+    rows,
+    total: sanitizeNumber(totalPending),
+    balance: 0
+  };
+}
+
 async function buildReportData(supabaseAdmin: ReturnType<typeof createClient>, payload: ExportPayload): Promise<ExportBuildResult> {
   if (payload.reportId === "internal_obligations") {
     return buildInternalObligationsReport(supabaseAdmin, payload);
@@ -723,6 +806,9 @@ async function buildReportData(supabaseAdmin: ReturnType<typeof createClient>, p
   }
   if (payload.reportId === "cashboxes_balance") {
     return buildCashboxesBalanceReport(supabaseAdmin, payload);
+  }
+  if (payload.reportId === "pending_deliveries") {
+    return buildPendingDeliveriesReport(supabaseAdmin, payload);
   }
   return buildStandardReport(supabaseAdmin, payload);
 }

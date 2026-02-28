@@ -168,11 +168,115 @@ export async function getTransactionById(id) {
 export async function listTransactionDetails(transactionId) {
   const { data, error } = await supabase
     .from("transactionDetails")
-    .select("id, conceptId, quantity, price, net, taxPercentage, tax, discountPercentage, discount, total, additionalCharges, transactionPaidId, concepts(name, isProduct, productType)")
+    .select(
+      "id, conceptId, quantity, quantityDelivered, pendingDelivery, price, net, taxPercentage, tax, discountPercentage, discount, total, additionalCharges, transactionPaidId, concepts(name, isProduct, productType)"
+    )
     .eq("transactionId", transactionId)
     .order("id");
   if (error) throw error;
   return data ?? [];
+}
+
+export async function listPendingDeliveryInvoices(accountId, { dateFrom, dateTo, currencyId } = {}) {
+  let txQuery = supabase
+    .from("transactions")
+    .select("id, date, total, currencyId, personId, persons(name)")
+    .eq("accountId", accountId)
+    .eq("isActive", true)
+    .eq("type", TRANSACTION_TYPES.sale);
+
+  if (dateFrom) txQuery = txQuery.gte("date", dateFrom);
+  if (dateTo) txQuery = txQuery.lte("date", dateTo);
+  if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
+
+  const { data: txRows, error: txError } = await txQuery.order("date", { ascending: false });
+  if (txError) throw txError;
+
+  const txIds = (txRows ?? []).map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
+  if (!txIds.length) return [];
+
+  const { data: detailRows, error: detailError } = await supabase
+    .from("transactionDetails")
+    .select("id, transactionId, conceptId, quantity, quantityDelivered, pendingDelivery, concepts(name)")
+    .in("transactionId", txIds)
+    .order("id", { ascending: true });
+  if (detailError) throw detailError;
+
+  const byTxId = new Map();
+  (detailRows ?? []).forEach((row) => {
+    const txId = Number(row.transactionId);
+    const quantity = Number(row.quantity || 0);
+    const delivered = Number(row.quantityDelivered || 0);
+    const pending = Math.max(quantity - delivered, 0);
+    if (pending <= 0) return;
+    const list = byTxId.get(txId) || [];
+    list.push({
+      id: row.id,
+      conceptId: row.conceptId,
+      productName: row.concepts?.name || "-",
+      quantity,
+      quantityDelivered: delivered,
+      pendingQuantity: pending,
+      pendingDelivery: Boolean(row.pendingDelivery)
+    });
+    byTxId.set(txId, list);
+  });
+
+  return (txRows ?? [])
+    .map((tx) => {
+      const details = byTxId.get(Number(tx.id)) || [];
+      const pendingTotal = details.reduce((acc, row) => acc + Number(row.pendingQuantity || 0), 0);
+      return {
+        ...tx,
+        details,
+        pendingTotal
+      };
+    })
+    .filter((row) => row.details.length > 0)
+    .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+}
+
+export async function registerInventoryDelivery({ transactionId, deliveries = [] }) {
+  const txId = Number(transactionId);
+  if (!Number.isFinite(txId) || txId <= 0) throw new Error("Invalid transaction id");
+  const toDeliverRows = (deliveries || [])
+    .map((row) => ({
+      detailId: Number(row.detailId),
+      quantityToDeliver: Number(row.quantityToDeliver || 0)
+    }))
+    .filter((row) => Number.isFinite(row.detailId) && row.detailId > 0 && Number.isFinite(row.quantityToDeliver) && row.quantityToDeliver > 0);
+
+  if (!toDeliverRows.length) return;
+
+  const detailIds = toDeliverRows.map((row) => row.detailId);
+  const { data: currentDetails, error: currentError } = await supabase
+    .from("transactionDetails")
+    .select("id, transactionId, quantity, quantityDelivered")
+    .in("id", detailIds)
+    .eq("transactionId", txId);
+  if (currentError) throw currentError;
+
+  const currentById = new Map((currentDetails ?? []).map((row) => [Number(row.id), row]));
+  const updates = [];
+
+  for (const row of toDeliverRows) {
+    const current = currentById.get(row.detailId);
+    if (!current) continue;
+    const qty = Math.max(Number(current.quantity || 0), 0);
+    const delivered = Math.max(Number(current.quantityDelivered || 0), 0);
+    const pending = Math.max(qty - delivered, 0);
+    if (pending <= 0) continue;
+    const nextDelivered = Math.min(qty, delivered + row.quantityToDeliver);
+    updates.push({ id: row.detailId, quantityDelivered: nextDelivered });
+  }
+
+  const updateResults = await Promise.all(
+    updates.map((row) =>
+      supabase.from("transactionDetails").update({ quantityDelivered: row.quantityDelivered }).eq("id", row.id)
+    )
+  );
+  const failed = updateResults.find((result) => result.error);
+  if (failed?.error) throw failed.error;
 }
 
 export async function listPaymentsForTransaction(transactionId) {
