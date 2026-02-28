@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import LookupCombobox from "../components/LookupCombobox";
+import ToggleSwitch from "../components/ToggleSwitch";
 import TagsLookupField from "../components/TagsLookupField";
 import AccountPaymentFormPage from "./AccountPaymentFormPage";
 import CashboxFormPage from "./CashboxFormPage";
@@ -209,6 +210,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   const [saleTagLookup, setSaleTagLookup] = useState("");
   const [productLookup, setProductLookup] = useState("");
   const [saleLines, setSaleLines] = useState([]);
+  const [invoicePendingDelivery, setInvoicePendingDelivery] = useState(false);
 
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -406,6 +408,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
           moduleType === "purchase"
             ? (details || []).filter((line) => Boolean(line.concepts?.isProduct))
             : details || [];
+        const hasPendingDelivery = editableLines.some((line) => Boolean(line.pendingDelivery));
+        setInvoicePendingDelivery(hasPendingDelivery);
         setSaleLines(
           editableLines.map((line) => ({
             rowId: String(line.id || `${Date.now()}-${Math.random()}`),
@@ -503,15 +507,17 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
 
   const addSaleLine = (concept) => {
     const currentStock = Number(concept.stock || 0);
+    const initialQuantity = moduleType === "inventoryAdjustment" ? 0 : 1;
+    const isPending = moduleType === "sale" ? invoicePendingDelivery : false;
     setSaleLines((prev) => [
       ...prev,
       {
         rowId: `${concept.id}-${Date.now()}-${Math.random()}`,
         conceptId: concept.id,
         conceptName: concept.name,
-        quantity: moduleType === "inventoryAdjustment" ? 0 : 1,
-        quantityDelivered: moduleType === "sale" ? 1 : 0,
-        pendingDelivery: false,
+        quantity: initialQuantity,
+        quantityDelivered: moduleType === "sale" ? (isPending ? 0 : initialQuantity) : 0,
+        pendingDelivery: isPending,
         price: Number(concept.price) || 0,
         taxPercentage: Number(concept.taxPercentage) || 0,
         discountPercentage: 0,
@@ -521,6 +527,21 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       }
     ]);
     setProductLookup("");
+  };
+
+  const handleInvoicePendingDeliveryChange = (checked) => {
+    setInvoicePendingDelivery(checked);
+    setSaleLines((prev) =>
+      prev.map((line) => {
+        if (moduleType !== "sale") return line;
+        const safeQty = Math.max(Number(line.quantity || 0), 0);
+        return {
+          ...line,
+          pendingDelivery: checked,
+          quantityDelivered: checked ? Math.min(Math.max(Number(line.quantityDelivered || 0), 0), safeQty) : safeQty
+        };
+      })
+    );
   };
 
   const updateSaleLine = (rowId, field, value) => {
@@ -1613,36 +1634,47 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
 
           <section className="crud-form-section">
             <h2 className="crud-form-section-title">{t("transactions.sectionDetail")}</h2>
-            <LookupCombobox
-              label={t("transactions.productLookup")}
-              value={productLookup}
-              onValueChange={setProductLookup}
-              options={conceptOptions}
-              getOptionLabel={(product) => product.name || ""}
-              onSelect={(product) => {
-                addSaleLine(product);
-                setProductLookup("");
-              }}
-              placeholder={t("transactions.productLookupPlaceholder")}
-              onCreateRecord={handleCreatedConcept}
-              renderCreateModal={({ isOpen, onClose, onCreated }) =>
-                isOpen ? (
-                  <div className="modal-backdrop">
-                    <div className="modal-card" onClick={(event) => event.stopPropagation()}>
-                      <ConceptModuleFormPage
-                        embedded
-                        moduleType="products"
-                        titleKey="actions.newProduct"
-                        basePath="/products"
-                        onCancel={onClose}
-                        onCreated={onCreated}
-                      />
+            <div className="detail-tools-row">
+              <LookupCombobox
+                label={t("transactions.productLookup")}
+                value={productLookup}
+                onValueChange={setProductLookup}
+                options={conceptOptions}
+                getOptionLabel={(product) => product.name || ""}
+                onSelect={(product) => {
+                  addSaleLine(product);
+                  setProductLookup("");
+                }}
+                placeholder={t("transactions.productLookupPlaceholder")}
+                onCreateRecord={handleCreatedConcept}
+                renderCreateModal={({ isOpen, onClose, onCreated }) =>
+                  isOpen ? (
+                    <div className="modal-backdrop">
+                      <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+                        <ConceptModuleFormPage
+                          embedded
+                          moduleType="products"
+                          titleKey="actions.newProduct"
+                          basePath="/products"
+                          onCancel={onClose}
+                          onCreated={onCreated}
+                        />
+                      </div>
                     </div>
-                  </div>
-                ) : null
-              }
-              noResultsText={t("common.empty")}
-            />
+                  ) : null
+                }
+                noResultsText={t("common.empty")}
+              />
+              {moduleType === "sale" ? (
+                <ToggleSwitch
+                  label={t("products.pendingDelivery")}
+                  helpText={t("products.pendingDeliveryHelp")}
+                  align="right"
+                  checked={invoicePendingDelivery}
+                  onChange={(event) => handleInvoicePendingDeliveryChange(event.target.checked)}
+                />
+              ) : null}
+            </div>
           </section>
 
           <table className="crud-table invoice-lines-table">

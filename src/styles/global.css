@@ -942,6 +942,110 @@ button {
   width: auto;
 }
 
+.detail-tools-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: calc(0.7rem * var(--density-scale));
+}
+
+.toggle-switch-wrap {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.toggle-switch-wrap-right {
+  justify-self: end;
+  width: 100%;
+}
+
+.toggle-switch {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.55rem;
+  min-height: 34px;
+  width: 100%;
+  padding-inline: 0.1rem;
+  cursor: pointer;
+}
+
+.toggle-switch-label {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toggle-switch-help {
+  margin: 0;
+  font-size: 0.86em;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.toggle-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle-switch-ui {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  border: 1px solid var(--line);
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.toggle-switch-ui::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+  transition: transform 0.18s ease;
+}
+
+.toggle-switch input:checked + .toggle-switch-ui {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+
+.toggle-switch input:checked + .toggle-switch-ui::after {
+  transform: translateX(18px);
+}
+
+.toggle-switch input:disabled + .toggle-switch-ui {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.toggle-switch input:disabled ~ .toggle-switch-label {
+  opacity: 0.65;
+}
+
+.toggle-switch input:focus-visible + .toggle-switch-ui {
+  outline: 2px solid color-mix(in srgb, var(--brand) 55%, transparent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 700px) {
+  .detail-tools-row {
+    grid-template-columns: 1fr;
+  }
+
+  .toggle-switch-wrap-right {
+    justify-self: stretch;
+  }
+}
+
 .crud-form-actions {
   display: flex;
   gap: 0.5rem;

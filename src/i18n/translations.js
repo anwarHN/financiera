@@ -245,6 +245,8 @@ export const translations = {
     products: {
       stock: "Inventario disponible",
       pendingDelivery: "Pendiente de entrega",
+      pendingDeliveryHelp:
+        "Si activas esta opción, los productos de la factura quedarán pendientes de entrega y deberás registrar la entrega en Inventario > Entrega de mercadería.",
       stockFinal: "Stock final"
     },
     inventory: {
@@ -870,6 +872,8 @@ export const translations = {
     products: {
       stock: "Available inventory",
       pendingDelivery: "Pending delivery",
+      pendingDeliveryHelp:
+        "If you enable this option, invoice items will remain pending delivery and you must register the delivery in Inventory > Merchandise delivery.",
       stockFinal: "Final stock"
     },
     inventory: {

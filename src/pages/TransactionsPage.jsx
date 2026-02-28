@@ -10,8 +10,10 @@ import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { useModulePermissions } from "../hooks/useModulePermissions";
 import {
+  createSaleReturnTransaction,
   deactivateTransaction,
   listPrimaryConceptsByTransactionIds,
+  listReturnableSaleDetails,
   listTransactions,
   TRANSACTION_TYPES
 } from "../services/transactionsService";
@@ -57,7 +59,7 @@ const pageSize = 10;
 
 function TransactionsPage({ moduleType }) {
   const { t, language } = useI18n();
-  const { account, canVoidTransactions } = useAuth();
+  const { account, user, canVoidTransactions } = useAuth();
   const { canCreate, canUpdate } = useModulePermissions("transactions");
   const config = moduleConfig[moduleType];
   const supportsTableFilters = ["sale", "purchase", "expense", "income", "inventoryAdjustment"].includes(moduleType);
@@ -67,6 +69,15 @@ function TransactionsPage({ moduleType }) {
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [paymentModal, setPaymentModal] = useState({ open: false, transaction: null, direction: "incoming" });
+  const [returnModal, setReturnModal] = useState({
+    open: false,
+    transaction: null,
+    returnDate: "",
+    referenceNumber: "",
+    description: "",
+    lines: [],
+    isSaving: false
+  });
   const [filters, setFilters] = useState({
     dateFrom: "",
     dateTo: "",
@@ -200,6 +211,86 @@ function TransactionsPage({ moduleType }) {
     next.delete("createPrior");
     next.delete("edit");
     setSearchParams(next);
+  };
+
+  const openReturnModal = async (transaction) => {
+    try {
+      const lines = await listReturnableSaleDetails(transaction.id);
+      setReturnModal({
+        open: true,
+        transaction,
+        returnDate: new Date().toISOString().slice(0, 10),
+        referenceNumber: transaction?.referenceNumber || "",
+        description: `Devolución factura #${transaction.id}`,
+        lines: lines.map((line) => ({ ...line, quantityToReturn: 0 })),
+        isSaving: false
+      });
+      setError("");
+    } catch {
+      setError(t("common.genericLoadError"));
+    }
+  };
+
+  const closeReturnModal = () => {
+    setReturnModal({
+      open: false,
+      transaction: null,
+      returnDate: "",
+      referenceNumber: "",
+      description: "",
+      lines: [],
+      isSaving: false
+    });
+  };
+
+  const updateReturnLine = (lineId, value) => {
+    setReturnModal((prev) => ({
+      ...prev,
+      lines: prev.lines.map((line) => {
+        if (Number(line.id) !== Number(lineId)) return line;
+        const safeValue = Math.max(Number(value || 0), 0);
+        return {
+          ...line,
+          quantityToReturn: Math.min(safeValue, Number(line.maxReturnableQuantity || 0))
+        };
+      })
+    }));
+  };
+
+  const handleSubmitReturn = async (event) => {
+    event.preventDefault();
+    if (!user?.id || !returnModal.transaction?.id) return;
+
+    const lines = (returnModal.lines || [])
+      .filter((line) => Number(line.quantityToReturn || 0) > 0)
+      .map((line) => ({
+        sourceDetailId: Number(line.id),
+        conceptId: Number(line.conceptId),
+        quantity: Number(line.quantityToReturn || 0)
+      }));
+
+    if (!lines.length) {
+      setError(t("inventory.returns.invalidQuantity"));
+      return;
+    }
+
+    try {
+      setReturnModal((prev) => ({ ...prev, isSaving: true }));
+      await createSaleReturnTransaction({
+        saleTransactionId: Number(returnModal.transaction.id),
+        returnDate: returnModal.returnDate,
+        referenceNumber: returnModal.referenceNumber,
+        description: returnModal.description,
+        lines,
+        userId: user.id
+      });
+      await loadData();
+      closeReturnModal();
+      setError("");
+    } catch {
+      setError(t("common.genericSaveError"));
+      setReturnModal((prev) => ({ ...prev, isSaving: false }));
+    }
   };
 
   return (
@@ -367,6 +458,15 @@ function TransactionsPage({ moduleType }) {
                               }
                             ]
                           : []),
+                        ...(moduleType === "sale"
+                          ? [
+                              {
+                                key: "return",
+                                label: t("inventory.returns.register"),
+                                onClick: () => openReturnModal(item)
+                              }
+                            ]
+                          : []),
                         ...(["sale", "purchase", "expense", "income"].includes(moduleType) && canUpdate
                           ? [
                               {
@@ -425,6 +525,113 @@ function TransactionsPage({ moduleType }) {
                 closeModal();
               }}
             />
+          </div>
+        </div>
+      ) : null}
+
+      {returnModal.open ? (
+        <div className="modal-backdrop">
+          <div className="modal-card modal-card-wide" onClick={(event) => event.stopPropagation()}>
+            <form className="crud-form" onSubmit={handleSubmitReturn}>
+              <h3>{t("inventory.returns.register")}</h3>
+              <div className="form-grid-2">
+                <label className="field-block">
+                  <span>{t("transactions.date")}</span>
+                  <input
+                    type="date"
+                    value={returnModal.returnDate}
+                    onChange={(event) => setReturnModal((prev) => ({ ...prev, returnDate: event.target.value }))}
+                    required
+                  />
+                </label>
+                <label className="field-block">
+                  <span>{t("transactions.referenceNumber")}</span>
+                  <input
+                    value={returnModal.referenceNumber}
+                    onChange={(event) => setReturnModal((prev) => ({ ...prev, referenceNumber: event.target.value }))}
+                  />
+                </label>
+                <label className="field-block form-span-2">
+                  <span>{t("transactions.description")}</span>
+                  <input
+                    value={returnModal.description}
+                    onChange={(event) => setReturnModal((prev) => ({ ...prev, description: event.target.value }))}
+                  />
+                </label>
+              </div>
+
+              <section className="generic-panel">
+                <p>
+                  ID: {returnModal.transaction?.id ?? "-"} | {t("transactions.person")}: {returnModal.transaction?.persons?.name ?? "-"} |{" "}
+                  {t("transactions.total")}: {formatNumber(returnModal.transaction?.total || 0)}
+                </p>
+              </section>
+
+              <table className="crud-table">
+                <thead>
+                  <tr>
+                    <th>{t("transactions.product")}</th>
+                    <th className="num-col">{t("transactions.quantity")}</th>
+                    <th className="num-col">{t("inventory.returns.returnedQuantity")}</th>
+                    <th className="num-col">{t("inventory.returns.maxReturnableQuantity")}</th>
+                    <th className="num-col">{t("inventory.returns.quantityToReturn")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(returnModal.lines || []).length === 0 ? (
+                    <tr>
+                      <td colSpan={5}>{t("common.empty")}</td>
+                    </tr>
+                  ) : (
+                    (returnModal.lines || []).map((line) => (
+                      <tr key={`return-line-table-${line.id}`}>
+                        <td>{line.conceptName || "-"}</td>
+                        <td className="num-col">
+                          {formatNumber(line.quantity || 0, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="num-col">
+                          {formatNumber(line.alreadyReturnedQuantity || 0, {
+                            showCurrency: false,
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 2
+                          })}
+                        </td>
+                        <td className="num-col">
+                          {formatNumber(line.maxReturnableQuantity || 0, {
+                            showCurrency: false,
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 2
+                          })}
+                        </td>
+                        <td className="num-col">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={line.quantityToReturn}
+                            onChange={(event) => updateReturnLine(line.id, event.target.value)}
+                            disabled={Number(line.maxReturnableQuantity || 0) <= 0}
+                          />
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+
+              <div className="crud-form-actions">
+                <button type="button" className="button-secondary" onClick={closeReturnModal}>
+                  {t("common.cancel")}
+                </button>
+                <button
+                  type="submit"
+                  disabled={returnModal.isSaving}
+                  className={returnModal.isSaving ? "is-saving" : ""}
+                >
+                  {returnModal.isSaving ? t("common.loading") : t("common.save")}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       ) : null}
