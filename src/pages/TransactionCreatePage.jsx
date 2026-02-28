@@ -218,10 +218,21 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   const isEdit = Boolean(itemId);
 
   const conceptOptions = useMemo(() => concepts.filter(config.conceptFilter), [concepts, config.conceptFilter]);
-  const accountPayableConcept = useMemo(
-    () => concepts.find((item) => item.isAccountPayableConcept) ?? null,
-    [concepts]
-  );
+  const accountPayableConcept = useMemo(() => {
+    const flagged = concepts.find((item) => item.isAccountPayableConcept);
+    if (flagged) return flagged;
+
+    return (
+      concepts.find((item) => {
+        const normalizedName = String(item.name || "")
+          .trim()
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
+        return Boolean(item.isSystem) && (normalizedName === "compras de mercaderia" || normalizedName === "merchandise purchases");
+      }) ?? null
+    );
+  }, [concepts]);
   const incomingPaymentConcept = useMemo(
     () => concepts.find((item) => item.isIncomingPaymentConcept) ?? null,
     [concepts]
