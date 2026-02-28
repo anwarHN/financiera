@@ -180,7 +180,7 @@ export async function listTransactionDetails(transactionId) {
 export async function listPendingDeliveryInvoices(accountId, { dateFrom, dateTo, currencyId } = {}) {
   let txQuery = supabase
     .from("transactions")
-    .select("id, date, total, currencyId, personId, persons(name)")
+    .select('id, date, total, currencyId, personId, "referenceNumber", persons(name)')
     .eq("accountId", accountId)
     .eq("isActive", true)
     .eq("type", TRANSACTION_TYPES.sale);
@@ -234,6 +234,150 @@ export async function listPendingDeliveryInvoices(accountId, { dateFrom, dateTo,
     })
     .filter((row) => row.details.length > 0)
     .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+}
+
+export async function listReturnableSaleDetails(transactionId) {
+  const txId = Number(transactionId);
+  if (!Number.isFinite(txId) || txId <= 0) throw new Error("Invalid sale id");
+
+  const sale = await getTransactionById(txId);
+  if (!sale || Number(sale.type) !== TRANSACTION_TYPES.sale) {
+    throw new Error("Sale transaction not found");
+  }
+
+  const saleDetails = await listTransactionDetails(txId);
+  const sourceDetailIds = saleDetails.map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
+  if (!sourceDetailIds.length) return [];
+
+  const { data: returnDetailRows, error: returnDetailError } = await supabase
+    .from("transactionDetails")
+    .select("transactionPaidId, quantity, transactions!transaction_details_transactionId_fkey(id, sourceTransactionId, tags, isActive)")
+    .in("transactionPaidId", sourceDetailIds);
+  if (returnDetailError) throw returnDetailError;
+
+  const returnedByDetailId = new Map();
+  (returnDetailRows ?? []).forEach((row) => {
+    const parent = row.transactions;
+    const tags = Array.isArray(parent?.tags) ? parent.tags : [];
+    const isReturn = Number(parent?.sourceTransactionId || 0) === txId && tags.includes("__sale_return__") && Boolean(parent?.isActive);
+    if (!isReturn) return;
+    const sourceDetailId = Number(row.transactionPaidId || 0);
+    if (!sourceDetailId) return;
+    const qty = Math.max(Number(row.quantity || 0), 0);
+    returnedByDetailId.set(sourceDetailId, Number(returnedByDetailId.get(sourceDetailId) || 0) + qty);
+  });
+
+  return saleDetails
+    .filter((row) => Boolean(row.concepts?.isProduct))
+    .map((row) => {
+      const qty = Math.max(Number(row.quantity || 0), 0);
+      const returned = Math.max(Number(returnedByDetailId.get(Number(row.id)) || 0), 0);
+      const maxReturnable = Math.max(qty - returned, 0);
+      return {
+        id: Number(row.id),
+        conceptId: Number(row.conceptId),
+        conceptName: row.concepts?.name || "-",
+        quantity: qty,
+        alreadyReturnedQuantity: returned,
+        maxReturnableQuantity: maxReturnable,
+        price: Number(row.price || 0),
+        taxPercentage: Number(row.taxPercentage || 0),
+        discountPercentage: Number(row.discountPercentage || 0),
+        additionalCharges: Number(row.additionalCharges || 0)
+      };
+    });
+}
+
+export async function createSaleReturnTransaction({
+  saleTransactionId,
+  returnDate,
+  referenceNumber,
+  description,
+  lines,
+  userId
+}) {
+  const txId = Number(saleTransactionId);
+  if (!Number.isFinite(txId) || txId <= 0) throw new Error("Invalid sale id");
+  const returnLines = (lines || [])
+    .map((line) => ({
+      sourceDetailId: Number(line.sourceDetailId),
+      conceptId: Number(line.conceptId),
+      quantity: Math.max(Number(line.quantity || 0), 0)
+    }))
+    .filter((line) => Number.isFinite(line.sourceDetailId) && line.sourceDetailId > 0 && Number.isFinite(line.conceptId) && line.conceptId > 0 && line.quantity > 0);
+  if (!returnLines.length) throw new Error("No return lines");
+
+  const saleTx = await getTransactionById(txId);
+  if (!saleTx || Number(saleTx.type) !== TRANSACTION_TYPES.sale) throw new Error("Sale transaction not found");
+
+  const returnable = await listReturnableSaleDetails(txId);
+  const byDetailId = new Map(returnable.map((row) => [Number(row.id), row]));
+  for (const line of returnLines) {
+    const source = byDetailId.get(line.sourceDetailId);
+    if (!source) throw new Error("Invalid source detail");
+    if (line.quantity > Number(source.maxReturnableQuantity || 0)) {
+      throw new Error("Return quantity exceeds pending returnable quantity.");
+    }
+  }
+
+  const transactionPayload = {
+    accountId: saleTx.accountId,
+    personId: saleTx.personId || null,
+    employeeId: null,
+    date: returnDate,
+    type: TRANSACTION_TYPES.expense,
+    name: description?.trim() || `Devolución factura #${saleTx.id}`,
+    referenceNumber: referenceNumber?.trim() || saleTx.referenceNumber || null,
+    deliverTo: null,
+    deliveryAddress: null,
+    status: 1,
+    createdById: userId,
+    net: 0,
+    discounts: 0,
+    taxes: 0,
+    additionalCharges: 0,
+    total: 0,
+    isAccountPayable: false,
+    isAccountReceivable: false,
+    isIncomingPayment: false,
+    isOutcomingPayment: false,
+    balance: 0,
+    payments: 0,
+    isActive: true,
+    currencyId: saleTx.currencyId || null,
+    paymentMethodId: null,
+    accountPaymentFormId: null,
+    isReconciled: false,
+    reconciledAt: null,
+    projectId: saleTx.projectId || null,
+    tags: ["__inventory_adjustment__", "__sale_return__"],
+    sourceTransactionId: txId,
+    isInternalTransfer: false,
+    isDeposit: false
+  };
+
+  const detailsPayload = returnLines.map((line) => ({
+    conceptId: line.conceptId,
+    quantity: line.quantity,
+    quantityDelivered: 0,
+    pendingDelivery: false,
+    price: 0,
+    net: 0,
+    taxPercentage: 0,
+    tax: 0,
+    discountPercentage: 0,
+    discount: 0,
+    total: 0,
+    additionalCharges: 0,
+    createdById: userId,
+    sellerId: null,
+    transactionPaidId: line.sourceDetailId
+  }));
+
+  return createTransactionWithDetails({
+    transaction: transactionPayload,
+    details: detailsPayload
+  });
 }
 
 export async function registerInventoryDelivery({ transactionId, deliveries = [] }) {

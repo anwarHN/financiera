@@ -509,7 +509,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         rowId: `${concept.id}-${Date.now()}-${Math.random()}`,
         conceptId: concept.id,
         conceptName: concept.name,
-        quantity: moduleType === "inventoryAdjustment" ? currentStock : 1,
+        quantity: moduleType === "inventoryAdjustment" ? 0 : 1,
         quantityDelivered: moduleType === "sale" ? 1 : 0,
         pendingDelivery: false,
         price: Number(concept.price) || 0,
@@ -826,12 +826,10 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     const inventoryAdjustmentLines =
       moduleType === "inventoryAdjustment"
         ? saleLines
-            .map((line) => {
-              const targetStock = Number(line.quantity || 0);
-              const currentStock = Number(line.currentStock || 0);
-              const adjustmentQty = targetStock - currentStock;
-              return { ...line, adjustmentQty };
-            })
+            .map((line) => ({
+              ...line,
+              adjustmentQty: Number(line.quantity || 0)
+            }))
             .filter((line) => Math.abs(Number(line.adjustmentQty || 0)) > 0)
         : [];
     if (moduleType === "inventoryAdjustment" && inventoryAdjustmentLines.length === 0) {
@@ -1654,8 +1652,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                 {moduleType === "inventoryAdjustment" ? (
                   <>
                     <th>{t("products.stock")}</th>
-                    <th>{t("transactions.realStock")}</th>
                     <th>{t("transactions.adjustment")}</th>
+                    <th>{t("transactions.realStock")}</th>
                   </>
                 ) : (
                   <>
@@ -1681,8 +1679,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                 saleLines.map((line) => {
                   const lineAmounts = calculateLineAmounts(line);
                   const currentStock = Number(line.currentStock || 0);
-                  const targetStock = Number(line.quantity || 0);
-                  const adjustmentQty = targetStock - currentStock;
+                  const adjustmentQty = Number(line.quantity || 0);
+                  const resultingStock = currentStock + adjustmentQty;
                   return (
                     <tr key={line.rowId}>
                       <td>{line.conceptName}</td>
@@ -1692,13 +1690,12 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                           <td>
                             <input
                               type="number"
-                              min="0"
                               step="0.01"
                               value={line.quantity}
                               onChange={(event) => updateSaleLine(line.rowId, "quantity", event.target.value)}
                             />
                           </td>
-                          <td>{formatNumber(adjustmentQty, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+                          <td>{formatNumber(resultingStock, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
                         </>
                       ) : (
                         <>

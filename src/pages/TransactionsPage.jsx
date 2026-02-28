@@ -20,6 +20,7 @@ import { formatNumber } from "../utils/numberFormat";
 
 const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
 const PRIOR_BALANCE_TAG = "__prior_balance__";
+const SALE_RETURN_TAG = "__sale_return__";
 
 const moduleConfig = {
   sale: {
@@ -141,7 +142,12 @@ function TransactionsPage({ moduleType }) {
         moduleType === "expense"
           ? data.filter((row) => !(Array.isArray(row.tags) && row.tags.includes(INVENTORY_ADJUSTMENT_TAG)))
           : moduleType === "inventoryAdjustment"
-            ? data.filter((row) => Array.isArray(row.tags) && row.tags.includes(INVENTORY_ADJUSTMENT_TAG))
+            ? data.filter(
+                (row) =>
+                  Array.isArray(row.tags) &&
+                  row.tags.includes(INVENTORY_ADJUSTMENT_TAG) &&
+                  !row.tags.includes(SALE_RETURN_TAG)
+              )
             : data;
       if (moduleType === "income" || moduleType === "expense") {
         const conceptByTxId = await listPrimaryConceptsByTransactionIds(moduleRows.map((row) => row.id));
@@ -309,10 +315,12 @@ function TransactionsPage({ moduleType }) {
                   <td>{item.name ?? "-"}</td>
                   <td>
                     {Array.isArray(item.tags) &&
-                    item.tags.filter((tag) => tag !== INVENTORY_ADJUSTMENT_TAG && tag !== PRIOR_BALANCE_TAG).length > 0 ? (
+                    item.tags
+                      .filter((tag) => tag !== INVENTORY_ADJUSTMENT_TAG && tag !== PRIOR_BALANCE_TAG && tag !== SALE_RETURN_TAG)
+                      .length > 0 ? (
                       <div className="table-tags">
                         {item.tags
-                          .filter((tag) => tag !== INVENTORY_ADJUSTMENT_TAG && tag !== PRIOR_BALANCE_TAG)
+                          .filter((tag) => tag !== INVENTORY_ADJUSTMENT_TAG && tag !== PRIOR_BALANCE_TAG && tag !== SALE_RETURN_TAG)
                           .map((tag, index) => (
                           <span key={`${item.id}-tag-${index}`} className="table-tag-pill">
                             {tag}

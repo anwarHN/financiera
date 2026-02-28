@@ -258,6 +258,13 @@ export const translations = {
         pendingQuantity: "Cantidad pendiente",
         quantityToDeliver: "Cantidad a entregar",
         invalidQuantityToDeliver: "Debes indicar una cantidad a entregar mayor a cero."
+      },
+      returns: {
+        register: "Registrar devolución",
+        returnedQuantity: "Cantidad ya devuelta",
+        maxReturnableQuantity: "Cantidad máxima a devolver",
+        quantityToReturn: "Cantidad a devolver",
+        invalidQuantity: "Debes indicar al menos una línea con cantidad a devolver."
       }
     },
     providers: {
@@ -876,6 +883,13 @@ export const translations = {
         pendingQuantity: "Pending quantity",
         quantityToDeliver: "Quantity to deliver",
         invalidQuantityToDeliver: "You must enter a quantity to deliver greater than zero."
+      },
+      returns: {
+        register: "Register return",
+        returnedQuantity: "Already returned quantity",
+        maxReturnableQuantity: "Maximum returnable quantity",
+        quantityToReturn: "Quantity to return",
+        invalidQuantity: "You must enter at least one line with quantity to return."
       }
     },
     providers: {

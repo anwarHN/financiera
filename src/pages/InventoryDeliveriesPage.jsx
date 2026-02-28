@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import LookupCombobox from "../components/LookupCombobox";
 import Pagination from "../components/Pagination";
 import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
@@ -25,6 +26,7 @@ function InventoryDeliveriesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [page, setPage] = useState(1);
   const [deliveryDraft, setDeliveryDraft] = useState([]);
+  const [invoiceLookup, setInvoiceLookup] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
   const isCreateModalOpen = searchParams.get("create") === "1" && (canCreate || canUpdate);
   const selectedInvoiceId = Number(searchParams.get("invoiceId") || 0) || null;
@@ -103,6 +105,7 @@ function InventoryDeliveriesPage() {
     next.set("create", "1");
     next.set("invoiceId", String(invoiceId));
     setSearchParams(next);
+    setInvoiceLookup("");
   };
 
   const handleDraftChange = (detailId, value) => {
@@ -203,26 +206,39 @@ function InventoryDeliveriesPage() {
               <h3>{t("inventory.deliveries.register")}</h3>
 
               <div className="form-grid-2">
-                <label className="field-block form-span-2">
-                  <span>{t("inventory.deliveries.invoice")}</span>
-                  <select
-                    value={selectedInvoiceId || ""}
-                    onChange={(event) => {
+                <div className="field-block form-span-2 required">
+                  <LookupCombobox
+                    label={t("inventory.deliveries.invoice")}
+                    value={invoiceLookup}
+                    onValueChange={setInvoiceLookup}
+                    options={items}
+                    getOptionLabel={(row) =>
+                      `#${row.id} · ${row.persons?.name || "-"} · ${row.referenceNumber || "-"} · ${formatDate(row.date, language)}`
+                    }
+                    onSelect={(row) => {
                       const next = new URLSearchParams(searchParams);
                       next.set("create", "1");
-                      next.set("invoiceId", event.target.value);
+                      next.set("invoiceId", String(row.id));
                       setSearchParams(next);
+                      setInvoiceLookup("");
                     }}
+                    placeholder={t("inventory.deliveries.selectInvoice")}
+                    noResultsText={t("common.empty")}
                     required
-                  >
-                    <option value="">{`-- ${t("inventory.deliveries.selectInvoice")} --`}</option>
-                    {items.map((row) => (
-                      <option key={row.id} value={row.id}>
-                        #{row.id} - {row.persons?.name || "-"} - {formatDate(row.date, language)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    selectedPillText={
+                      selectedInvoice
+                        ? `#${selectedInvoice.id} · ${selectedInvoice.persons?.name || "-"} · ${selectedInvoice.referenceNumber || "-"} · ${formatDate(selectedInvoice.date, language)}`
+                        : ""
+                    }
+                    onClearSelection={() => {
+                      const next = new URLSearchParams(searchParams);
+                      next.set("create", "1");
+                      next.delete("invoiceId");
+                      setSearchParams(next);
+                      setInvoiceLookup("");
+                    }}
+                  />
+                </div>
 
                 <label className="field-block">
                   <span>{t("transactions.date")}</span>
@@ -317,4 +333,3 @@ function InventoryDeliveriesPage() {
 }
 
 export default InventoryDeliveriesPage;
-
