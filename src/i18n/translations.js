@@ -231,7 +231,11 @@ export const translations = {
       title: "Clientes y proveedores",
       empty: "Aún no hay registros",
       client: "Cliente",
-      supplier: "Proveedor"
+      supplier: "Proveedor",
+      accountDetailTitle: "Detalle de cuenta",
+      accountDetailTabs: "Detalle de cuentas",
+      accountsWithBalance: "Cuentas con saldo",
+      accountsHistory: "Cuentas históricas"
     },
     clients: {
       title: "Clientes"
@@ -354,6 +358,9 @@ export const translations = {
       employeeAbsences: "Ausencias por empleado",
       employeeLoans: "Préstamos a empleados",
       cashboxesBalance: "Saldos de cajas",
+      customerSupplier: "Cliente / Proveedor",
+      subtotal: "Subtotal",
+      unassignedPerson: "Sin cliente/proveedor",
       tag: "Etiqueta",
       step1: "1. Selecciona el reporte",
       step2: "2. Define filtros",
@@ -823,7 +830,11 @@ export const translations = {
       title: "Clients and suppliers",
       empty: "No records yet",
       client: "Client",
-      supplier: "Supplier"
+      supplier: "Supplier",
+      accountDetailTitle: "Account detail",
+      accountDetailTabs: "Account detail tabs",
+      accountsWithBalance: "Open balances",
+      accountsHistory: "Historical accounts"
     },
     clients: {
       title: "Clients"
@@ -946,6 +957,9 @@ export const translations = {
       employeeAbsences: "Employee absences",
       employeeLoans: "Employee loans",
       cashboxesBalance: "Cashbox balances",
+      customerSupplier: "Customer / Supplier",
+      subtotal: "Subtotal",
+      unassignedPerson: "No customer/supplier",
       tag: "Tag",
       step1: "1. Select report",
       step2: "2. Set filters",

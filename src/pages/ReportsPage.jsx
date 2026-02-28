@@ -104,8 +104,39 @@ function ReportsPage() {
     if (reportId === "internal_obligations") return transactions;
     if (reportId === "sales") return transactions.filter((tx) => tx.type === 1);
     if (reportId === "expenses") return transactions.filter((tx) => tx.type === 2);
-    if (reportId === "receivable") return transactions.filter((tx) => tx.isAccountReceivable && Number(tx.balance || 0) > 0);
-    if (reportId === "payable") return transactions.filter((tx) => tx.isAccountPayable && Number(tx.balance || 0) > 0);
+    if (reportId === "receivable" || reportId === "payable") {
+      const filtered = transactions.filter((tx) =>
+        reportId === "receivable"
+          ? tx.isAccountReceivable && Number(tx.balance || 0) > 0
+          : tx.isAccountPayable && Number(tx.balance || 0) > 0
+      );
+      const byParty = new Map();
+      filtered.forEach((tx) => {
+        const partyId = Number(tx.personId || 0) || 0;
+        const partyName = tx.persons?.name || t("reports.unassignedPerson");
+        const key = `${partyId}-${partyName}`;
+        if (!byParty.has(key)) {
+          byParty.set(key, {
+            partyId,
+            partyName,
+            details: [],
+            total: 0,
+            balance: 0
+          });
+        }
+        const bucket = byParty.get(key);
+        bucket.details.push(tx);
+        bucket.total += Number(tx.total || 0);
+        bucket.balance += Number(tx.balance || 0);
+      });
+
+      return Array.from(byParty.values())
+        .map((group) => ({
+          ...group,
+          details: group.details.sort((a, b) => Number(b.id || 0) - Number(a.id || 0))
+        }))
+        .sort((a, b) => a.partyName.localeCompare(b.partyName));
+    }
     if (reportId === "cashflow") {
       const rows = Array.isArray(transactions) ? transactions : [];
       const byFlow = new Map();
@@ -308,8 +339,9 @@ function ReportsPage() {
   };
 
   const rowsWithTypeLabel = useMemo(
-    () =>
-      results.map((tx) => ({
+    () => {
+      if (selectedReport === "receivable" || selectedReport === "payable") return [];
+      return results.map((tx) => ({
         ...tx,
         typeLabel:
           selectedReport === "budget_execution" || selectedReport === "project_execution"
@@ -320,10 +352,11 @@ function ReportsPage() {
                 ? tx.typeLabel || "-"
                 : tx.type === 1
                   ? t("reports.sales")
-                  : tx.type === 2
-                    ? t("reports.expenses")
-                    : t("reports.incomes")
-      })),
+                    : tx.type === 2
+                      ? t("reports.expenses")
+                      : t("reports.incomes")
+      }));
+    },
     [results, selectedReport, t]
   );
 
@@ -368,6 +401,9 @@ function ReportsPage() {
   }, [filters, currencies, budgets, projects, t, language]);
 
   const total = useMemo(() => {
+    if (selectedReport === "receivable" || selectedReport === "payable") {
+      return results.reduce((acc, group) => acc + Number(group.total || 0), 0);
+    }
     if (selectedReport === "employee_absences") {
       return results.reduce((acc, item) => acc + Number(item.totalAbsences || 0), 0);
     }
@@ -382,7 +418,12 @@ function ReportsPage() {
     }
     return results.reduce((acc, item) => acc + Number(item.total || 0), 0);
   }, [results, selectedReport]);
-  const balance = useMemo(() => results.reduce((acc, item) => acc + Number(item.balance || 0), 0), [results]);
+  const balance = useMemo(() => {
+    if (selectedReport === "receivable" || selectedReport === "payable") {
+      return results.reduce((acc, group) => acc + Number(group.balance || 0), 0);
+    }
+    return results.reduce((acc, item) => acc + Number(item.balance || 0), 0);
+  }, [results, selectedReport]);
   const salesAdditionalChargesTotal = useMemo(() => {
     if (selectedReport !== "sales") return 0;
     return results.reduce((acc, item) => acc + Number(item.additionalCharges || 0), 0);
@@ -690,6 +731,15 @@ function ReportsPage() {
                   <th>{t("appointments.employee")}</th>
                   <th className="num-col">{t("transactions.total")}</th>
                 </tr>
+              ) : selectedReport === "receivable" || selectedReport === "payable" ? (
+                <tr>
+                  <th>{t("reports.customerSupplier")}</th>
+                  <th className="num-col">ID</th>
+                  <th>{t("transactions.date")}</th>
+                  <th>{t("common.type")}</th>
+                  <th className="num-col">{t("transactions.total")}</th>
+                  <th className="num-col">{t("transactions.balance")}</th>
+                </tr>
               ) : (
                 <tr>
                   <th className="num-col">ID</th>
@@ -701,7 +751,11 @@ function ReportsPage() {
               )}
             </thead>
             <tbody>
-              {(selectedReport === "cashflow" ? cashflowRowCount === 0 : rowsWithTypeLabel.length === 0) ? (
+              {(selectedReport === "cashflow"
+                ? cashflowRowCount === 0
+                : selectedReport === "receivable" || selectedReport === "payable"
+                  ? results.length === 0
+                  : rowsWithTypeLabel.length === 0) ? (
                 <tr>
                   <td
                     colSpan={
@@ -711,6 +765,8 @@ function ReportsPage() {
                           ? 4
                           : selectedReport === "employee_absences"
                             ? 2
+                            : selectedReport === "receivable" || selectedReport === "payable"
+                              ? 6
                             : selectedReport === "sales_by_employee"
                               ? 4
                               : selectedReport === "expenses_by_tag_payment_form"
@@ -818,6 +874,35 @@ function ReportsPage() {
                     </td>
                   </tr>
                 ))
+              ) : selectedReport === "receivable" || selectedReport === "payable" ? (
+                results.flatMap((group) => [
+                  <tr key={`report-party-subtotal-${selectedReport}-${group.partyId}-${group.partyName}`} className="report-group-row">
+                    <td>{group.partyName || t("reports.unassignedPerson")}</td>
+                    <td className="num-col">-</td>
+                    <td>-</td>
+                    <td>{t("reports.subtotal")}</td>
+                    <td className="num-col">{formatNumber(group.total || 0)}</td>
+                    <td className="num-col">{formatNumber(group.balance || 0)}</td>
+                  </tr>,
+                  ...(group.details || []).map((tx) => (
+                    <tr key={`report-party-detail-${selectedReport}-${group.partyId}-${tx.id}`} className="report-concept-row">
+                      <td>{group.partyName || t("reports.unassignedPerson")}</td>
+                      <td className="num-col">{tx.id}</td>
+                      <td>{formatDate(tx.date, language)}</td>
+                      <td>
+                        {tx.type === 1
+                          ? t("reports.sales")
+                          : tx.type === 2
+                            ? t("reports.expenses")
+                            : tx.type === 4
+                              ? t("nav.purchases")
+                              : t("reports.incomes")}
+                      </td>
+                      <td className="num-col">{formatNumber(tx.total || 0)}</td>
+                      <td className="num-col">{formatNumber(tx.balance || 0)}</td>
+                    </tr>
+                  ))
+                ])
               ) : (
                 rowsWithTypeLabel.map((tx) => (
                   <tr key={`${selectedReport}-${tx.id}-${tx.date}`}>

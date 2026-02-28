@@ -1,6 +1,8 @@
 import { supabase } from "../lib/supabase";
 
 const selectColumns = "id, name, phone, address, type";
+const personTransactionsSelectColumns =
+  'id, date, type, total, balance, payments, isAccountReceivable, isAccountPayable, isActive';
 
 export async function listPersons(accountId) {
   const { data, error } = await supabase
@@ -72,4 +74,29 @@ export async function deletePerson(id) {
   if (error) {
     throw error;
   }
+}
+
+export async function listPersonAccountTransactions(accountId, personId, kind) {
+  let query = supabase
+    .from("transactions")
+    .select(personTransactionsSelectColumns)
+    .eq("accountId", accountId)
+    .eq("personId", personId)
+    .eq("isActive", true);
+
+  if (kind === "receivable") {
+    query = query.eq("isAccountReceivable", true);
+  } else if (kind === "payable") {
+    query = query.eq("isAccountPayable", true);
+  }
+
+  const { data, error } = await query
+    .order("date", { ascending: false })
+    .order("id", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
 }
