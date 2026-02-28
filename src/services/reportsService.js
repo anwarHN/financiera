@@ -1,5 +1,7 @@
 import { supabase } from "../lib/supabase";
 
+const PRIOR_BALANCE_TAG = "__prior_balance__";
+
 export async function getTransactionsForReports(accountId, { dateFrom, dateTo } = {}) {
   let query = supabase
     .from("transactions")
@@ -43,8 +45,9 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
     const type = Number(tx.type);
     if (Boolean(tx.isInternalTransfer)) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes("__inventory_adjustment__")) return false;
+    const isPriorBalance = Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG);
     const isCashSale = type === 1 && !Boolean(tx.isAccountReceivable);
-    return type === 2 || type === 3 || isCashSale || Boolean(tx.isIncomingPayment) || Boolean(tx.isOutcomingPayment);
+    return type === 2 || type === 3 || isCashSale || isPriorBalance || Boolean(tx.isIncomingPayment) || Boolean(tx.isOutcomingPayment);
   });
   if (validTransactions.length === 0) return [];
 

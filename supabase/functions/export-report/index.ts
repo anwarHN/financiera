@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
+const PRIOR_BALANCE_TAG = "__prior_balance__";
 
 interface ExportPayload {
   accountId: number;
@@ -294,8 +295,9 @@ async function fetchCashflowConceptTotals(
   const validTransactions = ((transactions ?? []) as CashflowTxRow[]).filter((tx) => {
     if (tx.isInternalTransfer) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes("__inventory_adjustment__")) return false;
+    const isPriorBalance = Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG);
     const isCashSale = Number(tx.type) === 1 && !Boolean(tx.isAccountReceivable);
-    return Number(tx.type) === 2 || Number(tx.type) === 3 || isCashSale || tx.isIncomingPayment || tx.isOutcomingPayment;
+    return Number(tx.type) === 2 || Number(tx.type) === 3 || isCashSale || isPriorBalance || tx.isIncomingPayment || tx.isOutcomingPayment;
   });
 
   if (validTransactions.length === 0) return [] as CashflowGroupedRow[];

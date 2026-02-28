@@ -29,6 +29,7 @@ import { formatNumber } from "../utils/numberFormat";
 import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
 
 const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
+const PRIOR_BALANCE_TAG = "__prior_balance__";
 
 const moduleConfig = {
   sale: {
@@ -178,7 +179,7 @@ function PaymentMethodQuickCreate({ t, accountId, onCancel, onCreated }) {
   );
 }
 
-function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreated, itemId = null }) {
+function TransactionCreatePage({ moduleType, entryMode = "default", embedded = false, onCancel, onCreated, itemId = null }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const navigate = useNavigate();
@@ -221,7 +222,13 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
     () => concepts.find((item) => item.isAccountPayableConcept) ?? null,
     [concepts]
   );
-  const isLineBasedTransaction = moduleType === "sale" || moduleType === "purchase" || moduleType === "inventoryAdjustment";
+  const incomingPaymentConcept = useMemo(
+    () => concepts.find((item) => item.isIncomingPaymentConcept) ?? null,
+    [concepts]
+  );
+  const isPriorBalanceMode = entryMode === "priorBalance" && (moduleType === "sale" || moduleType === "purchase");
+  const isLineBasedTransaction =
+    ((!isPriorBalanceMode && moduleType === "sale") || (!isPriorBalanceMode && moduleType === "purchase") || moduleType === "inventoryAdjustment");
   const personOptions = useMemo(() => {
     if (!config.personFilter) return persons;
     return persons.filter((item) => item.type === config.personFilter);
@@ -315,7 +322,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
     try {
       const updatedPersons = await listPersons(account.accountId);
       setPersons(updatedPersons);
-      if (moduleType === "sale") {
+      if (moduleType === "sale" && !isPriorBalanceMode) {
         setSelectedClient(created);
         setClientLookup("");
       } else {
@@ -669,6 +676,89 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
     }
   };
 
+  const handleSubmitPriorBalance = async (event) => {
+    event.preventDefault();
+    setSimpleSubmitAttempted(true);
+    setError("");
+    if (!event.currentTarget.checkValidity()) {
+      event.currentTarget.reportValidity();
+      setError(t("common.requiredFields"));
+      return;
+    }
+    if (!account?.accountId || !user?.id || !simpleForm.currencyId || !simpleForm.personId) {
+      setError(t("common.requiredFields"));
+      return;
+    }
+
+    const selectedDate = new Date(`${simpleForm.date}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (!(selectedDate < today)) {
+      setError(t("transactions.priorBalanceDateValidation"));
+      return;
+    }
+
+    const totalAmount = Math.abs(Number(simpleForm.amount) || 0);
+    if (totalAmount <= 0) {
+      setError(t("transactions.invalidTransactionAmount"));
+      return;
+    }
+
+    const systemConcept = moduleType === "sale" ? incomingPaymentConcept : accountPayableConcept;
+    if (!systemConcept) {
+      setError(t("transactions.missingSystemPaymentConcept"));
+      return;
+    }
+
+    const transactionPayload = buildTransactionPayload({
+      isCredit: true,
+      personId: Number(simpleForm.personId),
+      description:
+        simpleForm.description?.trim() ||
+        (moduleType === "sale" ? t("transactions.priorBalanceSaleDescription") : t("transactions.priorBalancePurchaseDescription")),
+      date: simpleForm.date,
+      totals: { net: totalAmount, tax: 0, discount: 0, additionalCharges: 0, total: totalAmount },
+      currencyId: simpleForm.currencyId,
+      referenceNumber: simpleForm.referenceNumber,
+      paymentMethodId: null,
+      accountPaymentFormId: null,
+      projectId: null,
+      tags: [PRIOR_BALANCE_TAG],
+      incomingPayment: false,
+      includeCreatedById: true
+    });
+
+    const detailPayload = {
+      conceptId: Number(systemConcept.id),
+      quantity: 1,
+      price: totalAmount,
+      net: totalAmount,
+      taxPercentage: 0,
+      tax: 0,
+      discountPercentage: 0,
+      discount: 0,
+      total: totalAmount,
+      additionalCharges: 0,
+      createdById: user.id,
+      sellerId: null,
+      transactionPaidId: null
+    };
+
+    try {
+      setIsSaving(true);
+      const saved = await createTransactionWithDetails({ transaction: transactionPayload, details: [detailPayload] });
+      if (embedded) {
+        onCreated?.(saved);
+      } else {
+        navigate(config.backPath);
+      }
+    } catch {
+      setError(t("common.genericSaveError"));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSubmitSale = async (event) => {
     event.preventDefault();
     setSaleSubmitAttempted(true);
@@ -855,7 +945,82 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
 
       {error && <p className="error-text">{error}</p>}
 
-      {!isLineBasedTransaction ? (
+      {isPriorBalanceMode ? (
+        <form className="crud-form" onSubmit={handleSubmitPriorBalance}>
+          <section className="crud-form-section">
+            <h2 className="crud-form-section-title">{t("transactions.sectionGeneral")}</h2>
+            <div className="form-grid-2">
+              <label className="field-block">
+                <span>{t("transactions.date")}</span>
+                <input type="date" name="date" value={simpleForm.date} onChange={handleSimpleChange} required />
+              </label>
+              <label className="field-block">
+                <span>{t("transactions.currency")}</span>
+                <select name="currencyId" value={simpleForm.currencyId} onChange={handleSimpleChange} required>
+                  <option value="">{`-- ${t("transactions.selectCurrency")} --`}</option>
+                  {currencies.map((currency) => (
+                    <option key={currency.id} value={currency.id}>
+                      {currency.name} ({currency.symbol})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className={`field-block required ${simpleSubmitAttempted && !simpleForm.personId ? "field-error" : ""}`}>
+                <span>{moduleType === "sale" ? t("clients.title") : t("providers.title")}</span>
+                <LookupCombobox
+                  label=""
+                  value={simplePersonLookup}
+                  onValueChange={setSimplePersonLookup}
+                  options={personOptions}
+                  getOptionLabel={(person) => person.name || ""}
+                  onSelect={(person) => setSimpleForm((prev) => ({ ...prev, personId: String(person.id) }))}
+                  placeholder={`-- ${moduleType === "sale" ? t("transactions.lookupPlaceholder") : t("transactions.selectProvider")} --`}
+                  noResultsText={t("common.empty")}
+                  required
+                  hasError={simpleSubmitAttempted && !simpleForm.personId}
+                  selectedPillText={personOptions.find((person) => person.id === Number(simpleForm.personId))?.name || ""}
+                  onClearSelection={() => {
+                    setSimpleForm((prev) => ({ ...prev, personId: "" }));
+                    setSimplePersonLookup("");
+                  }}
+                  onCreateRecord={handleCreatedPerson}
+                  renderCreateModal={({ isOpen, onClose, onCreated }) =>
+                    isOpen ? (
+                      <div className="modal-backdrop">
+                        <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+                          <PeopleFormPage
+                            embedded
+                            personType={moduleType === "sale" ? 1 : 2}
+                            titleKey={moduleType === "sale" ? "actions.newClient" : "actions.newProvider"}
+                            basePath={moduleType === "sale" ? "/clients" : "/providers"}
+                            onCancel={onClose}
+                            onCreated={onCreated}
+                          />
+                        </div>
+                      </div>
+                    ) : null
+                  }
+                />
+              </div>
+              <label className="field-block">
+                <span>{t("transactions.amount")}</span>
+                <input type="number" min="0" step="0.01" name="amount" value={simpleForm.amount} onChange={handleSimpleChange} required />
+              </label>
+            </div>
+          </section>
+
+          <div className="crud-form-actions">
+            {embedded ? (
+              <button type="button" className="button-secondary" onClick={() => onCancel?.()}>
+                {t("common.cancel")}
+              </button>
+            ) : null}
+            <button type="submit" disabled={isSaving} className={isSaving ? "is-saving" : ""}>
+              {isSaving ? t("common.loading") : t("common.save")}
+            </button>
+          </div>
+        </form>
+      ) : !isLineBasedTransaction ? (
         <form className="crud-form" onSubmit={handleSubmitSimple}>
           <section className="crud-form-section">
             <h2 className="crud-form-section-title">{t("transactions.sectionGeneral")}</h2>

@@ -420,8 +420,20 @@ function Layout() {
     if (pathname.startsWith("/concept-groups")) {
       return { createPath: "/concept-groups?create=1", createLabel: t("actions.newConceptGroup") };
     }
-    if (pathname.startsWith("/sales")) return { createPath: "/sales?create=1", createLabel: t("actions.newSale") };
-    if (pathname.startsWith("/purchases")) return { createPath: "/purchases?create=1", createLabel: t("actions.newPurchase") };
+    if (pathname.startsWith("/sales")) {
+      return {
+        createPath: "/sales?create=1",
+        createLabel: t("actions.newSale"),
+        extraCreateItems: [{ path: "/sales?createPrior=1", label: t("transactions.newPriorBalanceSale") }]
+      };
+    }
+    if (pathname.startsWith("/purchases")) {
+      return {
+        createPath: "/purchases?create=1",
+        createLabel: t("actions.newPurchase"),
+        extraCreateItems: [{ path: "/purchases?createPrior=1", label: t("transactions.newPriorBalancePurchase") }]
+      };
+    }
     if (pathname.startsWith("/inventory-adjustments")) {
       return { createPath: "/inventory-adjustments?create=1", createLabel: t("actions.newInventoryAdjustment") };
     }
@@ -430,10 +442,10 @@ function Layout() {
     if (pathname.startsWith("/projects")) return { createPath: "/projects?create=1", createLabel: t("actions.newProject") };
     if (pathname.startsWith("/budgets")) return { createPath: "/budgets?create=1", createLabel: t("actions.newBudget") };
     if (pathname.startsWith("/currencies")) return { createPath: "/currencies?create=1", createLabel: t("actions.newCurrency") };
-    if (pathname.startsWith("/account")) return { createPath: null, createLabel: null };
-    if (pathname.startsWith("/reports")) return { createPath: null, createLabel: null };
+    if (pathname.startsWith("/account")) return { createPath: null, createLabel: null, extraCreateItems: [] };
+    if (pathname.startsWith("/reports")) return { createPath: null, createLabel: null, extraCreateItems: [] };
 
-    return { createPath: null, createLabel: null };
+    return { createPath: null, createLabel: null, extraCreateItems: [] };
   }, [pathname, t]);
 
   const actionItems = useMemo(() => {
@@ -456,6 +468,16 @@ function Layout() {
         to: actionsConfig.createPath,
         main: true,
         overflowable: false
+      });
+      (actionsConfig.extraCreateItems || []).forEach((entry, index) => {
+        items.push({
+          key: `create-extra-${index}`,
+          label: entry.label,
+          type: "link",
+          to: entry.path,
+          main: false,
+          overflowable: true
+        });
       });
     }
 

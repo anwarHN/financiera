@@ -19,6 +19,7 @@ import { formatDate } from "../utils/dateFormat";
 import { formatNumber } from "../utils/numberFormat";
 
 const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
+const PRIOR_BALANCE_TAG = "__prior_balance__";
 
 const moduleConfig = {
   sale: {
@@ -75,6 +76,8 @@ function TransactionsPage({ moduleType }) {
   });
   const [searchParams, setSearchParams] = useSearchParams();
   const isCreateModalOpen = searchParams.get("create") === "1" && canCreate;
+  const isCreatePriorModalOpen =
+    searchParams.get("createPrior") === "1" && canCreate && (moduleType === "sale" || moduleType === "purchase");
   const editId = searchParams.get("edit");
   const isEditModalOpen = Boolean(editId) && canUpdate;
 
@@ -188,6 +191,7 @@ function TransactionsPage({ moduleType }) {
   const closeModal = () => {
     const next = new URLSearchParams(searchParams);
     next.delete("create");
+    next.delete("createPrior");
     next.delete("edit");
     setSearchParams(next);
   };
@@ -304,10 +308,11 @@ function TransactionsPage({ moduleType }) {
                   <td>{formatDate(item.date, language)}</td>
                   <td>{item.name ?? "-"}</td>
                   <td>
-                    {Array.isArray(item.tags) && item.tags.filter((tag) => tag !== INVENTORY_ADJUSTMENT_TAG).length > 0 ? (
+                    {Array.isArray(item.tags) &&
+                    item.tags.filter((tag) => tag !== INVENTORY_ADJUSTMENT_TAG && tag !== PRIOR_BALANCE_TAG).length > 0 ? (
                       <div className="table-tags">
                         {item.tags
-                          .filter((tag) => tag !== INVENTORY_ADJUSTMENT_TAG)
+                          .filter((tag) => tag !== INVENTORY_ADJUSTMENT_TAG && tag !== PRIOR_BALANCE_TAG)
                           .map((tag, index) => (
                           <span key={`${item.id}-tag-${index}`} className="table-tag-pill">
                             {tag}
@@ -396,7 +401,7 @@ function TransactionsPage({ moduleType }) {
         </>
       )}
 
-      {isCreateModalOpen || isEditModalOpen ? (
+      {isCreateModalOpen || isCreatePriorModalOpen || isEditModalOpen ? (
         <div
           className="modal-backdrop"
         >
@@ -404,6 +409,7 @@ function TransactionsPage({ moduleType }) {
             <TransactionCreatePage
               embedded
               moduleType={moduleType}
+              entryMode={isCreatePriorModalOpen ? "priorBalance" : "default"}
               itemId={isEditModalOpen ? editId : null}
               onCancel={closeModal}
               onCreated={async () => {
