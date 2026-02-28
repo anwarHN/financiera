@@ -235,7 +235,7 @@ export const translations = {
       title: "Clientes"
     },
     products: {
-      stock: "Stock"
+      stock: "Cantidad en inventario"
     },
     providers: {
       title: "Proveedores"
