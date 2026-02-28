@@ -85,11 +85,11 @@ function BankCashWithdrawalFormPage({ embedded = false, onCancel, onCreated }) {
     }
 
     const amount = Math.abs(Number(form.amount || 0));
-    if (!amount || !form.fromBankFormId || !form.toCashFormId) {
+    if (!amount || !form.fromBankFormId) {
       setError(t("common.requiredFields"));
       return;
     }
-    if (Number(form.fromBankFormId) === Number(form.toCashFormId)) {
+    if (form.toCashFormId && Number(form.fromBankFormId) === Number(form.toCashFormId)) {
       setError(t("bankCashWithdrawals.sameAccountError"));
       return;
     }
@@ -120,7 +120,7 @@ function BankCashWithdrawalFormPage({ embedded = false, onCancel, onCreated }) {
         transferPaymentMethodId: transferMethod.id,
         cashPaymentMethodId: cashMethod.id,
         fromBankFormId: Number(form.fromBankFormId),
-        toCashFormId: Number(form.toCashFormId),
+        toCashFormId: form.toCashFormId ? Number(form.toCashFormId) : null,
         fromBankLabel: fromBank ? formatPaymentFormLabel(fromBank) : null,
         toCashLabel: toCash ? formatPaymentFormLabel(toCash) : null,
         cashWithdrawalConceptId: cashWithdrawalConcept.id
@@ -182,7 +182,6 @@ function BankCashWithdrawalFormPage({ embedded = false, onCancel, onCreated }) {
             }}
             placeholder={`-- ${t("transactions.selectAccountPaymentForm")} --`}
             noResultsText={t("common.empty")}
-            required
             selectedPillText={
               cashForms.find((item) => item.id === Number(form.toCashFormId))
                 ? formatPaymentFormLabel(cashForms.find((item) => item.id === Number(form.toCashFormId)))

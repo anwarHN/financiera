@@ -1009,7 +1009,7 @@ export async function createCashWithdrawal({
 }) {
   const safeAmount = Math.abs(Number(amount || 0));
   if (!safeAmount) throw new Error("Invalid amount");
-  if (Number(fromBankFormId) === Number(toCashFormId)) throw new Error("Source and destination must be different.");
+  if (toCashFormId && Number(fromBankFormId) === Number(toCashFormId)) throw new Error("Source and destination must be different.");
 
   const baseName = description?.trim() || "Retiro de efectivo";
   const common = {
@@ -1059,14 +1059,14 @@ export async function createCashWithdrawal({
     type: TRANSACTION_TYPES.incomingPayment,
     name: `${baseName} (entrada)`,
     deliverTo: fromBankLabel || null,
-    deliveryAddress: toCashLabel || null,
+    deliveryAddress: toCashLabel || "Efectivo",
     net: safeAmount,
     total: safeAmount,
     isIncomingPayment: true,
     isOutcomingPayment: false,
     payments: safeAmount,
     paymentMethodId: Number(cashPaymentMethodId),
-    accountPaymentFormId: Number(toCashFormId),
+    accountPaymentFormId: toCashFormId ? Number(toCashFormId) : null,
     sourceTransactionId: outTxRow.id
   };
 
