@@ -69,13 +69,15 @@ function AccountPaymentFormPage({
     try {
       setIsLoading(true);
       const item = await getAccountPaymentFormById(currentId);
+      const resolvedKind = item.kind || defaultKind;
       setForm({
         name: item.name || "",
-        kind: item.kind || defaultKind,
+        kind: resolvedKind,
         provider: item.provider || "",
         reference: item.reference || "",
         employeeId: item.employeeId ? String(item.employeeId) : "",
-        createInternalPayableOnOutgoingPayment: Boolean(item.createInternalPayableOnOutgoingPayment)
+        createInternalPayableOnOutgoingPayment:
+          resolvedKind === "cashbox" ? false : Boolean(item.createInternalPayableOnOutgoingPayment)
       });
     } catch {
       setError(t("common.genericLoadError"));
@@ -112,7 +114,8 @@ function AccountPaymentFormPage({
       kind: fixedKind || form.kind,
       provider: form.provider.trim() || null,
       reference: form.reference.trim() || null,
-      createInternalPayableOnOutgoingPayment: Boolean(form.createInternalPayableOnOutgoingPayment)
+      createInternalPayableOnOutgoingPayment:
+        (fixedKind || form.kind) === "cashbox" ? false : Boolean(form.createInternalPayableOnOutgoingPayment)
     };
     if (form.employeeId) {
       payload.employeeId = Number(form.employeeId);

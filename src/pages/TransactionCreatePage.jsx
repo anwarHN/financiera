@@ -218,23 +218,12 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   const isEdit = Boolean(itemId);
 
   const conceptOptions = useMemo(() => concepts.filter(config.conceptFilter), [concepts, config.conceptFilter]);
-  const accountPayableConcept = useMemo(() => {
-    const flagged = concepts.find((item) => item.isAccountPayableConcept);
-    if (flagged) return flagged;
-
-    return (
-      concepts.find((item) => {
-        const normalizedName = String(item.name || "")
-          .trim()
-          .toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "");
-        return Boolean(item.isSystem) && (normalizedName === "compras de mercaderia" || normalizedName === "merchandise purchases");
-      }) ?? null
-    );
-  }, [concepts]);
   const incomingPaymentConcept = useMemo(
     () => concepts.find((item) => item.isIncomingPaymentConcept) ?? null,
+    [concepts]
+  );
+  const outgoingPaymentConcept = useMemo(
+    () => concepts.find((item) => item.isOutgoingPaymentConcept) ?? null,
     [concepts]
   );
   const isPriorBalanceMode = entryMode === "priorBalance" && (moduleType === "sale" || moduleType === "purchase");
@@ -413,8 +402,12 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
               }
             : null
         );
+        const editableLines =
+          moduleType === "purchase"
+            ? (details || []).filter((line) => Boolean(line.concepts?.isProduct))
+            : details || [];
         setSaleLines(
-          (details || []).map((line) => ({
+          editableLines.map((line) => ({
             rowId: String(line.id || `${Date.now()}-${Math.random()}`),
             conceptId: Number(line.conceptId),
             conceptName: line.concepts?.name || "",
@@ -715,7 +708,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       return;
     }
 
-    const systemConcept = moduleType === "sale" ? incomingPaymentConcept : accountPayableConcept;
+    const systemConcept = moduleType === "sale" ? incomingPaymentConcept : outgoingPaymentConcept;
     if (!systemConcept) {
       setError(t("transactions.missingSystemPaymentConcept"));
       return;
@@ -784,11 +777,6 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       setError(t("transactions.saleValidationError"));
       return;
     }
-    if (moduleType === "purchase" && !accountPayableConcept) {
-      setError(t("transactions.missingSystemPaymentConcept"));
-      return;
-    }
-
     const isInventoryAdjustment = moduleType === "inventoryAdjustment";
     const isCredit = !isInventoryAdjustment && saleHeader.paymentMode === "credit";
     if (!isInventoryAdjustment && !isCredit && !saleHeader.paymentMethodId) {
@@ -845,41 +833,24 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
 
     const detailPayloads =
       moduleType === "purchase"
-        ? [
-            {
-              conceptId: Number(accountPayableConcept.id),
-              quantity: 1,
-              price: lineBasedTotal,
-              net: lineBasedTotal,
-              taxPercentage: 0,
-              tax: 0,
-              discountPercentage: 0,
-              discount: 0,
-              total: lineBasedTotal,
-              additionalCharges: 0,
+        ? saleLines.map((line) => {
+            const amounts = calculateLineAmounts(line);
+            return {
+              conceptId: Number(line.conceptId),
+              quantity: Math.abs(amounts.quantity),
+              price: Math.abs(amounts.price),
+              net: Math.abs(amounts.net),
+              taxPercentage: amounts.taxPercentage,
+              tax: Math.abs(amounts.tax),
+              discountPercentage: amounts.discountPercentage,
+              discount: Math.abs(amounts.discount),
+              total: Math.abs(amounts.total),
+              additionalCharges: Math.abs(amounts.additionalCharges),
               createdById: user.id,
               sellerId: null,
               transactionPaidId: null
-            },
-            ...saleLines.map((line) => {
-              const amounts = calculateLineAmounts(line);
-              return {
-                conceptId: Number(line.conceptId),
-                quantity: Math.abs(amounts.quantity),
-                price: 0,
-                net: 0,
-                taxPercentage: 0,
-                tax: 0,
-                discountPercentage: 0,
-                discount: 0,
-                total: 0,
-                additionalCharges: 0,
-                createdById: user.id,
-                sellerId: null,
-                transactionPaidId: null
-              };
-            })
-          ]
+            };
+          })
         : moduleType === "inventoryAdjustment"
           ? inventoryAdjustmentLines.map((line) => ({
               conceptId: Number(line.conceptId),

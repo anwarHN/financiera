@@ -1,6 +1,7 @@
 import { supabase } from "../lib/supabase";
 
 const PRIOR_BALANCE_TAG = "__prior_balance__";
+const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
 
 export async function getTransactionsForReports(accountId, { dateFrom, dateTo } = {}) {
   let query = supabase
@@ -44,10 +45,10 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
   const validTransactions = (transactions ?? []).filter((tx) => {
     const type = Number(tx.type);
     if (Boolean(tx.isInternalTransfer)) return false;
-    if (Array.isArray(tx.tags) && tx.tags.includes("__inventory_adjustment__")) return false;
+    if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
     const isPriorBalance = Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG);
     const isCashSale = type === 1 && !Boolean(tx.isAccountReceivable);
-    return type === 2 || type === 3 || isCashSale || isPriorBalance || Boolean(tx.isIncomingPayment) || Boolean(tx.isOutcomingPayment);
+    return type === 2 || type === 3 || type === 4 || isCashSale || isPriorBalance || Boolean(tx.isIncomingPayment) || Boolean(tx.isOutcomingPayment);
   });
   if (validTransactions.length === 0) return [];
 
@@ -98,7 +99,8 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
     const conceptName = detail.concepts?.name || "-";
     const parentConceptId = Number(detail.concepts?.parentConceptId || 0);
     const groupName = groupNameById.get(parentConceptId) || tbdGroupName(flowType);
-    const normalizedAmount = Number(detail.total || 0);
+    const rawAmount = Number(detail.total || 0);
+    const normalizedAmount = flowType === "income" ? Math.abs(rawAmount) : -Math.abs(rawAmount);
     const key = `${flowType}::${groupName}::${conceptName}`;
 
     grouped.set(key, {
@@ -128,7 +130,7 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
 
   let txQuery = supabase
     .from("transactions")
-    .select('id, total, currencyId, "accountPaymentFormId", "paymentMethodId", isActive, payment_methods(code)')
+    .select('id, type, total, currencyId, "accountPaymentFormId", "paymentMethodId", isActive, isIncomingPayment, isOutcomingPayment, payment_methods(code)')
     .eq("accountId", accountId)
     .eq("isActive", true)
     .or('accountPaymentFormId.not.is.null,paymentMethodId.not.is.null');
@@ -139,11 +141,22 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
   const { data: transactions, error: txError } = await txQuery;
   if (txError) throw txError;
 
+  const normalizeSignedTotal = (tx) => {
+    const raw = Number(tx.total || 0);
+    const abs = Math.abs(raw);
+    if (tx.isIncomingPayment) return abs;
+    if (tx.isOutcomingPayment) return -abs;
+    const type = Number(tx.type);
+    if (type === 1 || type === 3) return abs;
+    if (type === 2 || type === 4) return -abs;
+    return raw;
+  };
+
   const totalsByFormId = new Map();
   (transactions ?? []).forEach((tx) => {
     const formId = Number(tx.accountPaymentFormId || 0);
     if (!formId) return;
-    totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + Number(tx.total || 0));
+    totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + normalizeSignedTotal(tx));
   });
 
   const rows = (forms ?? []).map((form) => ({
@@ -156,7 +169,7 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
 
   const cashTotal = (transactions ?? []).reduce((acc, tx) => {
     if (tx.payment_methods?.code !== "cash") return acc;
-    return acc + Number(tx.total || 0);
+    return acc + normalizeSignedTotal(tx);
   }, 0);
 
   const hasCashboxRows = rows.some((row) => row.kind === "cashbox");

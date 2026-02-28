@@ -168,7 +168,7 @@ export async function getTransactionById(id) {
 export async function listTransactionDetails(transactionId) {
   const { data, error } = await supabase
     .from("transactionDetails")
-    .select("id, conceptId, quantity, price, net, taxPercentage, tax, discountPercentage, discount, total, additionalCharges, transactionPaidId, concepts(name)")
+    .select("id, conceptId, quantity, price, net, taxPercentage, tax, discountPercentage, discount, total, additionalCharges, transactionPaidId, concepts(name, isProduct, productType)")
     .eq("transactionId", transactionId)
     .order("id");
   if (error) throw error;
