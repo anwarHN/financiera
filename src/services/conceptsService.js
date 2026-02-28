@@ -1,7 +1,7 @@
 import { supabase } from "../lib/supabase";
 
 const selectColumns =
-  "id, name, parentConceptId, isGroup, isIncome, isExpense, isProduct, isPaymentForm, isAccountPayableConcept, isIncomingPaymentConcept, isOutgoingPaymentConcept, isLoanConcept, isLoanPaymentConcept, isCashWithdrawalConcept, isSystem, taxPercentage, price, additionalCharges";
+  "id, name, parentConceptId, isGroup, isIncome, isExpense, isProduct, productType, isPaymentForm, isAccountPayableConcept, isIncomingPaymentConcept, isOutgoingPaymentConcept, isLoanConcept, isLoanPaymentConcept, isCashWithdrawalConcept, isSystem, taxPercentage, price, additionalCharges";
 
 async function attachParentConcept(rows) {
   const source = Array.isArray(rows) ? rows : [];
@@ -34,6 +34,64 @@ async function attachParentConcept(rows) {
   });
 }
 
+async function attachProductStock(rows) {
+  const source = Array.isArray(rows) ? rows : [];
+  if (!source.length) return source;
+
+  const inventoryProductIds = source
+    .filter((row) => row.productType !== "service")
+    .map((row) => Number(row.id))
+    .filter((id) => Number.isFinite(id) && id > 0);
+  const productIds = inventoryProductIds;
+  if (!productIds.length) return source.map((row) => ({ ...row, stock: 0 }));
+
+  const { data: details, error: detailsError } = await supabase
+    .from("transactionDetails")
+    .select("transactionId, conceptId, quantity")
+    .in("conceptId", productIds);
+  if (detailsError) throw detailsError;
+
+  const txIds = Array.from(new Set((details ?? []).map((row) => Number(row.transactionId)).filter((id) => Number.isFinite(id) && id > 0)));
+  if (!txIds.length) return source.map((row) => ({ ...row, stock: 0 }));
+
+  const { data: txRows, error: txError } = await supabase
+    .from("transactions")
+    .select("id, type, tags, isActive")
+    .in("id", txIds)
+    .eq("isActive", true);
+  if (txError) throw txError;
+
+  const txById = new Map((txRows ?? []).map((row) => [Number(row.id), row]));
+  const stockByProductId = new Map();
+
+  for (const detail of details ?? []) {
+    const productId = Number(detail.conceptId);
+    const tx = txById.get(Number(detail.transactionId));
+    if (!tx) continue;
+
+    const qty = Number(detail.quantity || 0);
+    if (!Number.isFinite(qty) || qty === 0) continue;
+
+    let delta = 0;
+    if (Number(tx.type) === 4) {
+      delta = Math.abs(qty);
+    } else if (Number(tx.type) === 1) {
+      delta = -Math.abs(qty);
+    } else if (Number(tx.type) === 2 && Array.isArray(tx.tags) && tx.tags.includes("__inventory_adjustment__")) {
+      delta = qty;
+    }
+
+    if (delta !== 0) {
+      stockByProductId.set(productId, Number(stockByProductId.get(productId) || 0) + delta);
+    }
+  }
+
+  return source.map((row) => ({
+    ...row,
+    stock: Number(stockByProductId.get(Number(row.id)) || 0)
+  }));
+}
+
 export async function listConcepts(accountId) {
   const { data, error } = await supabase
     .from("concepts")
@@ -45,7 +103,8 @@ export async function listConcepts(accountId) {
     throw error;
   }
 
-  return attachParentConcept(data ?? []);
+  const withParent = await attachParentConcept(data ?? []);
+  return attachProductStock(withParent);
 }
 
 export async function listConceptsByModule(accountId, moduleType) {
@@ -81,7 +140,11 @@ export async function listConceptsByModule(accountId, moduleType) {
     throw error;
   }
 
-  return attachParentConcept(data ?? []);
+  const withParent = await attachParentConcept(data ?? []);
+  if (moduleType === "products") {
+    return attachProductStock(withParent);
+  }
+  return withParent;
 }
 
 export async function getConceptById(id) {

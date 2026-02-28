@@ -46,6 +46,7 @@ type CashflowTxRow = {
   type: number;
   total: number;
   currencyId: number | null;
+  tags: string[] | null;
   isIncomingPayment: boolean;
   isOutcomingPayment: boolean;
   isAccountReceivable: boolean;
@@ -279,7 +280,7 @@ async function fetchCashflowConceptTotals(
 ) {
   let txQuery = supabaseAdmin
     .from("transactions")
-    .select("id, type, total, currencyId, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isInternalTransfer")
+    .select("id, type, total, currencyId, tags, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isInternalTransfer")
     .eq("accountId", payload.accountId)
     .eq("isActive", true);
 
@@ -292,6 +293,7 @@ async function fetchCashflowConceptTotals(
 
   const validTransactions = ((transactions ?? []) as CashflowTxRow[]).filter((tx) => {
     if (tx.isInternalTransfer) return false;
+    if (Array.isArray(tx.tags) && tx.tags.includes("__inventory_adjustment__")) return false;
     const isCashSale = Number(tx.type) === 1 && !Boolean(tx.isAccountReceivable);
     return Number(tx.type) === 2 || Number(tx.type) === 3 || isCashSale || tx.isIncomingPayment || tx.isOutcomingPayment;
   });

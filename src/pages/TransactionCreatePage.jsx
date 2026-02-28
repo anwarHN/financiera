@@ -28,6 +28,8 @@ import {
 import { formatNumber } from "../utils/numberFormat";
 import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
 
+const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
+
 const moduleConfig = {
   sale: {
     type: TRANSACTION_TYPES.sale,
@@ -40,8 +42,15 @@ const moduleConfig = {
     type: TRANSACTION_TYPES.purchase,
     titleKey: "transactions.purchasesCreateTitle",
     personFilter: 2,
-    conceptFilter: (item) => Boolean(item.isExpense) && !Boolean(item.isGroup) && !Boolean(item.isOutgoingPaymentConcept),
+    conceptFilter: (item) => Boolean(item.isProduct) && item.productType !== "service",
     backPath: "/purchases"
+  },
+  inventoryAdjustment: {
+    type: TRANSACTION_TYPES.expense,
+    titleKey: "transactions.inventoryAdjustmentsCreateTitle",
+    personFilter: null,
+    conceptFilter: (item) => Boolean(item.isProduct) && item.productType !== "service",
+    backPath: "/inventory-adjustments"
   },
   expense: {
     type: TRANSACTION_TYPES.expense,
@@ -208,6 +217,11 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
   const isEdit = Boolean(itemId);
 
   const conceptOptions = useMemo(() => concepts.filter(config.conceptFilter), [concepts, config.conceptFilter]);
+  const accountPayableConcept = useMemo(
+    () => concepts.find((item) => item.isAccountPayableConcept) ?? null,
+    [concepts]
+  );
+  const isLineBasedTransaction = moduleType === "sale" || moduleType === "purchase" || moduleType === "inventoryAdjustment";
   const personOptions = useMemo(() => {
     if (!config.personFilter) return persons;
     return persons.filter((item) => item.type === config.personFilter);
@@ -361,10 +375,10 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
       setIsLoading(true);
       const [tx, details] = await Promise.all([getTransactionById(itemId), listTransactionDetails(itemId)]);
 
-      if (moduleType === "sale") {
+      if (isLineBasedTransaction) {
         setSaleHeader({
           date: tx.date || initialSaleHeader.date,
-          paymentMode: tx.isAccountReceivable ? "credit" : "cash",
+          paymentMode: tx.isAccountReceivable || tx.isAccountPayable ? "credit" : "cash",
           description: tx.name || "",
           currencyId: tx.currencyId ? String(tx.currencyId) : "",
           referenceNumber: tx.referenceNumber || "",
@@ -472,17 +486,19 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
   };
 
   const addSaleLine = (concept) => {
+    const currentStock = Number(concept.stock || 0);
     setSaleLines((prev) => [
       ...prev,
       {
         rowId: `${concept.id}-${Date.now()}-${Math.random()}`,
         conceptId: concept.id,
         conceptName: concept.name,
-        quantity: 1,
+        quantity: moduleType === "inventoryAdjustment" ? currentStock : 1,
         price: Number(concept.price) || 0,
         taxPercentage: Number(concept.taxPercentage) || 0,
         discountPercentage: 0,
         additionalCharges: Number(concept.additionalCharges) || 0,
+        currentStock,
         sellerId: ""
       }
     ]);
@@ -563,7 +579,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
       setError(t("common.requiredFields"));
       return;
     }
-    if (!account?.accountId || !user?.id || !simpleForm.conceptId || !simpleForm.currencyId) {
+    if (!account?.accountId || !user?.id || !simpleForm.currencyId || (!isLineBasedTransaction && !simpleForm.conceptId)) {
       setError(t("common.requiredFields"));
       return;
     }
@@ -662,55 +678,141 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
       setError(t("common.requiredFields"));
       return;
     }
-    if (!account?.accountId || !user?.id || !selectedClient || saleLines.length === 0 || !saleHeader.currencyId) {
+    const requiresPerson = moduleType === "sale" || moduleType === "purchase";
+    if (!account?.accountId || !user?.id || (requiresPerson && !selectedClient) || saleLines.length === 0 || !saleHeader.currencyId) {
       setError(t("transactions.saleValidationError"));
       return;
     }
+    if (moduleType === "purchase" && !accountPayableConcept) {
+      setError(t("transactions.missingSystemPaymentConcept"));
+      return;
+    }
 
-    const isCredit = saleHeader.paymentMode === "credit";
-    if (!isCredit && !saleHeader.paymentMethodId) {
+    const isInventoryAdjustment = moduleType === "inventoryAdjustment";
+    const isCredit = !isInventoryAdjustment && saleHeader.paymentMode === "credit";
+    if (!isInventoryAdjustment && !isCredit && !saleHeader.paymentMethodId) {
       setError(t("transactions.paymentMethodRequired"));
       return;
     }
-    if (saleRequiresAccountPaymentForm && !saleHeader.accountPaymentFormId) {
+    if (!isInventoryAdjustment && saleRequiresAccountPaymentForm && !saleHeader.accountPaymentFormId) {
       setError(t("transactions.accountPaymentFormRequired"));
       return;
     }
 
+    const inventoryAdjustmentLines =
+      moduleType === "inventoryAdjustment"
+        ? saleLines
+            .map((line) => {
+              const targetStock = Number(line.quantity || 0);
+              const currentStock = Number(line.currentStock || 0);
+              const adjustmentQty = targetStock - currentStock;
+              return { ...line, adjustmentQty };
+            })
+            .filter((line) => Math.abs(Number(line.adjustmentQty || 0)) > 0)
+        : [];
+    if (moduleType === "inventoryAdjustment" && inventoryAdjustmentLines.length === 0) {
+      setError(t("transactions.invalidTransactionAmount"));
+      return;
+    }
+
+    const lineBasedTotal = Number(saleTotals.total || 0);
+    const normalizedTotal = isInventoryAdjustment ? 0 : lineBasedTotal;
     const transactionPayload = buildTransactionPayload({
       isCredit,
-      personId: selectedClient.id,
+      personId: selectedClient?.id || null,
       description: saleHeader.description,
       date: saleHeader.date,
-      totals: saleTotals,
+      totals: {
+        ...saleTotals,
+        net: normalizedTotal,
+        tax: 0,
+        discount: 0,
+        additionalCharges: 0,
+        total: normalizedTotal
+      },
       currencyId: saleHeader.currencyId,
       referenceNumber: saleHeader.referenceNumber,
-      paymentMethodId: isCredit ? null : saleHeader.paymentMethodId,
-      accountPaymentFormId: isCredit ? null : saleHeader.accountPaymentFormId,
+      paymentMethodId: isCredit || isInventoryAdjustment ? null : saleHeader.paymentMethodId,
+      accountPaymentFormId: isCredit || isInventoryAdjustment ? null : saleHeader.accountPaymentFormId,
       projectId: saleHeader.projectId,
-      tags: saleHeader.tags,
+      tags: isInventoryAdjustment
+        ? Array.from(new Set([...(saleHeader.tags || []), INVENTORY_ADJUSTMENT_TAG]))
+        : saleHeader.tags,
       incomingPayment: false,
       includeCreatedById: !isEdit
     });
 
-    const detailPayloads = saleLines.map((line) => {
-      const amounts = calculateLineAmounts(line);
-      return {
-        conceptId: Number(line.conceptId),
-        quantity: amounts.quantity,
-        price: amounts.price,
-        net: amounts.net,
-        taxPercentage: amounts.taxPercentage,
-        tax: amounts.tax,
-        discountPercentage: amounts.discountPercentage,
-        discount: amounts.discount,
-        total: amounts.total,
-        additionalCharges: amounts.additionalCharges,
-        createdById: user.id,
-        sellerId: line.sellerId ? Number(line.sellerId) : null,
-        transactionPaidId: null
-      };
-    });
+    const detailPayloads =
+      moduleType === "purchase"
+        ? [
+            {
+              conceptId: Number(accountPayableConcept.id),
+              quantity: 1,
+              price: lineBasedTotal,
+              net: lineBasedTotal,
+              taxPercentage: 0,
+              tax: 0,
+              discountPercentage: 0,
+              discount: 0,
+              total: lineBasedTotal,
+              additionalCharges: 0,
+              createdById: user.id,
+              sellerId: null,
+              transactionPaidId: null
+            },
+            ...saleLines.map((line) => {
+              const amounts = calculateLineAmounts(line);
+              return {
+                conceptId: Number(line.conceptId),
+                quantity: Math.abs(amounts.quantity),
+                price: 0,
+                net: 0,
+                taxPercentage: 0,
+                tax: 0,
+                discountPercentage: 0,
+                discount: 0,
+                total: 0,
+                additionalCharges: 0,
+                createdById: user.id,
+                sellerId: null,
+                transactionPaidId: null
+              };
+            })
+          ]
+        : moduleType === "inventoryAdjustment"
+          ? inventoryAdjustmentLines.map((line) => ({
+              conceptId: Number(line.conceptId),
+              quantity: Number(line.adjustmentQty),
+              price: 0,
+              net: 0,
+              taxPercentage: 0,
+              tax: 0,
+              discountPercentage: 0,
+              discount: 0,
+              total: 0,
+              additionalCharges: 0,
+              createdById: user.id,
+              sellerId: null,
+              transactionPaidId: null
+            }))
+          : saleLines.map((line) => {
+              const amounts = calculateLineAmounts(line);
+              return {
+                conceptId: Number(line.conceptId),
+                quantity: amounts.quantity,
+                price: amounts.price,
+                net: amounts.net,
+                taxPercentage: amounts.taxPercentage,
+                tax: amounts.tax,
+                discountPercentage: amounts.discountPercentage,
+                discount: amounts.discount,
+                total: amounts.total,
+                additionalCharges: amounts.additionalCharges,
+                createdById: user.id,
+                sellerId: line.sellerId ? Number(line.sellerId) : null,
+                transactionPaidId: null
+              };
+            });
 
     try {
       setIsSaving(true);
@@ -753,7 +855,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
 
       {error && <p className="error-text">{error}</p>}
 
-      {moduleType !== "sale" ? (
+      {!isLineBasedTransaction ? (
         <form className="crud-form" onSubmit={handleSubmitSimple}>
           <section className="crud-form-section">
             <h2 className="crud-form-section-title">{t("transactions.sectionGeneral")}</h2>
@@ -1177,15 +1279,18 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                   ))}
                 </select>
               </label>
-              <label className="field-block">
-                <span>{t("transactions.paymentMode")}</span>
-                <select name="paymentMode" value={saleHeader.paymentMode} onChange={handleSaleHeaderChange}>
-                  <option value="cash">{t("transactions.cash")}</option>
-                  <option value="credit">{t("transactions.credit")}</option>
-                </select>
-              </label>
-            <LookupCombobox
-              label={t("transactions.clientLookup")}
+              {moduleType !== "inventoryAdjustment" ? (
+                <label className="field-block">
+                  <span>{t("transactions.paymentMode")}</span>
+                  <select name="paymentMode" value={saleHeader.paymentMode} onChange={handleSaleHeaderChange}>
+                    <option value="cash">{t("transactions.cash")}</option>
+                    <option value="credit">{t("transactions.credit")}</option>
+                  </select>
+                </label>
+              ) : null}
+            {moduleType === "sale" || moduleType === "purchase" ? (
+              <LookupCombobox
+                label={moduleType === "purchase" ? t("transactions.selectProvider") : t("transactions.clientLookup")}
                 value={clientLookup}
                 onValueChange={(nextValue) => {
                   setClientLookup(nextValue);
@@ -1197,19 +1302,19 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                   setSelectedClient(client);
                   setClientLookup("");
                 }}
-                placeholder={t("transactions.lookupPlaceholder")}
-              onCreateRecord={handleCreatedPerson}
-              required
-              hasError={saleSubmitAttempted && !selectedClient}
-              renderCreateModal={({ isOpen, onClose, onCreated }) =>
+                placeholder={moduleType === "purchase" ? t("transactions.selectProvider") : t("transactions.lookupPlaceholder")}
+                onCreateRecord={handleCreatedPerson}
+                required
+                hasError={saleSubmitAttempted && !selectedClient}
+                renderCreateModal={({ isOpen, onClose, onCreated }) =>
                   isOpen ? (
                     <div className="modal-backdrop">
                       <div className="modal-card" onClick={(event) => event.stopPropagation()}>
                         <PeopleFormPage
                           embedded
-                          personType={1}
-                          titleKey="actions.newClient"
-                          basePath="/clients"
+                          personType={moduleType === "purchase" ? 2 : 1}
+                          titleKey={moduleType === "purchase" ? "actions.newProvider" : "actions.newClient"}
+                          basePath={moduleType === "purchase" ? "/providers" : "/clients"}
                           onCancel={onClose}
                           onCreated={onCreated}
                         />
@@ -1224,6 +1329,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
                   setClientLookup("");
                 }}
               />
+            ) : null}
               <label className="field-block form-span-2">
                 <span>{t("transactions.description")}</span>
                 <input name="description" value={saleHeader.description} onChange={handleSaleHeaderChange} />
@@ -1282,7 +1388,7 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
             </div>
           </section>
 
-          {saleHeader.paymentMode === "cash" && (
+          {moduleType !== "inventoryAdjustment" && saleHeader.paymentMode === "cash" && (
             <section className="crud-form-section">
               <h2 className="crud-form-section-title">{t("transactions.sectionPayment")}</h2>
               <div className="form-grid-2">
@@ -1355,70 +1461,103 @@ function TransactionCreatePage({ moduleType, embedded = false, onCancel, onCreat
             <thead>
               <tr>
                 <th>{t("transactions.product")}</th>
-                <th>{t("transactions.quantity")}</th>
-                <th>{t("transactions.price")}</th>
-                <th>{t("transactions.taxPercentage")}</th>
-                <th>{t("transactions.discountPercentage")}</th>
-                <th>{t("transactions.additionalCharges")}</th>
-                <th>{t("transactions.lineTotal")}</th>
-                <th>{t("transactions.seller")}</th>
+                {moduleType === "inventoryAdjustment" ? (
+                  <>
+                    <th>{t("products.stock")}</th>
+                    <th>{t("transactions.realStock")}</th>
+                    <th>{t("transactions.adjustment")}</th>
+                  </>
+                ) : (
+                  <>
+                    <th>{t("transactions.quantity")}</th>
+                    <th>{t("transactions.price")}</th>
+                    <th>{t("transactions.taxPercentage")}</th>
+                    <th>{t("transactions.discountPercentage")}</th>
+                    <th>{t("transactions.additionalCharges")}</th>
+                    <th>{t("transactions.lineTotal")}</th>
+                  </>
+                )}
+                {moduleType === "sale" ? <th>{t("transactions.seller")}</th> : null}
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
               {saleLines.length === 0 ? (
                 <tr>
-                  <td colSpan={9}>{t("transactions.noLines")}</td>
+                  <td colSpan={moduleType === "sale" ? 9 : moduleType === "inventoryAdjustment" ? 5 : 8}>{t("transactions.noLines")}</td>
                 </tr>
               ) : (
                 saleLines.map((line) => {
                   const lineAmounts = calculateLineAmounts(line);
+                  const currentStock = Number(line.currentStock || 0);
+                  const targetStock = Number(line.quantity || 0);
+                  const adjustmentQty = targetStock - currentStock;
                   return (
                     <tr key={line.rowId}>
                       <td>{line.conceptName}</td>
-                      <td>
-                        <input type="number" min="0" step="0.01" value={line.quantity} onChange={(event) => updateSaleLine(line.rowId, "quantity", event.target.value)} />
-                      </td>
-                      <td>
-                        <input type="number" min="0" step="0.01" value={line.price} onChange={(event) => updateSaleLine(line.rowId, "price", event.target.value)} />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={line.taxPercentage}
-                          onChange={(event) => updateSaleLine(line.rowId, "taxPercentage", event.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={line.discountPercentage}
-                          onChange={(event) => updateSaleLine(line.rowId, "discountPercentage", event.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={line.additionalCharges}
-                          onChange={(event) => updateSaleLine(line.rowId, "additionalCharges", event.target.value)}
-                        />
-                      </td>
-                      <td>{formatNumber(lineAmounts.total)}</td>
-                      <td>
-                        <select value={line.sellerId} onChange={(event) => updateSaleLine(line.rowId, "sellerId", event.target.value)}>
-                          <option value="">{`-- ${t("transactions.optionalSeller")} --`}</option>
-                          {employees.map((employee) => (
-                            <option key={employee.id} value={employee.id}>
-                              {employee.name}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
+                      {moduleType === "inventoryAdjustment" ? (
+                        <>
+                          <td>{formatNumber(currentStock, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={line.quantity}
+                              onChange={(event) => updateSaleLine(line.rowId, "quantity", event.target.value)}
+                            />
+                          </td>
+                          <td>{formatNumber(adjustmentQty, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+                        </>
+                      ) : (
+                        <>
+                          <td>
+                            <input type="number" min="0" step="0.01" value={line.quantity} onChange={(event) => updateSaleLine(line.rowId, "quantity", event.target.value)} />
+                          </td>
+                          <td>
+                            <input type="number" min="0" step="0.01" value={line.price} onChange={(event) => updateSaleLine(line.rowId, "price", event.target.value)} />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={line.taxPercentage}
+                              onChange={(event) => updateSaleLine(line.rowId, "taxPercentage", event.target.value)}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={line.discountPercentage}
+                              onChange={(event) => updateSaleLine(line.rowId, "discountPercentage", event.target.value)}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={line.additionalCharges}
+                              onChange={(event) => updateSaleLine(line.rowId, "additionalCharges", event.target.value)}
+                            />
+                          </td>
+                          <td>{formatNumber(lineAmounts.total)}</td>
+                        </>
+                      )}
+                      {moduleType === "sale" ? (
+                        <td>
+                          <select value={line.sellerId} onChange={(event) => updateSaleLine(line.rowId, "sellerId", event.target.value)}>
+                            <option value="">{`-- ${t("transactions.optionalSeller")} --`}</option>
+                            {employees.map((employee) => (
+                              <option key={employee.id} value={employee.id}>
+                                {employee.name}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      ) : null}
                       <td>
                         <button type="button" className="button-danger" onClick={() => removeSaleLine(line.rowId)}>
                           {t("common.delete")}

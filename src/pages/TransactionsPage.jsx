@@ -18,6 +18,8 @@ import {
 import { formatDate } from "../utils/dateFormat";
 import { formatNumber } from "../utils/numberFormat";
 
+const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
+
 const moduleConfig = {
   sale: {
     type: TRANSACTION_TYPES.sale,
@@ -34,6 +36,10 @@ const moduleConfig = {
   purchase: {
     type: TRANSACTION_TYPES.purchase,
     titleKey: "transactions.purchasesTitle"
+  },
+  inventoryAdjustment: {
+    type: TRANSACTION_TYPES.expense,
+    titleKey: "transactions.inventoryAdjustmentsTitle"
   },
   outgoingPayment: {
     type: TRANSACTION_TYPES.outgoingPayment,
@@ -52,7 +58,7 @@ function TransactionsPage({ moduleType }) {
   const { account, canVoidTransactions } = useAuth();
   const { canCreate, canUpdate } = useModulePermissions("transactions");
   const config = moduleConfig[moduleType];
-  const supportsTableFilters = ["sale", "purchase", "expense", "income"].includes(moduleType);
+  const supportsTableFilters = ["sale", "purchase", "expense", "income", "inventoryAdjustment"].includes(moduleType);
 
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
@@ -128,16 +134,22 @@ function TransactionsPage({ moduleType }) {
         excludeInternalObligations: moduleType === "purchase",
         excludeEmployeeLoans: moduleType === "purchase"
       });
+      const moduleRows =
+        moduleType === "expense"
+          ? data.filter((row) => !(Array.isArray(row.tags) && row.tags.includes(INVENTORY_ADJUSTMENT_TAG)))
+          : moduleType === "inventoryAdjustment"
+            ? data.filter((row) => Array.isArray(row.tags) && row.tags.includes(INVENTORY_ADJUSTMENT_TAG))
+            : data;
       if (moduleType === "income" || moduleType === "expense") {
-        const conceptByTxId = await listPrimaryConceptsByTransactionIds(data.map((row) => row.id));
+        const conceptByTxId = await listPrimaryConceptsByTransactionIds(moduleRows.map((row) => row.id));
         setItems(
-          data.map((row) => ({
+          moduleRows.map((row) => ({
             ...row,
             conceptName: conceptByTxId[Number(row.id)] ?? "-"
           }))
         );
       } else {
-        setItems(data);
+        setItems(moduleRows);
       }
       setError("");
       setPage(1);
@@ -292,13 +304,15 @@ function TransactionsPage({ moduleType }) {
                   <td>{formatDate(item.date, language)}</td>
                   <td>{item.name ?? "-"}</td>
                   <td>
-                    {Array.isArray(item.tags) && item.tags.length > 0 ? (
+                    {Array.isArray(item.tags) && item.tags.filter((tag) => tag !== INVENTORY_ADJUSTMENT_TAG).length > 0 ? (
                       <div className="table-tags">
-                        {item.tags.map((tag, index) => (
+                        {item.tags
+                          .filter((tag) => tag !== INVENTORY_ADJUSTMENT_TAG)
+                          .map((tag, index) => (
                           <span key={`${item.id}-tag-${index}`} className="table-tag-pill">
                             {tag}
                           </span>
-                        ))}
+                          ))}
                       </div>
                     ) : (
                       "-"
@@ -386,7 +400,7 @@ function TransactionsPage({ moduleType }) {
         <div
           className="modal-backdrop"
         >
-          <div className={`modal-card ${moduleType === "sale" ? "modal-card-wide" : ""}`} onClick={(event) => event.stopPropagation()}>
+          <div className={`modal-card ${["sale", "purchase", "inventoryAdjustment"].includes(moduleType) ? "modal-card-wide" : ""}`} onClick={(event) => event.stopPropagation()}>
             <TransactionCreatePage
               embedded
               moduleType={moduleType}

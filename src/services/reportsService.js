@@ -28,7 +28,7 @@ export async function getTransactionsForReports(accountId, { dateFrom, dateTo } 
 export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, currencyId } = {}) {
   let txQuery = supabase
     .from("transactions")
-    .select("id, type, currencyId, isActive, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isInternalTransfer")
+    .select("id, type, currencyId, isActive, tags, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isInternalTransfer")
     .eq("accountId", accountId)
     .eq("isActive", true);
 
@@ -42,6 +42,7 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
   const validTransactions = (transactions ?? []).filter((tx) => {
     const type = Number(tx.type);
     if (Boolean(tx.isInternalTransfer)) return false;
+    if (Array.isArray(tx.tags) && tx.tags.includes("__inventory_adjustment__")) return false;
     const isCashSale = type === 1 && !Boolean(tx.isAccountReceivable);
     return type === 2 || type === 3 || isCashSale || Boolean(tx.isIncomingPayment) || Boolean(tx.isOutcomingPayment);
   });

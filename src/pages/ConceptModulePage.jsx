@@ -84,9 +84,11 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
               <tr>
                 <th>{t("common.name")}</th>
                 <th>{t("concepts.group")}</th>
+                {moduleType === "products" && <th>{t("concepts.productType")}</th>}
                 {moduleType === "products" && <th>{t("concepts.taxPercentage")}</th>}
                 {moduleType === "products" && <th>{t("transactions.price")}</th>}
                 {moduleType === "products" && <th>{t("transactions.additionalCharges")}</th>}
+                {moduleType === "products" && <th className="num-col">{t("products.stock")}</th>}
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
@@ -95,9 +97,13 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
                 <tr key={item.id}>
                   <td>{item.name}</td>
                   <td>{item.parentConcept?.name ?? "-"}</td>
+                  {moduleType === "products" && <td>{item.productType === "service" ? t("concepts.productTypeService") : t("concepts.productTypeProduct")}</td>}
                   {moduleType === "products" && <td>{formatNumber(item.taxPercentage || 0, { showCurrency: false })}</td>}
                   {moduleType === "products" && <td>{formatNumber(item.price || 0)}</td>}
                   {moduleType === "products" && <td>{formatNumber(item.additionalCharges || 0)}</td>}
+                  {moduleType === "products" && (
+                    <td className="num-col">{formatNumber(item.stock || 0, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+                  )}
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[

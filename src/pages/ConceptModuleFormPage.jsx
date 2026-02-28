@@ -33,6 +33,7 @@ const moduleFlags = {
 const initialForm = {
   name: "",
   parentConceptId: "",
+  productType: "product",
   taxPercentage: 0,
   price: 0,
   additionalCharges: 0,
@@ -85,6 +86,7 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
       setForm({
         name: item.name,
         parentConceptId: item.parentConceptId ? String(item.parentConceptId) : "",
+        productType: item.productType === "service" ? "service" : "product",
         taxPercentage: item.taxPercentage ?? 0,
         price: item.price ?? 0,
         additionalCharges: item.additionalCharges ?? 0,
@@ -129,6 +131,7 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
       accountId: account.accountId,
       name: form.name.trim(),
       parentConceptId: moduleType === "groups" ? null : form.parentConceptId ? Number(form.parentConceptId) : null,
+      productType: moduleType === "products" ? form.productType : null,
       taxPercentage: moduleType === "products" ? Number(form.taxPercentage) || 0 : 0,
       price: Number(form.price) || 0,
       additionalCharges: Number(form.additionalCharges) || 0,
@@ -241,6 +244,13 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
                   <option value="expense">{t("concepts.groupTypeExpense")}</option>
               </SelectField>
             )}
+
+            {moduleType === "products" ? (
+              <SelectField label={t("concepts.productType")} name="productType" value={form.productType} onChange={handleChange}>
+                <option value="product">{t("concepts.productTypeProduct")}</option>
+                <option value="service">{t("concepts.productTypeService")}</option>
+              </SelectField>
+            ) : null}
 
             {moduleType === "products" ? (
               <NumberField

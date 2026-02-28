@@ -16,7 +16,12 @@ const MODULES = [
   { id: "products", match: (p) => p.startsWith("/products"), titleKey: "nav.products" },
   {
     id: "transactions",
-    match: (p) => p.startsWith("/sales") || p.startsWith("/purchases") || p.startsWith("/expenses") || p.startsWith("/incomes"),
+    match: (p) =>
+      p.startsWith("/sales") ||
+      p.startsWith("/purchases") ||
+      p.startsWith("/inventory-adjustments") ||
+      p.startsWith("/expenses") ||
+      p.startsWith("/incomes"),
     titleKey: "sidebar.transactions"
   },
   {

@@ -178,6 +178,8 @@ function App() {
         <Route path="employee-absences" element={<EmployeeAbsencesPage />} />
         <Route path="expenses" element={<TransactionsPage moduleType="expense" />} />
         <Route path="expenses/new" element={<TransactionCreatePage moduleType="expense" />} />
+        <Route path="inventory-adjustments" element={<TransactionsPage moduleType="inventoryAdjustment" />} />
+        <Route path="inventory-adjustments/new" element={<TransactionCreatePage moduleType="inventoryAdjustment" />} />
         <Route path="incomes" element={<TransactionsPage moduleType="income" />} />
         <Route path="incomes/new" element={<TransactionCreatePage moduleType="income" />} />
         <Route path="purchases" element={<TransactionsPage moduleType="purchase" />} />

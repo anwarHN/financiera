@@ -46,6 +46,7 @@ declare
   local_currency_symbol text;
   incoming_payment_concept_id bigint;
   outgoing_payment_concept_id bigint;
+  account_payable_concept_id bigint;
   loan_concept_id bigint;
   loan_payment_concept_id bigint;
   cash_withdrawal_concept_id bigint;
@@ -270,6 +271,61 @@ begin
       where "accountId" = new_account_id
         and "isOutgoingPaymentConcept" = true
       limit 1;
+    end if;
+
+    if exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'concepts'
+        and column_name = 'isAccountPayableConcept'
+    ) then
+      insert into public.concepts (
+        "accountId",
+        name,
+        "parentConceptId",
+        "isGroup",
+        "isIncome",
+        "isExpense",
+        "isProduct",
+        "isPaymentForm",
+        "isAccountPayableConcept",
+        "isIncomingPaymentConcept",
+        "isOutgoingPaymentConcept",
+        "isSystem",
+        "taxPercentage",
+        price,
+        "additionalCharges",
+        "createdById"
+      )
+      values (
+        new_account_id,
+        'Compras de mercadería',
+        null,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        0,
+        0,
+        0,
+        new.id
+      )
+      on conflict do nothing
+      returning id into account_payable_concept_id;
+
+      if account_payable_concept_id is null then
+        select id into account_payable_concept_id
+        from public.concepts
+        where "accountId" = new_account_id
+          and "isAccountPayableConcept" = true
+        limit 1;
+      end if;
     end if;
 
     if exists (
