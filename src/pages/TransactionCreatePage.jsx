@@ -206,6 +206,9 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   const [simpleProjectLookup, setSimpleProjectLookup] = useState("");
   const [simpleEmployeeLookup, setSimpleEmployeeLookup] = useState("");
   const [simpleTagLookup, setSimpleTagLookup] = useState("");
+  const [priorBalanceAddPendingProducts, setPriorBalanceAddPendingProducts] = useState(false);
+  const [priorBalanceProductLookup, setPriorBalanceProductLookup] = useState("");
+  const [priorBalanceProductLines, setPriorBalanceProductLines] = useState([]);
   const [saleProjectLookup, setSaleProjectLookup] = useState("");
   const [saleTagLookup, setSaleTagLookup] = useState("");
   const [productLookup, setProductLookup] = useState("");
@@ -345,7 +348,11 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         additionalCharges: created.additionalCharges ?? prev.additionalCharges
       }));
       if (moduleType === "sale") {
-        addSaleLine(created);
+        if (isPriorBalanceMode) {
+          addPriorBalanceProductLine(created);
+        } else {
+          addSaleLine(created);
+        }
       }
     } catch {
       setError(t("common.genericLoadError"));
@@ -503,6 +510,41 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       return;
     }
     setSaleHeader((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const addPriorBalanceProductLine = (concept) => {
+    setPriorBalanceProductLines((prev) => {
+      const existing = prev.find((line) => Number(line.conceptId) === Number(concept.id));
+      if (existing) {
+        return prev.map((line) =>
+          Number(line.conceptId) === Number(concept.id)
+            ? { ...line, quantity: Math.max(Number(line.quantity || 0), 0) + 1 }
+            : line
+        );
+      }
+
+      return [
+        ...prev,
+        {
+          rowId: `prior-balance-${concept.id}-${Date.now()}-${Math.random()}`,
+          conceptId: Number(concept.id),
+          conceptName: concept.name || "",
+          quantity: 1
+        }
+      ];
+    });
+    setPriorBalanceProductLookup("");
+  };
+
+  const updatePriorBalanceProductLine = (rowId, value) => {
+    const safeValue = Math.max(Number(value || 0), 0);
+    setPriorBalanceProductLines((prev) =>
+      prev.map((line) => (line.rowId === rowId ? { ...line, quantity: safeValue } : line))
+    );
+  };
+
+  const removePriorBalanceProductLine = (rowId) => {
+    setPriorBalanceProductLines((prev) => prev.filter((line) => line.rowId !== rowId));
   };
 
   const addSaleLine = (concept) => {
@@ -804,9 +846,44 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       transactionPaidId: null
     };
 
+    const shouldAddPendingProducts = moduleType === "sale" && priorBalanceAddPendingProducts;
+    const pendingProductDetails = shouldAddPendingProducts
+      ? priorBalanceProductLines
+          .map((line) => ({
+            conceptId: Number(line.conceptId),
+            quantity: Math.max(Number(line.quantity || 0), 0)
+          }))
+          .filter((line) => line.conceptId > 0 && line.quantity > 0)
+          .map((line) => ({
+            conceptId: line.conceptId,
+            quantity: line.quantity,
+            quantityDelivered: 0,
+            pendingDelivery: true,
+            price: 0,
+            net: 0,
+            taxPercentage: 0,
+            tax: 0,
+            discountPercentage: 0,
+            discount: 0,
+            total: 0,
+            additionalCharges: 0,
+            createdById: user.id,
+            sellerId: null,
+            transactionPaidId: null
+          }))
+      : [];
+
+    if (shouldAddPendingProducts && pendingProductDetails.length === 0) {
+      setError(t("transactions.priorBalancePendingProductsValidation"));
+      return;
+    }
+
     try {
       setIsSaving(true);
-      const saved = await createTransactionWithDetails({ transaction: transactionPayload, details: [detailPayload] });
+      const saved = await createTransactionWithDetails({
+        transaction: transactionPayload,
+        details: [detailPayload, ...pendingProductDetails]
+      });
       if (embedded) {
         onCreated?.(saved);
       } else {
@@ -1052,6 +1129,89 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
               </label>
             </div>
           </section>
+
+          {moduleType === "sale" ? (
+            <section className="crud-form-section">
+              <h2 className="crud-form-section-title">{t("transactions.sectionDetail")}</h2>
+              <ToggleSwitch
+                label={t("transactions.addPendingDeliveryProducts")}
+                checked={priorBalanceAddPendingProducts}
+                onChange={(event) => setPriorBalanceAddPendingProducts(event.target.checked)}
+                helpText={t("transactions.addPendingDeliveryProductsHelp")}
+              />
+              {priorBalanceAddPendingProducts ? (
+                <>
+                  <LookupCombobox
+                    label={t("transactions.productLookup")}
+                    value={priorBalanceProductLookup}
+                    onValueChange={setPriorBalanceProductLookup}
+                    options={conceptOptions}
+                    getOptionLabel={(product) => product.name || ""}
+                    onSelect={(product) => addPriorBalanceProductLine(product)}
+                    placeholder={t("transactions.productLookupPlaceholder")}
+                    onCreateRecord={handleCreatedConcept}
+                    renderCreateModal={({ isOpen, onClose, onCreated }) =>
+                      isOpen ? (
+                        <div className="modal-backdrop">
+                          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+                            <ConceptModuleFormPage
+                              embedded
+                              moduleType="products"
+                              titleKey="actions.newProduct"
+                              basePath="/products"
+                              onCancel={onClose}
+                              onCreated={onCreated}
+                            />
+                          </div>
+                        </div>
+                      ) : null
+                    }
+                    noResultsText={t("common.empty")}
+                  />
+                  <table className="crud-table invoice-lines-table">
+                    <thead>
+                      <tr>
+                        <th>{t("transactions.product")}</th>
+                        <th className="num-col">{t("inventory.deliveries.pendingQuantity")}</th>
+                        <th>{t("common.actions")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {priorBalanceProductLines.length === 0 ? (
+                        <tr>
+                          <td colSpan={3}>{t("transactions.noLines")}</td>
+                        </tr>
+                      ) : (
+                        priorBalanceProductLines.map((line) => (
+                          <tr key={line.rowId}>
+                            <td>{line.conceptName}</td>
+                            <td className="num-col">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={line.quantity}
+                                onChange={(event) => updatePriorBalanceProductLine(line.rowId, event.target.value)}
+                              />
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                className="button-danger"
+                                onClick={() => removePriorBalanceProductLine(line.rowId)}
+                              >
+                                {t("common.delete")}
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </>
+              ) : null}
+            </section>
+          ) : null}
 
           <div className="crud-form-actions">
             {embedded ? (

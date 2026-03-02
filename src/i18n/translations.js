@@ -554,6 +554,10 @@ export const translations = {
       priorBalanceDateValidation: "La fecha debe ser anterior a la fecha actual.",
       priorBalanceSaleDescription: "Factura por saldo anterior",
       priorBalancePurchaseDescription: "Compra por saldo anterior",
+      addPendingDeliveryProducts: "Agregar productos pendientes de entrega",
+      addPendingDeliveryProductsHelp:
+        "Activa esta opción para registrar productos como pendientes de entrega en esta factura de saldo anterior.",
+      priorBalancePendingProductsValidation: "Agrega al menos un producto pendiente de entrega.",
       realStock: "Stock real",
       adjustment: "Ajuste",
       expensesCreateTitle: "Crear otro gasto",
@@ -1181,6 +1185,10 @@ export const translations = {
       priorBalanceDateValidation: "The date must be before today.",
       priorBalanceSaleDescription: "Prior balance invoice",
       priorBalancePurchaseDescription: "Prior balance purchase",
+      addPendingDeliveryProducts: "Add pending delivery products",
+      addPendingDeliveryProductsHelp:
+        "Enable this option to register products as pending delivery on this prior balance invoice.",
+      priorBalancePendingProductsValidation: "Add at least one pending delivery product.",
       realStock: "Real stock",
       adjustment: "Adjustment",
       expensesCreateTitle: "Create other expense",
