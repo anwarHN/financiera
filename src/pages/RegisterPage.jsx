@@ -9,7 +9,8 @@ const initialForm = {
   email: "",
   password: "",
   countryCode: "",
-  invitationId: ""
+  invitationId: "",
+  acceptedTerms: false
 };
 
 function RegisterPage() {
@@ -42,8 +43,8 @@ function RegisterPage() {
   }
 
   const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = event.target;
+    setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
   };
 
   const handleSubmit = async (event) => {
@@ -107,6 +108,21 @@ function RegisterPage() {
           onChange={handleChange}
           required
         />
+
+        <label className="auth-checkbox">
+          <input
+            name="acceptedTerms"
+            type="checkbox"
+            checked={Boolean(form.acceptedTerms)}
+            onChange={handleChange}
+            required
+          />
+          <span>
+            {t("auth.acceptTermsPrefix")}{" "}
+            <Link to="/terms-of-service">{t("auth.termsOfService")}</Link> {t("auth.and")}{" "}
+            <Link to="/privacy-policy">{t("auth.privacyPolicy")}</Link>.
+          </span>
+        </label>
 
         {error && <p className="error-text">{error}</p>}
         {successMessage && <p className="success-text">{successMessage}</p>}

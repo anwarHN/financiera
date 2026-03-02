@@ -9,7 +9,7 @@ export async function signIn({ email, password }) {
   return data;
 }
 
-export async function signUp({ email, password, fullName, companyName, countryCode, invitationId }) {
+export async function signUp({ email, password, fullName, companyName, countryCode, invitationId, acceptedTerms }) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -18,7 +18,9 @@ export async function signUp({ email, password, fullName, companyName, countryCo
         full_name: fullName,
         company_name: companyName,
         country_code: countryCode,
-        invitation_id: invitationId || null
+        invitation_id: invitationId || null,
+        accepted_terms: Boolean(acceptedTerms),
+        accepted_terms_at: acceptedTerms ? new Date().toISOString() : null
       }
     }
   });

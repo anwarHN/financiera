@@ -3,6 +3,8 @@ import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import TermsOfServicePage from "./pages/TermsOfServicePage";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import AcceptInvitationPage from "./pages/AcceptInvitationPage";
 import DashboardPage from "./pages/DashboardPage";
 import PeoplePage from "./pages/PeoplePage";
@@ -52,6 +54,8 @@ function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
       <Route path="/accept-invitation/:invitationId" element={<AcceptInvitationPage />} />
       <Route
         path="/"

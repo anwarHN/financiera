@@ -136,6 +136,10 @@ export const translations = {
       login: "Entrar",
       goToRegister: "Crear nueva cuenta",
       goToLogin: "Ya tengo una cuenta",
+      acceptTermsPrefix: "Acepto los",
+      termsOfService: "Términos y Condiciones del Servicio",
+      privacyPolicy: "Políticas de Privacidad",
+      and: "y",
       registrationSuccess:
         "Cuenta creada. Si tu proyecto requiere confirmación por correo, revisa tu bandeja antes de iniciar sesión.",
       invalidCredentials: "Credenciales inválidas",
@@ -768,6 +772,10 @@ export const translations = {
       login: "Sign in",
       goToRegister: "Create new account",
       goToLogin: "I already have an account",
+      acceptTermsPrefix: "I accept the",
+      termsOfService: "Terms and Conditions of Service",
+      privacyPolicy: "Privacy Policy",
+      and: "and",
       registrationSuccess: "Account created. If email confirmation is enabled, confirm your email first.",
       invalidCredentials: "Invalid credentials",
       genericError: "Something went wrong, please try again"
