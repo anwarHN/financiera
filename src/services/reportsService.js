@@ -32,7 +32,7 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
   let txQuery = supabase
     .from("transactions")
     .select(
-      "id, type, currencyId, isActive, tags, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer"
+      "id, type, currencyId, isActive, tags, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isCashWithdrawal"
     )
     .eq("accountId", accountId)
     .eq("isActive", true);
@@ -46,7 +46,7 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
 
   const validTransactions = (transactions ?? []).filter((tx) => {
     const type = Number(tx.type);
-    if (Boolean(tx.isInternalTransfer)) return false;
+    if (Boolean(tx.isInternalTransfer) && !Boolean(tx.isCashWithdrawal)) return false;
     if (Boolean(tx.isAccountReceivable) || Boolean(tx.isAccountPayable)) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
     const isCashSale = type === 1 && !Boolean(tx.isAccountReceivable);
@@ -133,7 +133,7 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
   let txQuery = supabase
     .from("transactions")
     .select(
-      'id, type, total, currencyId, "accountPaymentFormId", "paymentMethodId", isActive, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, tags, payment_methods(code)'
+      'id, type, total, currencyId, "accountPaymentFormId", "paymentMethodId", isActive, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isCashWithdrawal, tags, payment_methods(code)'
     )
     .eq("accountId", accountId)
     .eq("isActive", true)
@@ -157,7 +157,7 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
   };
 
   const filteredTransactions = (transactions ?? []).filter((tx) => {
-    if (Boolean(tx.isInternalTransfer)) return false;
+    if (Boolean(tx.isInternalTransfer) && !Boolean(tx.isCashWithdrawal)) return false;
     if (Boolean(tx.isAccountReceivable) || Boolean(tx.isAccountPayable)) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG)) return false;
@@ -196,6 +196,64 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
   }
 
   return rows;
+}
+
+export async function getCashflowOutstandingBalanceSummary(accountId, { asOfDate, currencyId } = {}) {
+  const resolvedDate = asOfDate || new Date().toISOString().slice(0, 10);
+
+  const fetchBalanceByType = async (typeColumn) => {
+    let sourceQuery = supabase
+      .from("transactions")
+      .select("id, total")
+      .eq("accountId", accountId)
+      .eq("isActive", true)
+      .eq(typeColumn, true)
+      .lte("date", resolvedDate)
+      .not(typeColumn, "is", null);
+
+    if (currencyId) {
+      sourceQuery = sourceQuery.eq("currencyId", Number(currencyId));
+    }
+
+    const { data: sourceRows, error: sourceError } = await sourceQuery;
+    if (sourceError) throw sourceError;
+
+    const txRows = (sourceRows ?? []).map((row) => ({ id: Number(row.id), total: Number(row.total || 0) }));
+    if (txRows.length === 0) return 0;
+
+    const txIds = txRows.map((row) => row.id).filter((id) => Number.isFinite(id) && id > 0);
+    if (!txIds.length) return 0;
+
+    let paymentQuery = supabase
+      .from("transactionDetails")
+      .select("transactionPaidId, total, transactions!inner(date, isActive)")
+      .in("transactionPaidId", txIds)
+      .eq("transactions.isActive", true)
+      .lte("transactions.date", resolvedDate);
+
+    const { data: paymentRows, error: paymentError } = await paymentQuery;
+    if (paymentError) throw paymentError;
+
+    const paidBySource = new Map();
+    ((paymentRows ?? [])).forEach((row) => {
+      const sourceId = Number(row.transactionPaidId || 0);
+      if (!Number.isFinite(sourceId) || sourceId <= 0) return;
+      paidBySource.set(sourceId, Number(paidBySource.get(sourceId) || 0) + Math.abs(Number(row.total || 0)));
+    });
+
+    return txRows.reduce((acc, row) => {
+      const total = Math.abs(row.total || 0);
+      const paid = paidBySource.get(row.id) || 0;
+      return acc + Math.max(total - paid, 0);
+    }, 0);
+  };
+
+  const [receivable, payable] = await Promise.all([fetchBalanceByType("isAccountReceivable"), fetchBalanceByType("isAccountPayable")]);
+
+  return {
+    receivable,
+    payable
+  };
 }
 
 export async function getEmployeeAbsenceTotals(accountId, { dateFrom, dateTo } = {}) {

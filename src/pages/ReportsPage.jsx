@@ -9,6 +9,7 @@ import {
   getCashboxesBalanceReport,
   getCashflowBankBalances,
   getCashflowConceptTotals,
+  getCashflowOutstandingBalanceSummary,
   getEmployeeAbsenceTotals,
   getEmployeeLoansReport,
   getExpensesByTagAndPaymentForm,
@@ -54,7 +55,9 @@ function ReportsPage() {
   const [cashflowSummary, setCashflowSummary] = useState({
     previousBalance: 0,
     periodMovements: 0,
-    newBalance: 0
+    newBalance: 0,
+    receivableOutstanding: 0,
+    payableOutstanding: 0
   });
   const [cashflowBankBalances, setCashflowBankBalances] = useState([]);
 
@@ -228,6 +231,11 @@ function ReportsPage() {
           dateTo: filters.dateTo || undefined,
           currencyId: filters.currencyId || undefined
         });
+        const outstandingAsOfDate = filters.dateTo || new Date().toISOString().slice(0, 10);
+        const outstandingSummary = await getCashflowOutstandingBalanceSummary(account.accountId, {
+          asOfDate: outstandingAsOfDate,
+          currencyId: filters.currencyId || undefined
+        });
         setResults(buildResults(rows, selectedReport));
         const periodMovements = rows.reduce((acc, row) => acc + Number(row.total || 0), 0);
 
@@ -246,7 +254,9 @@ function ReportsPage() {
         setCashflowSummary({
           previousBalance,
           periodMovements,
-          newBalance: previousBalance + periodMovements
+          newBalance: previousBalance + periodMovements,
+          receivableOutstanding: outstandingSummary.receivable,
+          payableOutstanding: outstandingSummary.payable
         });
         setCashflowBankBalances(bankBalances);
       } else if (selectedReport === "employee_absences") {
@@ -258,7 +268,9 @@ function ReportsPage() {
         setCashflowSummary({
           previousBalance: 0,
           periodMovements: 0,
-          newBalance: 0
+          newBalance: 0,
+          receivableOutstanding: 0,
+          payableOutstanding: 0
         });
         setCashflowBankBalances([]);
       } else if (selectedReport === "sales_by_employee") {
@@ -271,7 +283,9 @@ function ReportsPage() {
         setCashflowSummary({
           previousBalance: 0,
           periodMovements: 0,
-          newBalance: 0
+          newBalance: 0,
+          receivableOutstanding: 0,
+          payableOutstanding: 0
         });
         setCashflowBankBalances([]);
       } else if (selectedReport === "expenses_by_tag_payment_form") {
@@ -284,7 +298,9 @@ function ReportsPage() {
         setCashflowSummary({
           previousBalance: 0,
           periodMovements: 0,
-          newBalance: 0
+          newBalance: 0,
+          receivableOutstanding: 0,
+          payableOutstanding: 0
         });
         setCashflowBankBalances([]);
       } else if (selectedReport === "employee_loans") {
@@ -297,7 +313,9 @@ function ReportsPage() {
         setCashflowSummary({
           previousBalance: 0,
           periodMovements: 0,
-          newBalance: 0
+          newBalance: 0,
+          receivableOutstanding: 0,
+          payableOutstanding: 0
         });
         setCashflowBankBalances([]);
       } else if (selectedReport === "cashboxes_balance") {
@@ -310,7 +328,9 @@ function ReportsPage() {
         setCashflowSummary({
           previousBalance: 0,
           periodMovements: 0,
-          newBalance: 0
+          newBalance: 0,
+          receivableOutstanding: 0,
+          payableOutstanding: 0
         });
         setCashflowBankBalances([]);
       } else if (selectedReport === "pending_deliveries") {
@@ -323,7 +343,9 @@ function ReportsPage() {
         setCashflowSummary({
           previousBalance: 0,
           periodMovements: 0,
-          newBalance: 0
+          newBalance: 0,
+          receivableOutstanding: 0,
+          payableOutstanding: 0
         });
         setCashflowBankBalances([]);
       } else {
@@ -338,7 +360,9 @@ function ReportsPage() {
         setCashflowSummary({
           previousBalance: 0,
           periodMovements: 0,
-          newBalance: 0
+          newBalance: 0,
+          receivableOutstanding: 0,
+          payableOutstanding: 0
         });
         setCashflowBankBalances([]);
       }
@@ -673,6 +697,14 @@ function ReportsPage() {
                 <div className="cashflow-summary-card">
                   <span>{t("reconciliation.currentBalance")}</span>
                   <strong>{formatNumber(cashflowSummary.newBalance)}</strong>
+                </div>
+                <div className="cashflow-summary-card">
+                  <span>{`${t("reports.accountsReceivable")} (${t("common.balance")})`}</span>
+                  <strong>{formatNumber(cashflowSummary.receivableOutstanding || 0)}</strong>
+                </div>
+                <div className="cashflow-summary-card">
+                  <span>{`${t("reports.accountsPayable")} (${t("common.balance")})`}</span>
+                  <strong>{formatNumber(cashflowSummary.payableOutstanding || 0)}</strong>
                 </div>
               </div>
               <div className="cashflow-summary-grid">

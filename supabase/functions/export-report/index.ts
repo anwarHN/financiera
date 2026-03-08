@@ -54,6 +54,7 @@ type CashflowTxRow = {
   isAccountReceivable: boolean;
   isAccountPayable: boolean;
   isInternalTransfer: boolean;
+  isCashWithdrawal: boolean;
 };
 
 type CashflowConceptDetail = {
@@ -300,7 +301,7 @@ async function fetchCashflowConceptTotals(
   let txQuery = supabaseAdmin
     .from("transactions")
     .select(
-      "id, type, total, currencyId, tags, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer"
+      "id, type, total, currencyId, tags, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isCashWithdrawal"
     )
     .eq("accountId", payload.accountId)
     .eq("isActive", true);
@@ -313,7 +314,7 @@ async function fetchCashflowConceptTotals(
   if (txError) throw txError;
 
   const validTransactions = ((transactions ?? []) as CashflowTxRow[]).filter((tx) => {
-    if (tx.isInternalTransfer) return false;
+    if (tx.isInternalTransfer && !Boolean(tx.isCashWithdrawal)) return false;
     if (tx.isAccountReceivable || tx.isAccountPayable) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
     const isCashSale = Number(tx.type) === 1 && !Boolean(tx.isAccountReceivable);
@@ -388,6 +389,69 @@ async function fetchCashflowConceptTotals(
   return Array.from(grouped.values());
 }
 
+type AccountBalanceSummary = {
+  receivable: number;
+  payable: number;
+};
+
+async function fetchReceivablePayableBalanceSummary(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payload: ExportPayload,
+  asOfDate: string
+): Promise<AccountBalanceSummary> {
+  const fetchGroupBalance = async (typeColumn: "isAccountReceivable" | "isAccountPayable") => {
+    let baseQuery = supabaseAdmin
+      .from("transactions")
+      .select("id, total")
+      .eq("accountId", payload.accountId)
+      .eq("isActive", true)
+      .eq(typeColumn, true)
+      .lte("date", asOfDate);
+
+    if (payload.currencyId != null) {
+      baseQuery = baseQuery.eq("currencyId", payload.currencyId);
+    }
+
+    const { data: txRows, error: txError } = await baseQuery;
+    if (txError) throw txError;
+    const txItems = (txRows ?? []) as { id: number; total: number }[];
+    if (txItems.length === 0) return 0;
+
+    const txIds = txItems.map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
+    let paymentQuery = supabaseAdmin
+      .from("transactionDetails")
+      .select("transactionPaidId, total, transactions!inner(date, isActive)")
+      .in("transactionPaidId", txIds)
+      .eq("transactions.isActive", true)
+      .lte("transactions.date", asOfDate);
+
+    const { data: paymentRows, error: paymentError } = await paymentQuery;
+    if (paymentError) throw paymentError;
+
+    const paidBySource = new Map<number, number>();
+    ((paymentRows ?? []) as Array<{ transactionPaidId: number; total: number }>).forEach((row) => {
+      const sourceId = Number(row.transactionPaidId || 0);
+      if (!Number.isFinite(sourceId) || sourceId <= 0) return;
+      paidBySource.set(sourceId, Number(paidBySource.get(sourceId) || 0) + Math.abs(Number(row.total || 0)));
+    });
+
+    return txItems.reduce((acc, row) => {
+      const total = Math.abs(Number(row.total || 0));
+      const paid = Number(paidBySource.get(Number(row.id) || 0) || 0);
+      const remaining = Math.max(total - paid, 0);
+      return acc + remaining;
+    }, 0);
+  };
+
+  const receivable = await fetchGroupBalance("isAccountReceivable");
+  const payable = await fetchGroupBalance("isAccountPayable");
+
+  return {
+    receivable: sanitizeNumber(receivable),
+    payable: sanitizeNumber(payable)
+  };
+}
+
 async function buildCashflowReport(
   supabaseAdmin: ReturnType<typeof createClient>,
   payload: ExportPayload
@@ -413,6 +477,8 @@ async function buildCashflowReport(
   }));
 
   const periodMovements = exportRows.reduce((acc, row) => acc + Number(row.total || 0), 0);
+  const balanceAsOfDate = payload.dateTo || new Date().toISOString().slice(0, 10);
+  const outstandingSummary = await fetchReceivablePayableBalanceSummary(supabaseAdmin, payload, balanceAsOfDate);
 
   let previousBalance = 0;
   if (payload.dateFrom) {
@@ -434,7 +500,9 @@ async function buildCashflowReport(
     extras: [
       ["Saldo anterior", sanitizeNumber(previousBalance)],
       ["Movimientos del período", sanitizeNumber(periodMovements)],
-      ["Nuevo saldo", sanitizeNumber(newBalance)]
+      ["Nuevo saldo", sanitizeNumber(newBalance)],
+      [`Saldo cuentas por cobrar (hasta ${balanceAsOfDate})`, sanitizeNumber(outstandingSummary.receivable)],
+      [`Saldo cuentas por pagar (hasta ${balanceAsOfDate})`, sanitizeNumber(outstandingSummary.payable)]
     ]
   };
 }
