@@ -231,11 +231,16 @@ function ReportsPage() {
           dateTo: filters.dateTo || undefined,
           currencyId: filters.currencyId || undefined
         });
-        const outstandingAsOfDate = filters.dateTo || new Date().toISOString().slice(0, 10);
-        const outstandingSummary = await getCashflowOutstandingBalanceSummary(account.accountId, {
-          asOfDate: outstandingAsOfDate,
-          currencyId: filters.currencyId || undefined
-        });
+        let outstandingSummary = { receivable: 0, payable: 0 };
+        try {
+          const outstandingAsOfDate = filters.dateTo || new Date().toISOString().slice(0, 10);
+          outstandingSummary = await getCashflowOutstandingBalanceSummary(account.accountId, {
+            asOfDate: outstandingAsOfDate,
+            currencyId: filters.currencyId || undefined
+          });
+        } catch {
+          outstandingSummary = { receivable: 0, payable: 0 };
+        }
         setResults(buildResults(rows, selectedReport));
         const periodMovements = rows.reduce((acc, row) => acc + Number(row.total || 0), 0);
 

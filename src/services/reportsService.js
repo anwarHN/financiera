@@ -224,20 +224,34 @@ export async function getCashflowOutstandingBalanceSummary(accountId, { asOfDate
     const txIds = txRows.map((row) => row.id).filter((id) => Number.isFinite(id) && id > 0);
     if (!txIds.length) return 0;
 
-    let paymentQuery = supabase
+    const { data: paymentRows, error: paymentRowsError } = await supabase
       .from("transactionDetails")
-      .select("transactionPaidId, total, transactions!inner(date, isActive)")
-      .in("transactionPaidId", txIds)
-      .eq("transactions.isActive", true)
-      .lte("transactions.date", resolvedDate);
+      .select("transactionId, transactionPaidId, total")
+      .in("transactionPaidId", txIds);
+    if (paymentRowsError) throw paymentRowsError;
 
-    const { data: paymentRows, error: paymentError } = await paymentQuery;
-    if (paymentError) throw paymentError;
+    const paymentTxIds = (paymentRows ?? [])
+      .map((row) => Number(row.transactionId || 0))
+      .filter((id) => Number.isFinite(id) && id > 0);
 
+    if (!paymentTxIds.length) return 0;
+
+    const { data: paidTransactions, error: paidTxError } = await supabase
+      .from("transactions")
+      .select("id")
+      .eq("accountId", accountId)
+      .eq("isActive", true)
+      .lte("date", resolvedDate)
+      .in("id", paymentTxIds);
+
+    if (paidTxError) throw paidTxError;
+
+    const validPaymentTxIds = new Set((paidTransactions ?? []).map((tx) => Number(tx.id)));
     const paidBySource = new Map();
-    ((paymentRows ?? [])).forEach((row) => {
+    (paymentRows ?? []).forEach((row) => {
       const sourceId = Number(row.transactionPaidId || 0);
-      if (!Number.isFinite(sourceId) || sourceId <= 0) return;
+      const paymentId = Number(row.transactionId || 0);
+      if (!validPaymentTxIds.has(paymentId) || !Number.isFinite(sourceId) || sourceId <= 0) return;
       paidBySource.set(sourceId, Number(paidBySource.get(sourceId) || 0) + Math.abs(Number(row.total || 0)));
     });
 

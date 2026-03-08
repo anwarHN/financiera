@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
+const PRIOR_BALANCE_TAG = "__prior_balance__";
 
 interface ExportPayload {
   accountId: number;
@@ -31,6 +32,10 @@ type BaseTxRow = {
   isAccountPayable: boolean;
   isAccountReceivable: boolean;
   currencyId: number | null;
+  personId: number | null;
+  persons: {
+    name: string;
+  } | null;
 };
 
 type InternalObligationRow = {
@@ -75,11 +80,25 @@ type CashflowGroupedRow = {
   total: number;
 };
 
+type ExportAdditionalSheet = {
+  name: string;
+  rows: Record<string, string | number>[];
+};
+
 type ExportBuildResult = {
   rows: Record<string, string | number>[];
   total: number;
   balance: number;
   extras?: Array<[string, string | number]>;
+  additionalSheets?: ExportAdditionalSheet[];
+};
+
+type CashflowBankBalanceRow = {
+  id: number;
+  name: string;
+  provider: string | null;
+  kind: string;
+  balance: number;
 };
 
 type SalesByEmployeeTxRow = {
@@ -219,7 +238,7 @@ async function authenticateRequest(supabaseAdmin: ReturnType<typeof createClient
 async function fetchBaseTransactions(supabaseAdmin: ReturnType<typeof createClient>, payload: ExportPayload) {
   let txQuery = supabaseAdmin
     .from("transactions")
-    .select("id, date, type, total, balance, isAccountPayable, isAccountReceivable, currencyId")
+    .select('id, date, type, total, balance, isAccountPayable, isAccountReceivable, currencyId, personId, persons(name)')
     .eq("accountId", payload.accountId)
     .eq("isActive", true)
     .order("date", { ascending: false });
@@ -239,19 +258,83 @@ async function buildStandardReport(
 ): Promise<ExportBuildResult> {
   const txRows = await fetchBaseTransactions(supabaseAdmin, payload);
 
-  let reportRows: BaseTxRow[] = [];
-  if (payload.reportId === "sales") reportRows = txRows.filter((tx) => tx.type === 1);
-  if (payload.reportId === "expenses") reportRows = txRows.filter((tx) => tx.type === 2);
-  if (payload.reportId === "receivable") reportRows = txRows.filter((tx) => tx.isAccountReceivable && Number(tx.balance || 0) > 0);
-  if (payload.reportId === "payable") reportRows = txRows.filter((tx) => tx.isAccountPayable && Number(tx.balance || 0) > 0);
+  if (payload.reportId === "sales" || payload.reportId === "expenses") {
+    const reportRows = txRows.filter((tx) => (payload.reportId === "sales" ? tx.type === 1 : tx.type === 2));
+    const rows = reportRows.map((tx) => ({
+      id: tx.id,
+      fecha: tx.date,
+      tipo: txTypeLabel(tx.type),
+      total: sanitizeNumber(tx.total),
+      balance: sanitizeNumber(tx.balance)
+    }));
 
-  const rows = reportRows.map((tx) => ({
-    id: tx.id,
-    fecha: tx.date,
-    tipo: txTypeLabel(tx.type),
-    total: sanitizeNumber(tx.total),
-    balance: sanitizeNumber(tx.balance)
-  }));
+    return {
+      rows,
+      total: rows.reduce((acc, row) => acc + Number(row.total || 0), 0),
+      balance: rows.reduce((acc, row) => acc + Number(row.balance || 0), 0)
+    };
+  }
+
+  const isReceivable = payload.reportId === "receivable";
+  const filteredByParty = txRows.filter((tx) =>
+    isReceivable ? tx.isAccountReceivable && Number(tx.balance || 0) > 0 : tx.isAccountPayable && Number(tx.balance || 0) > 0
+  );
+
+  const partyByKey = new Map<
+    string,
+    {
+      personId: number;
+      personName: string;
+      details: BaseTxRow[];
+      total: number;
+      balance: number;
+    }
+  >();
+
+  filteredByParty.forEach((tx) => {
+    const personId = Number(tx.personId || 0);
+    const personName = tx.persons?.name || "Sin cliente/proveedor";
+    const key = `${personId}-${personName}`;
+
+    const bucket = partyByKey.get(key) || {
+      personId,
+      personName,
+      details: [],
+      total: 0,
+      balance: 0
+    };
+
+    bucket.details.push(tx);
+    bucket.total += Number(tx.total || 0);
+    bucket.balance += Number(tx.balance || 0);
+    partyByKey.set(key, bucket);
+  });
+
+  const rows: Record<string, string | number>[] = [];
+  const orderedParties = Array.from(partyByKey.values()).sort((a, b) => a.personName.localeCompare(b.personName));
+  orderedParties.forEach((bucket) => {
+    rows.push({
+      cliente_proveedor: bucket.personName,
+      id: "",
+      fecha: "-",
+      tipo: "Subtotal",
+      total: sanitizeNumber(bucket.total),
+      balance: sanitizeNumber(bucket.balance)
+    });
+
+    bucket.details
+      .sort((a, b) => Number(b.id || 0) - Number(a.id || 0))
+      .forEach((tx) => {
+        rows.push({
+          cliente_proveedor: bucket.personName,
+          id: tx.id,
+          fecha: tx.date,
+          tipo: txTypeLabel(tx.type),
+          total: sanitizeNumber(tx.total),
+          balance: sanitizeNumber(tx.balance)
+        });
+      });
+  });
 
   return {
     rows,
@@ -389,6 +472,105 @@ async function fetchCashflowConceptTotals(
   return Array.from(grouped.values());
 }
 
+async function fetchCashflowBankBalances(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payload: Pick<ExportPayload, "accountId" | "dateTo" | "currencyId">
+) {
+  const { data: forms, error: formsError } = await supabaseAdmin
+    .from("account_payment_forms")
+    .select("id, name, provider, kind")
+    .eq("accountId", payload.accountId)
+    .eq("isActive", true)
+    .in("kind", ["bank_account", "cashbox"])
+    .order("name", { ascending: true });
+
+  if (formsError) throw formsError;
+
+  let txQuery = supabaseAdmin
+    .from("transactions")
+    .select(
+      'id, type, total, currencyId, "accountPaymentFormId", "paymentMethodId", tags, isActive, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isCashWithdrawal, payment_methods(code)'
+    )
+    .eq("accountId", payload.accountId)
+    .eq("isActive", true)
+    .or("accountPaymentFormId.not.is.null,paymentMethodId.not.is.null");
+
+  if (payload.dateTo) txQuery = txQuery.lte("date", payload.dateTo);
+  if (payload.currencyId != null) txQuery = txQuery.eq("currencyId", payload.currencyId);
+
+  const { data: transactions, error: txError } = await txQuery;
+  if (txError) throw txError;
+
+  const normalizeSignedTotal = (tx: {
+    total: number | null;
+    isIncomingPayment: boolean | null;
+    isOutcomingPayment: boolean | null;
+    type: number | string | null;
+  }) => {
+    const raw = Number(tx.total || 0);
+    const abs = Math.abs(raw);
+    if (Boolean(tx.isIncomingPayment)) return abs;
+    if (Boolean(tx.isOutcomingPayment)) return -abs;
+
+    const type = Number(tx.type || 0);
+    if (type === 1 || type === 3) return abs;
+    if (type === 2 || type === 4) return -abs;
+
+    return raw;
+  };
+
+  const filteredTransactions = (transactions ?? []).filter((tx) => {
+    if (Boolean(tx.isInternalTransfer) && !Boolean(tx.isCashWithdrawal)) return false;
+    if (Boolean(tx.isAccountReceivable) || Boolean(tx.isAccountPayable)) return false;
+    if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
+    if (Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG)) return false;
+    return true;
+  });
+
+  const totalsByFormId = new Map<number, number>();
+  let cashTotal = 0;
+
+  filteredTransactions.forEach((tx) => {
+    const signedAmount = normalizeSignedTotal(tx);
+    const formId = Number(tx.accountPaymentFormId || 0);
+    const methodCode = tx.payment_methods?.code;
+
+    if (formId) {
+      const current = Number(totalsByFormId.get(formId) || 0);
+      totalsByFormId.set(formId, current + signedAmount);
+      return;
+    }
+
+    if (methodCode === "cash") {
+      cashTotal += signedAmount;
+    }
+  });
+
+  const bankBalanceRows = ((forms ?? []) as { id: number; name: string; provider: string | null; kind: string }[]).map((form) => {
+    const balance = sanitizeNumber(totalsByFormId.get(Number(form.id)) || 0);
+    return {
+      id: Number(form.id),
+      name: form.name,
+      provider: form.provider || "",
+      kind: form.kind,
+      balance
+    };
+  });
+
+  const hasCashbox = bankBalanceRows.some((row) => row.kind === "cashbox");
+  if (!hasCashbox) {
+    bankBalanceRows.push({
+      id: -1,
+      name: "Efectivo",
+      provider: "",
+      kind: "cashbox",
+      balance: sanitizeNumber(cashTotal)
+    });
+  }
+
+  return bankBalanceRows;
+}
+
 type AccountBalanceSummary = {
   receivable: number;
   payable: number;
@@ -479,6 +661,13 @@ async function buildCashflowReport(
   const periodMovements = exportRows.reduce((acc, row) => acc + Number(row.total || 0), 0);
   const balanceAsOfDate = payload.dateTo || new Date().toISOString().slice(0, 10);
   const outstandingSummary = await fetchReceivablePayableBalanceSummary(supabaseAdmin, payload, balanceAsOfDate);
+  const bankBalances = await fetchCashflowBankBalances(supabaseAdmin, {
+    accountId: payload.accountId,
+    dateTo: balanceAsOfDate,
+    currencyId: payload.currencyId ?? null
+  });
+
+  const bankBalanceTotal = bankBalances.reduce((acc, row) => acc + Number(row.balance || 0), 0);
 
   let previousBalance = 0;
   if (payload.dateFrom) {
@@ -502,7 +691,20 @@ async function buildCashflowReport(
       ["Movimientos del período", sanitizeNumber(periodMovements)],
       ["Nuevo saldo", sanitizeNumber(newBalance)],
       [`Saldo cuentas por cobrar (hasta ${balanceAsOfDate})`, sanitizeNumber(outstandingSummary.receivable)],
-      [`Saldo cuentas por pagar (hasta ${balanceAsOfDate})`, sanitizeNumber(outstandingSummary.payable)]
+      [`Saldo cuentas por pagar (hasta ${balanceAsOfDate})`, sanitizeNumber(outstandingSummary.payable)],
+      ["Saldo total cuentas bancarias/cajas", sanitizeNumber(bankBalanceTotal)],
+      ["Diferencia contra flujo neto", sanitizeNumber(bankBalanceTotal - newBalance)]
+    ],
+    additionalSheets: [
+      {
+        name: "Saldos cuentas y cajas",
+        rows: bankBalances.map((row) => ({
+          cuenta: row.name,
+          proveedor: row.provider || "-",
+          tipo: row.kind === "cashbox" ? "Caja" : "Banco",
+          saldo: sanitizeNumber(row.balance)
+        }))
+      }
     ]
   };
 }
@@ -948,6 +1150,15 @@ Deno.serve(async (req) => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, metadataSheet, "Resumen");
     XLSX.utils.book_append_sheet(workbook, detailSheet, "Detalle");
+
+    if (report.additionalSheets?.length) {
+      report.additionalSheets.forEach((sheet) => {
+        const safeName = (sheet.name || "Hoja adicional").slice(0, 31) || "Hoja adicional";
+        const worksheet = XLSX.utils.json_to_sheet(sheet.rows);
+        XLSX.utils.book_append_sheet(workbook, worksheet, safeName);
+      });
+    }
+
     const fileBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
 
     const now = new Date();
