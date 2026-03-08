@@ -799,7 +799,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     }
 
     const totalAmount = Math.abs(Number(simpleForm.amount) || 0);
-    if (totalAmount <= 0) {
+    if (!isPriorBalanceMode && totalAmount <= 0) {
       setError(t("transactions.invalidTransactionAmount"));
       return;
     }
@@ -1602,7 +1602,9 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
           <section className="crud-form-section">
             <h2 className="crud-form-section-title">{t("transactions.sectionAmounts")}</h2>
             <div className="form-grid-2">
-            <label className={`field-block ${simpleSubmitAttempted && !(Number(simpleForm.amount) > 0) ? "field-error" : ""}`}>
+            <label
+              className={`field-block ${simpleSubmitAttempted && !isPriorBalanceMode && !(Number(simpleForm.amount) > 0) ? "field-error" : ""}`}
+            >
               <span>{t("transactions.amount")}</span>
               <input name="amount" type="number" min="0" step="0.01" value={simpleForm.amount} onChange={handleSimpleChange} required />
             </label>
