@@ -558,7 +558,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         conceptId: concept.id,
         conceptName: concept.name,
         quantity: initialQuantity,
-        quantityDelivered: moduleType === "sale" ? (isPending ? 0 : initialQuantity) : 0,
+        quantityDelivered: moduleType === "sale" ? initialQuantity : 0,
         pendingDelivery: isPending,
         price: Number(concept.price) || 0,
         taxPercentage: Number(concept.taxPercentage) || 0,
@@ -580,7 +580,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         return {
           ...line,
           pendingDelivery: checked,
-          quantityDelivered: checked ? Math.min(Math.max(Number(line.quantityDelivered || 0), 0), safeQty) : safeQty
+          quantityDelivered: safeQty
         };
       })
     );
@@ -596,9 +596,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         if (field === "pendingDelivery") {
           const isPending = Boolean(value);
           next.pendingDelivery = isPending;
-          next.quantityDelivered = isPending
-            ? Math.min(Math.max(Number(next.quantityDelivered || 0), 0), safeQty)
-            : safeQty;
+          next.quantityDelivered = safeQty;
           return next;
         }
 
@@ -606,6 +604,11 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
           next.quantityDelivered = Boolean(next.pendingDelivery)
             ? Math.min(Math.max(Number(next.quantityDelivered || 0), 0), safeQty)
             : safeQty;
+          return next;
+        }
+
+        if (field === "quantityDelivered") {
+          next.quantityDelivered = Math.min(Math.max(Number(next.quantityDelivered || 0), 0), safeQty);
           return next;
         }
 
@@ -1860,6 +1863,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                   </>
                 )}
                 {moduleType === "sale" ? <th>{t("transactions.seller")}</th> : null}
+                {moduleType === "sale" && invoicePendingDelivery ? <th>{t("inventory.deliveries.deliveredQuantity")}</th> : null}
                 {moduleType === "sale" ? <th>{t("transactions.pendingDeliveryProducts")}</th> : null}
                 <th>{t("common.actions")}</th>
               </tr>
@@ -1867,7 +1871,9 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
             <tbody>
               {saleLines.length === 0 ? (
                 <tr>
-                  <td colSpan={moduleType === "sale" ? 10 : moduleType === "inventoryAdjustment" ? 5 : 8}>{t("transactions.noLines")}</td>
+                  <td colSpan={moduleType === "sale" ? (invoicePendingDelivery ? 11 : 10) : moduleType === "inventoryAdjustment" ? 5 : 8}>
+                    {t("transactions.noLines")}
+                  </td>
                 </tr>
               ) : (
                 saleLines.map((line) => {
@@ -1938,6 +1944,18 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                               </option>
                             ))}
                           </select>
+                        </td>
+                      ) : null}
+                      {moduleType === "sale" ? (
+                        <td>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            disabled={!Boolean(line.pendingDelivery)}
+                            value={line.quantityDelivered}
+                            onChange={(event) => updateSaleLine(line.rowId, "quantityDelivered", event.target.value)}
+                          />
                         </td>
                       ) : null}
                       {moduleType === "sale" ? (

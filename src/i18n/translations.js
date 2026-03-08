@@ -248,9 +248,9 @@ export const translations = {
     },
     products: {
       stock: "Inventario disponible",
-      pendingDelivery: "Pendiente de entrega",
+      pendingDelivery: "Permitir definir cantidad entregada",
       pendingDeliveryHelp:
-        "Si activas esta opción, los productos de la factura quedarán pendientes de entrega y deberás registrar la entrega en Inventario > Entrega de mercadería.",
+        "Activa esta opción para indicar la cantidad de producto entregado al momento de facturar. Si no se ha entregado pon 0 (cero) en la cantidad entregada y esos productos quedarán pendientes de entrega y deberás registrar la entrega en Inventario > Entrega de mercadería.",
       stockFinal: "Stock final"
     },
     inventory: {
@@ -883,9 +883,9 @@ export const translations = {
     },
     products: {
       stock: "Available inventory",
-      pendingDelivery: "Pending delivery",
+      pendingDelivery: "Allow delivered quantity",
       pendingDeliveryHelp:
-        "If you enable this option, invoice items will remain pending delivery and you must register the delivery in Inventory > Merchandise delivery.",
+        "Enable this option to set the delivered product quantity at invoicing. If none has been delivered, enter 0 in the delivered quantity and those products will remain pending delivery and must be registered in Inventory > Merchandise delivery.",
       stockFinal: "Final stock"
     },
     inventory: {
