@@ -1021,29 +1021,51 @@ async function buildCashboxesBalanceReport(
   if (formsError) throw formsError;
 
   const formRows = (forms ?? []) as CashboxBalanceRow[];
-  if (formRows.length === 0) {
-    return { rows: [], total: 0, balance: 0 };
-  }
 
   let txQuery = supabaseAdmin
     .from("transactions")
-    .select('id, total, "accountPaymentFormId", currencyId')
+    .select(
+      'id, type, total, currencyId, "accountPaymentFormId", "paymentMethodId", isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isCashWithdrawal, tags, payment_methods(code)'
+    )
     .eq("accountId", payload.accountId)
     .eq("isActive", true)
-    .not("accountPaymentFormId", "is", null);
+    .or('accountPaymentFormId.not.is.null,paymentMethodId.not.is.null');
 
-  if (payload.dateFrom) txQuery = txQuery.gte("date", payload.dateFrom);
   if (payload.dateTo) txQuery = txQuery.lte("date", payload.dateTo);
   if (payload.currencyId != null) txQuery = txQuery.eq("currencyId", payload.currencyId);
 
   const { data: txRows, error: txError } = await txQuery;
   if (txError) throw txError;
 
+  const normalizeSignedTotal = (tx: {
+    total: number;
+    type: number;
+    isIncomingPayment: boolean;
+    isOutcomingPayment: boolean;
+  }) => {
+    const raw = Number(tx.total || 0);
+    const abs = Math.abs(raw);
+    if (tx.isIncomingPayment) return abs;
+    if (tx.isOutcomingPayment) return -abs;
+    const type = Number(tx.type);
+    if (type === 1 || type === 3) return abs;
+    if (type === 2 || type === 4) return -abs;
+    return raw;
+  };
+
+  const filteredTransactions = (txRows ?? []).filter((row) => {
+    if (Boolean(row.isInternalTransfer) && !Boolean(row.isCashWithdrawal)) return false;
+    if (Boolean(row.isAccountReceivable) || Boolean(row.isAccountPayable)) return false;
+    if (Array.isArray(row.tags) && row.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
+    if (Array.isArray(row.tags) && row.tags.includes(PRIOR_BALANCE_TAG)) return false;
+    return true;
+  });
+
   const totalsByFormId = new Map<number, number>();
-  (txRows ?? []).forEach((row) => {
+  filteredTransactions.forEach((row) => {
     const formId = Number(row.accountPaymentFormId || 0);
     if (!formId) return;
-    totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + Number(row.total || 0));
+    totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + normalizeSignedTotal(row));
   });
 
   const rows = formRows.map((row) => ({
@@ -1053,6 +1075,21 @@ async function buildCashboxesBalanceReport(
     referencia: row.reference || "-",
     saldo: sanitizeNumber(totalsByFormId.get(Number(row.id)) || 0)
   }));
+
+  const cashTotal = filteredTransactions.reduce((acc, row) => {
+    if (row.payment_methods?.code !== "cash") return acc;
+    return acc + normalizeSignedTotal(row);
+  }, 0);
+
+  if (rows.length === 0 && cashTotal !== 0) {
+    rows.push({
+      id: "cash-summary",
+      caja: "Efectivo",
+      entidad: "-",
+      referencia: "-",
+      saldo: sanitizeNumber(cashTotal)
+    });
+  }
 
   return {
     rows,
@@ -1073,7 +1110,6 @@ async function buildPendingDeliveriesReport(
     .eq("type", 1)
     .order("date", { ascending: false });
 
-  if (payload.dateFrom) txQuery = txQuery.gte("date", payload.dateFrom);
   if (payload.dateTo) txQuery = txQuery.lte("date", payload.dateTo);
   if (payload.currencyId != null) txQuery = txQuery.eq("currencyId", payload.currencyId);
 

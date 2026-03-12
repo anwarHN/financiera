@@ -73,7 +73,11 @@ function ReportsPage() {
     () => reportCatalog.find((report) => report.id === selectedReport) ?? reportCatalog[0] ?? null,
     [selectedReport, reportCatalog]
   );
-  const usesAsOfDateOnly = selectedReport === "receivable" || selectedReport === "payable";
+  const usesAsOfDateOnly =
+    selectedReport === "receivable" ||
+    selectedReport === "payable" ||
+    selectedReport === "cashboxes_balance" ||
+    selectedReport === "pending_deliveries";
 
   useEffect(() => {
     if (!reportCatalog.length) return;
@@ -83,7 +87,12 @@ function ReportsPage() {
   }, [reportCatalog, selectedReport]);
 
   useEffect(() => {
-    if (selectedReport === "receivable" || selectedReport === "payable") {
+    if (
+      selectedReport === "receivable" ||
+      selectedReport === "payable" ||
+      selectedReport === "cashboxes_balance" ||
+      selectedReport === "pending_deliveries"
+    ) {
       setFilters((prev) => (prev.dateFrom ? { ...prev, dateFrom: "" } : prev));
     }
   }, [selectedReport]);
@@ -472,13 +481,13 @@ function ReportsPage() {
     const budgetName = budgets.find((b) => String(b.id) === String(filters.budgetId))?.name || "-";
     const projectName = projects.find((p) => String(p.id) === String(filters.projectId))?.name || "-";
     return [
-      `${t("reports.dateFrom")}: ${formatDate(filters.dateFrom, language)}`,
+      ...(!usesAsOfDateOnly ? [`${t("reports.dateFrom")}: ${formatDate(filters.dateFrom, language)}`] : []),
       `${t("reports.dateTo")}: ${formatDate(filters.dateTo, language)}`,
       `${t("reports.currencyFilter")}: ${currencyName}`,
       `${t("reports.budget")}: ${budgetName}`,
       `${t("projects.project")}: ${projectName}`
     ];
-  }, [filters, currencies, budgets, projects, t, language]);
+  }, [filters, currencies, budgets, projects, t, language, usesAsOfDateOnly]);
 
   const total = useMemo(() => {
     if (selectedReport === "receivable" || selectedReport === "payable") {

@@ -571,36 +571,72 @@ export async function getCashboxesBalanceReport(accountId, { dateFrom, dateTo, c
     .order("name", { ascending: true });
 
   if (formsError) throw formsError;
-  if (!forms?.length) return [];
 
   let txQuery = supabase
     .from("transactions")
-    .select('id, total, currencyId, "accountPaymentFormId", isActive')
+    .select(
+      'id, type, total, currencyId, "accountPaymentFormId", "paymentMethodId", isActive, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isCashWithdrawal, tags, payment_methods(code)'
+    )
     .eq("accountId", accountId)
     .eq("isActive", true)
-    .not("accountPaymentFormId", "is", null);
+    .or('accountPaymentFormId.not.is.null,paymentMethodId.not.is.null');
 
-  if (dateFrom) txQuery = txQuery.gte("date", dateFrom);
   if (dateTo) txQuery = txQuery.lte("date", dateTo);
   if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
 
   const { data: transactions, error: txError } = await txQuery;
   if (txError) throw txError;
 
-  const totalsByFormId = new Map();
-  (transactions ?? []).forEach((tx) => {
-    const formId = Number(tx.accountPaymentFormId || 0);
-    if (!formId) return;
-    totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + Number(tx.total || 0));
+  const normalizeSignedTotal = (tx) => {
+    const raw = Number(tx.total || 0);
+    const abs = Math.abs(raw);
+    if (tx.isIncomingPayment) return abs;
+    if (tx.isOutcomingPayment) return -abs;
+    const type = Number(tx.type);
+    if (type === 1 || type === 3) return abs;
+    if (type === 2 || type === 4) return -abs;
+    return raw;
+  };
+
+  const filteredTransactions = (transactions ?? []).filter((tx) => {
+    if (Boolean(tx.isInternalTransfer) && !Boolean(tx.isCashWithdrawal)) return false;
+    if (Boolean(tx.isAccountReceivable) || Boolean(tx.isAccountPayable)) return false;
+    if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
+    if (Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG)) return false;
+    return true;
   });
 
-  return forms.map((form) => ({
+  const totalsByFormId = new Map();
+  filteredTransactions.forEach((tx) => {
+    const formId = Number(tx.accountPaymentFormId || 0);
+    if (!formId) return;
+    totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + normalizeSignedTotal(tx));
+  });
+
+  const rows = (forms ?? []).map((form) => ({
     id: form.id,
     name: form.name,
     provider: form.provider,
     reference: form.reference,
     balance: Number(totalsByFormId.get(Number(form.id)) || 0)
   }));
+
+  const cashTotal = filteredTransactions.reduce((acc, tx) => {
+    if (tx.payment_methods?.code !== "cash") return acc;
+    return acc + normalizeSignedTotal(tx);
+  }, 0);
+
+  if (rows.length === 0 && cashTotal !== 0) {
+    rows.push({
+      id: "cash-summary",
+      name: "Efectivo",
+      provider: "",
+      reference: "",
+      balance: Number(cashTotal || 0)
+    });
+  }
+
+  return rows;
 }
 
 export async function getPendingDeliveriesReport(accountId, { dateFrom, dateTo, currencyId } = {}) {
@@ -611,7 +647,6 @@ export async function getPendingDeliveriesReport(accountId, { dateFrom, dateTo, 
     .eq("isActive", true)
     .eq("type", 1);
 
-  if (dateFrom) txQuery = txQuery.gte("date", dateFrom);
   if (dateTo) txQuery = txQuery.lte("date", dateTo);
   if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
 
