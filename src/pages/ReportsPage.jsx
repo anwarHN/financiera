@@ -13,6 +13,7 @@ import {
   getEmployeeAbsenceTotals,
   getEmployeeLoansReport,
   getExpensesByTagAndPaymentForm,
+  getOutstandingTransactionsForReports,
   getPendingDeliveriesReport,
   getSalesByEmployeeTotals,
   getTransactionsForReports
@@ -345,6 +346,22 @@ function ReportsPage() {
           currencyId: filters.currencyId || undefined
         });
         setResults(rows);
+        setCashflowSummary({
+          previousBalance: 0,
+          periodMovements: 0,
+          newBalance: 0,
+          receivableOutstanding: 0,
+          payableOutstanding: 0
+        });
+        setCashflowBankBalances([]);
+      } else if (selectedReport === "receivable" || selectedReport === "payable") {
+        const rows = await getOutstandingTransactionsForReports(account.accountId, {
+          reportId: selectedReport,
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined,
+          currencyId: filters.currencyId || undefined
+        });
+        setResults(buildResults(rows, selectedReport));
         setCashflowSummary({
           previousBalance: 0,
           periodMovements: 0,

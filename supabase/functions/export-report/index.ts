@@ -252,6 +252,78 @@ async function fetchBaseTransactions(supabaseAdmin: ReturnType<typeof createClie
   return (data ?? []) as BaseTxRow[];
 }
 
+async function fetchOutstandingTransactionsAsOf(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payload: ExportPayload
+) {
+  const asOfDate = payload.dateTo || new Date().toISOString().slice(0, 10);
+  const isReceivable = payload.reportId === "receivable";
+
+  let sourceQuery = supabaseAdmin
+    .from("transactions")
+    .select('id, date, type, total, currencyId, personId, persons(name)')
+    .eq("accountId", payload.accountId)
+    .eq("isActive", true)
+    .eq(isReceivable ? "isAccountReceivable" : "isAccountPayable", true)
+    .lte("date", asOfDate);
+
+  if (payload.dateFrom) sourceQuery = sourceQuery.gte("date", payload.dateFrom);
+  if (payload.currencyId != null) sourceQuery = sourceQuery.eq("currencyId", payload.currencyId);
+
+  const { data: sourceRows, error: sourceError } = await sourceQuery.order("date", { ascending: false });
+  if (sourceError) throw sourceError;
+
+  const txRows = (sourceRows ?? []).map((row) => ({
+    ...row,
+    id: Number(row.id),
+    total: Math.abs(Number(row.total || 0))
+  }));
+  if (!txRows.length) return [];
+
+  const txIds = txRows.map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
+  const { data: paymentRows, error: paymentRowsError } = await supabaseAdmin
+    .from("transactionDetails")
+    .select("transactionId, transactionPaidId, total")
+    .in("transactionPaidId", txIds);
+  if (paymentRowsError) throw paymentRowsError;
+
+  const paymentTxIds = Array.from(
+    new Set((paymentRows ?? []).map((row) => Number(row.transactionId || 0)).filter((id) => Number.isFinite(id) && id > 0))
+  );
+
+  let validPaymentTxIds = new Set<number>();
+  if (paymentTxIds.length > 0) {
+    let paidTransactionsQuery = supabaseAdmin
+      .from("transactions")
+      .select("id")
+      .eq("accountId", payload.accountId)
+      .eq("isActive", true)
+      .lte("date", asOfDate)
+      .in("id", paymentTxIds);
+
+    if (payload.currencyId != null) paidTransactionsQuery = paidTransactionsQuery.eq("currencyId", payload.currencyId);
+
+    const { data: paidTransactions, error: paidTxError } = await paidTransactionsQuery;
+    if (paidTxError) throw paidTxError;
+    validPaymentTxIds = new Set((paidTransactions ?? []).map((tx) => Number(tx.id)));
+  }
+
+  const paidBySource = new Map<number, number>();
+  (paymentRows ?? []).forEach((row) => {
+    const sourceId = Number(row.transactionPaidId || 0);
+    const paymentId = Number(row.transactionId || 0);
+    if (!validPaymentTxIds.has(paymentId) || !Number.isFinite(sourceId) || sourceId <= 0) return;
+    paidBySource.set(sourceId, Number(paidBySource.get(sourceId) || 0) + Math.abs(Number(row.total || 0)));
+  });
+
+  return txRows
+    .map((row) => ({
+      ...row,
+      balance: Math.max(Number(row.total || 0) - Number(paidBySource.get(Number(row.id)) || 0), 0)
+    }))
+    .filter((row) => Number(row.balance || 0) > 0);
+}
+
 async function buildStandardReport(
   supabaseAdmin: ReturnType<typeof createClient>,
   payload: ExportPayload
@@ -276,9 +348,7 @@ async function buildStandardReport(
   }
 
   const isReceivable = payload.reportId === "receivable";
-  const filteredByParty = txRows.filter((tx) =>
-    isReceivable ? tx.isAccountReceivable && Number(tx.balance || 0) > 0 : tx.isAccountPayable && Number(tx.balance || 0) > 0
-  );
+  const filteredByParty = await fetchOutstandingTransactionsAsOf(supabaseAdmin, payload);
 
   const partyByKey = new Map<
     string,

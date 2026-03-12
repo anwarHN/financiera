@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import { TRANSACTION_TYPES } from "./transactionsService";
 
 const selectColumns =
   "id, name, parentConceptId, isGroup, isIncome, isExpense, isProduct, productType, isPaymentForm, isAccountPayableConcept, isIncomingPaymentConcept, isOutgoingPaymentConcept, isLoanConcept, isLoanPaymentConcept, isCashWithdrawalConcept, isSystem, taxPercentage, price, additionalCharges";
@@ -100,6 +101,99 @@ async function attachProductStock(rows) {
     stockFinal:
       Number(currentInventoryByProductId.get(Number(row.id)) || 0) - Number(pendingByProductId.get(Number(row.id)) || 0)
   }));
+}
+
+export async function getProductKardex(accountId, conceptId, { dateFrom, dateTo } = {}) {
+  const productId = Number(conceptId);
+  if (!Number.isFinite(productId) || productId <= 0) return { previousBalance: 0, movements: [], totalBalance: 0 };
+
+  const { data: detailRows, error: detailsError } = await supabase
+    .from("transactionDetails")
+    .select("id, transactionId, conceptId, quantity, quantityDelivered")
+    .eq("conceptId", productId);
+  if (detailsError) throw detailsError;
+
+  const txIds = Array.from(
+    new Set((detailRows ?? []).map((row) => Number(row.transactionId)).filter((id) => Number.isFinite(id) && id > 0))
+  );
+  if (!txIds.length) return { previousBalance: 0, movements: [], totalBalance: 0 };
+
+  const { data: txRows, error: txError } = await supabase
+    .from("transactions")
+    .select('id, accountId, date, type, name, "referenceNumber", isActive')
+    .in("id", txIds)
+    .eq("accountId", accountId)
+    .eq("isActive", true);
+  if (txError) throw txError;
+
+  const txById = new Map((txRows ?? []).map((row) => [Number(row.id), row]));
+  const movements = [];
+  let previousBalance = 0;
+
+  for (const detail of detailRows ?? []) {
+    const tx = txById.get(Number(detail.transactionId));
+    if (!tx) continue;
+
+    const quantity = Math.abs(Number(detail.quantity || 0));
+    const delivered = Math.min(Math.max(Number(detail.quantityDelivered || 0), 0), quantity);
+
+    let movementQuantity = 0;
+    let movementType = null;
+
+    if (Number(tx.type) === TRANSACTION_TYPES.purchase) {
+      movementQuantity = quantity;
+      movementType = "purchase";
+    } else if (Number(tx.type) === TRANSACTION_TYPES.sale) {
+      movementQuantity = -delivered;
+      movementType = "sale";
+    } else {
+      continue;
+    }
+
+    if (!movementQuantity) continue;
+
+    const txDate = String(tx.date || "");
+    if (dateFrom && txDate < dateFrom) {
+      previousBalance += movementQuantity;
+      continue;
+    }
+    if (dateTo && txDate > dateTo) {
+      continue;
+    }
+
+    movements.push({
+      id: Number(detail.id),
+      transactionId: Number(tx.id),
+      date: txDate,
+      type: movementType,
+      name: tx.name || "",
+      referenceNumber: tx.referenceNumber || "",
+      quantityIn: movementQuantity > 0 ? movementQuantity : 0,
+      quantityOut: movementQuantity < 0 ? Math.abs(movementQuantity) : 0,
+      movementQuantity
+    });
+  }
+
+  movements.sort((a, b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    if (a.transactionId !== b.transactionId) return a.transactionId - b.transactionId;
+    return a.id - b.id;
+  });
+
+  let runningBalance = previousBalance;
+  const rows = movements.map((row) => {
+    runningBalance += row.movementQuantity;
+    return {
+      ...row,
+      balance: runningBalance
+    };
+  });
+
+  return {
+    previousBalance,
+    movements: rows,
+    totalBalance: runningBalance
+  };
 }
 
 export async function listConcepts(accountId) {

@@ -28,6 +28,82 @@ export async function getTransactionsForReports(accountId, { dateFrom, dateTo } 
   return data ?? [];
 }
 
+export async function getOutstandingTransactionsForReports(accountId, { reportId, dateFrom, dateTo, currencyId } = {}) {
+  const asOfDate = dateTo || new Date().toISOString().slice(0, 10);
+  const typeColumn = reportId === "receivable" ? "isAccountReceivable" : "isAccountPayable";
+
+  let sourceQuery = supabase
+    .from("transactions")
+    .select("id, personId, date, type, total, currencyId, persons(name)")
+    .eq("accountId", accountId)
+    .eq("isActive", true)
+    .eq(typeColumn, true)
+    .lte("date", asOfDate);
+
+  if (dateFrom) {
+    sourceQuery = sourceQuery.gte("date", dateFrom);
+  }
+  if (currencyId) {
+    sourceQuery = sourceQuery.eq("currencyId", Number(currencyId));
+  }
+
+  const { data: sourceRows, error: sourceError } = await sourceQuery;
+  if (sourceError) throw sourceError;
+
+  const txRows = (sourceRows ?? []).map((row) => ({
+    ...row,
+    id: Number(row.id),
+    personId: Number(row.personId || 0),
+    total: Math.abs(Number(row.total || 0))
+  }));
+  if (txRows.length === 0) return [];
+
+  const txIds = txRows.map((row) => row.id).filter((id) => Number.isFinite(id) && id > 0);
+  const { data: paymentRows, error: paymentRowsError } = await supabase
+    .from("transactionDetails")
+    .select("transactionId, transactionPaidId, total")
+    .in("transactionPaidId", txIds);
+  if (paymentRowsError) throw paymentRowsError;
+
+  const paymentTxIds = Array.from(
+    new Set((paymentRows ?? []).map((row) => Number(row.transactionId || 0)).filter((id) => Number.isFinite(id) && id > 0))
+  );
+
+  let validPaymentTxIds = new Set();
+  if (paymentTxIds.length > 0) {
+    let paymentTxQuery = supabase
+      .from("transactions")
+      .select("id")
+      .eq("accountId", accountId)
+      .eq("isActive", true)
+      .lte("date", asOfDate)
+      .in("id", paymentTxIds);
+
+    if (currencyId) {
+      paymentTxQuery = paymentTxQuery.eq("currencyId", Number(currencyId));
+    }
+
+    const { data: paidTransactions, error: paidTxError } = await paymentTxQuery;
+    if (paidTxError) throw paidTxError;
+    validPaymentTxIds = new Set((paidTransactions ?? []).map((tx) => Number(tx.id)));
+  }
+
+  const paidBySource = new Map();
+  (paymentRows ?? []).forEach((row) => {
+    const sourceId = Number(row.transactionPaidId || 0);
+    const paymentId = Number(row.transactionId || 0);
+    if (!validPaymentTxIds.has(paymentId) || !Number.isFinite(sourceId) || sourceId <= 0) return;
+    paidBySource.set(sourceId, Number(paidBySource.get(sourceId) || 0) + Math.abs(Number(row.total || 0)));
+  });
+
+  return txRows
+    .map((row) => ({
+      ...row,
+      balance: Math.max(Number(row.total || 0) - Number(paidBySource.get(row.id) || 0), 0)
+    }))
+    .filter((row) => Number(row.balance || 0) > 0);
+}
+
 export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, currencyId } = {}) {
   let txQuery = supabase
     .from("transactions")

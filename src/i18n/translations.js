@@ -251,7 +251,20 @@ export const translations = {
       pendingDelivery: "Pendiente de entrega",
       pendingDeliveryHelp:
         "Activa esta opción para indicar la cantidad de producto entregado al momento de facturar. Si no se ha entregado pon 0 (cero) en la cantidad entregada y esos productos quedarán pendientes de entrega y deberás registrar la entrega en Inventario > Entrega de mercadería.",
-      stockFinal: "Inventario disponible"
+      stockFinal: "Inventario disponible",
+      kardexReport: "Reporte Kardex",
+      kardexFiltersTitle: "Filtros del Kardex",
+      kardexTitle: "Kardex del producto",
+      kardexMovements: "Movimientos",
+      kardexInvalidRange: "La fecha desde no puede ser mayor que la fecha hasta.",
+      kardexMovementType: "Movimiento",
+      kardexQuantityIn: "Entrada",
+      kardexQuantityOut: "Salida",
+      kardexRunningBalance: "Saldo acumulado",
+      kardexPreviousBalance: "Saldo anterior",
+      kardexTotalBalance: "Saldo total",
+      kardexPurchase: "Compra",
+      kardexSale: "Factura"
     },
     inventory: {
       deliveries: {
@@ -886,7 +899,20 @@ export const translations = {
       pendingDelivery: "Pending delivery",
       pendingDeliveryHelp:
         "Enable this option to set the delivered product quantity at invoicing. If none has been delivered, enter 0 in the delivered quantity and those products will remain pending delivery and must be registered in Inventory > Merchandise delivery.",
-      stockFinal: "Available inventory"
+      stockFinal: "Available inventory",
+      kardexReport: "Kardex report",
+      kardexFiltersTitle: "Kardex filters",
+      kardexTitle: "Product kardex",
+      kardexMovements: "Movements",
+      kardexInvalidRange: "From date cannot be later than to date.",
+      kardexMovementType: "Movement",
+      kardexQuantityIn: "In",
+      kardexQuantityOut: "Out",
+      kardexRunningBalance: "Running balance",
+      kardexPreviousBalance: "Previous balance",
+      kardexTotalBalance: "Total balance",
+      kardexPurchase: "Purchase",
+      kardexSale: "Invoice"
     },
     inventory: {
       deliveries: {

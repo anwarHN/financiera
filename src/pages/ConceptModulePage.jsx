@@ -6,10 +6,16 @@ import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { useModulePermissions } from "../hooks/useModulePermissions";
-import { deleteConcept, listConceptsByModule } from "../services/conceptsService";
+import { deleteConcept, getProductKardex, listConceptsByModule } from "../services/conceptsService";
 import { formatNumber } from "../utils/numberFormat";
 
 const pageSize = 10;
+const buildInitialKardexFilters = () => {
+  const today = new Date();
+  const dateTo = today.toISOString().slice(0, 10);
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+  return { dateFrom: monthStart, dateTo };
+};
 
 function ConceptModulePage({ moduleType, titleKey, basePath }) {
   const { t } = useI18n();
@@ -20,9 +26,16 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [kardexItem, setKardexItem] = useState(null);
+  const [kardexFilters, setKardexFilters] = useState(buildInitialKardexFilters);
+  const [kardexData, setKardexData] = useState(null);
+  const [kardexError, setKardexError] = useState("");
+  const [isKardexLoading, setIsKardexLoading] = useState(false);
   const isCreateModalOpen = searchParams.get("create") === "1" && canCreate;
   const editId = searchParams.get("edit");
   const isEditModalOpen = Boolean(editId) && canUpdate;
+  const isKardexFiltersModalOpen = Boolean(kardexItem) && !kardexData;
+  const isKardexResultModalOpen = Boolean(kardexItem) && Boolean(kardexData);
 
   useEffect(() => {
     if (!account?.accountId) {
@@ -65,6 +78,48 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
     next.delete("create");
     next.delete("edit");
     setSearchParams(next);
+  };
+
+  const openKardexModal = (item) => {
+    setKardexItem(item);
+    setKardexData(null);
+    setKardexError("");
+    setKardexFilters(buildInitialKardexFilters());
+  };
+
+  const closeKardexModal = () => {
+    setKardexItem(null);
+    setKardexData(null);
+    setKardexError("");
+    setIsKardexLoading(false);
+  };
+
+  const handleKardexFilterChange = (event) => {
+    const { name, value } = event.target;
+    setKardexFilters((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleRunKardex = async (event) => {
+    event.preventDefault();
+    if (!account?.accountId || !kardexItem?.id || !kardexFilters.dateFrom || !kardexFilters.dateTo) {
+      setKardexError(t("common.requiredFields"));
+      return;
+    }
+    if (kardexFilters.dateFrom > kardexFilters.dateTo) {
+      setKardexError(t("products.kardexInvalidRange"));
+      return;
+    }
+
+    try {
+      setIsKardexLoading(true);
+      const report = await getProductKardex(account.accountId, kardexItem.id, kardexFilters);
+      setKardexData(report);
+      setKardexError("");
+    } catch {
+      setKardexError(t("common.genericLoadError"));
+    } finally {
+      setIsKardexLoading(false);
+    }
   };
 
   return (
@@ -123,6 +178,15 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[
+                        ...(moduleType === "products"
+                          ? [
+                              {
+                                key: "kardex",
+                                label: t("products.kardexReport"),
+                                onClick: () => openKardexModal(item)
+                              }
+                            ]
+                          : []),
                         ...(item.isSystem || !canUpdate
                           ? []
                           : [
@@ -179,6 +243,146 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
                 closeModal();
               }}
             />
+          </div>
+        </div>
+      ) : null}
+
+      {isKardexFiltersModalOpen ? (
+        <div className="modal-backdrop">
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <form className="crud-form" onSubmit={handleRunKardex}>
+              <section className="crud-form-section">
+                <h2 className="crud-form-section-title">{t("products.kardexFiltersTitle")}</h2>
+                <div className="form-grid-2">
+                  <label className="field-block form-span-2">
+                    <span>{t("common.name")}</span>
+                    <input value={kardexItem?.name || ""} readOnly />
+                  </label>
+                  <label className="field-block">
+                    <span>{t("reports.dateFrom")}</span>
+                    <input type="date" name="dateFrom" value={kardexFilters.dateFrom} onChange={handleKardexFilterChange} required />
+                  </label>
+                  <label className="field-block">
+                    <span>{t("reports.dateTo")}</span>
+                    <input type="date" name="dateTo" value={kardexFilters.dateTo} onChange={handleKardexFilterChange} required />
+                  </label>
+                </div>
+              </section>
+              {kardexError ? <p className="error-text">{kardexError}</p> : null}
+              <div className="crud-form-actions">
+                <button type="button" className="button-secondary" onClick={closeKardexModal}>
+                  {t("common.cancel")}
+                </button>
+                <button type="submit" disabled={isKardexLoading} className={isKardexLoading ? "is-saving" : ""}>
+                  {isKardexLoading ? t("common.loading") : t("reports.run")}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {isKardexResultModalOpen ? (
+        <div className="modal-backdrop">
+          <div className="modal-card modal-card-wide" onClick={(event) => event.stopPropagation()}>
+            <div className="crud-form">
+              <section className="crud-form-section">
+                <h2 className="crud-form-section-title">{t("products.kardexTitle")}</h2>
+                <div className="form-grid-2">
+                  <label className="field-block form-span-2">
+                    <span>{t("common.name")}</span>
+                    <input value={kardexItem?.name || ""} readOnly />
+                  </label>
+                  <label className="field-block">
+                    <span>{t("reports.dateFrom")}</span>
+                    <input value={kardexFilters.dateFrom} readOnly />
+                  </label>
+                  <label className="field-block">
+                    <span>{t("reports.dateTo")}</span>
+                    <input value={kardexFilters.dateTo} readOnly />
+                  </label>
+                </div>
+              </section>
+
+              <section className="crud-form-section">
+                <h2 className="crud-form-section-title">{t("products.kardexMovements")}</h2>
+                <table className="crud-table">
+                  <thead>
+                    <tr>
+                      <th>{t("transactions.date")}</th>
+                      <th>{t("transactions.referenceNumber")}</th>
+                      <th>{t("transactions.description")}</th>
+                      <th>{t("products.kardexMovementType")}</th>
+                      <th className="num-col">{t("products.kardexQuantityIn")}</th>
+                      <th className="num-col">{t("products.kardexQuantityOut")}</th>
+                      <th className="num-col">{t("products.kardexRunningBalance")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>{kardexFilters.dateFrom}</td>
+                      <td>-</td>
+                      <td>{t("products.kardexPreviousBalance")}</td>
+                      <td>-</td>
+                      <td className="num-col">-</td>
+                      <td className="num-col">-</td>
+                      <td className="num-col">
+                        {formatNumber(kardexData.previousBalance || 0, {
+                          showCurrency: false,
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 2
+                        })}
+                      </td>
+                    </tr>
+                    {kardexData.movements.length === 0 ? (
+                      <tr>
+                        <td colSpan={7}>{t("common.empty")}</td>
+                      </tr>
+                    ) : (
+                      kardexData.movements.map((row) => (
+                        <tr key={`${row.transactionId}-${row.id}`}>
+                          <td>{row.date}</td>
+                          <td>{row.referenceNumber || "-"}</td>
+                          <td>{row.name || "-"}</td>
+                          <td>{row.type === "purchase" ? t("products.kardexPurchase") : t("products.kardexSale")}</td>
+                          <td className="num-col">
+                            {row.quantityIn
+                              ? formatNumber(row.quantityIn, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })
+                              : "-"}
+                          </td>
+                          <td className="num-col">
+                            {row.quantityOut
+                              ? formatNumber(row.quantityOut, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })
+                              : "-"}
+                          </td>
+                          <td className="num-col">
+                            {formatNumber(row.balance, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                    <tr>
+                      <td colSpan={6}><strong>{t("products.kardexTotalBalance")}</strong></td>
+                      <td className="num-col">
+                        <strong>
+                          {formatNumber(kardexData.totalBalance || 0, {
+                            showCurrency: false,
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 2
+                          })}
+                        </strong>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+
+              <div className="crud-form-actions">
+                <button type="button" className="button-secondary" onClick={closeKardexModal}>
+                  {t("common.cancel")}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       ) : null}
