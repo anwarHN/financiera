@@ -1,12 +1,14 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import LookupCombobox from "../components/LookupCombobox";
+import InventoryDeliveryHistoryModal from "../components/InventoryDeliveryHistoryModal";
 import Pagination from "../components/Pagination";
 import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { useModulePermissions } from "../hooks/useModulePermissions";
 import {
+  listInventoryDeliveryHistory,
   listPendingDeliveryInvoices,
   listTransactionDetails,
   registerInventoryDelivery
@@ -26,6 +28,12 @@ function InventoryDeliveriesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [page, setPage] = useState(1);
   const [deliveryDraft, setDeliveryDraft] = useState([]);
+  const [deliveryHistoryModal, setDeliveryHistoryModal] = useState({
+    open: false,
+    transaction: null,
+    history: [],
+    isLoading: false
+  });
   const [invoiceLookup, setInvoiceLookup] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
   const isCreateModalOpen = searchParams.get("create") === "1" && (canCreate || canUpdate);
@@ -108,6 +116,42 @@ function InventoryDeliveriesPage() {
     setInvoiceLookup("");
   };
 
+  const openDeliveryHistoryModal = async (invoice) => {
+    try {
+      setDeliveryHistoryModal({
+        open: true,
+        transaction: invoice,
+        history: [],
+        isLoading: true
+      });
+      const history = await listInventoryDeliveryHistory(invoice.id);
+      setDeliveryHistoryModal({
+        open: true,
+        transaction: invoice,
+        history,
+        isLoading: false
+      });
+      setError("");
+    } catch {
+      setError(t("common.genericLoadError"));
+      setDeliveryHistoryModal({
+        open: false,
+        transaction: null,
+        history: [],
+        isLoading: false
+      });
+    }
+  };
+
+  const closeDeliveryHistoryModal = () => {
+    setDeliveryHistoryModal({
+      open: false,
+      transaction: null,
+      history: [],
+      isLoading: false
+    });
+  };
+
   const handleDraftChange = (detailId, value) => {
     setDeliveryDraft((prev) =>
       prev.map((line) => {
@@ -165,6 +209,7 @@ function InventoryDeliveriesPage() {
                 <th className="num-col">ID</th>
                 <th>{t("transactions.date")}</th>
                 <th>{t("transactions.person")}</th>
+                <th>{t("transactions.detailLines")}</th>
                 <th className="num-col">{t("transactions.total")}</th>
                 <th className="num-col">{t("inventory.deliveries.pendingUnits")}</th>
                 <th>{t("common.actions")}</th>
@@ -172,11 +217,43 @@ function InventoryDeliveriesPage() {
             </thead>
             <tbody>
               {paginatedItems.map((row) => (
-                <Fragment key={row.id}>
                   <tr key={row.id}>
                     <td className="num-col">{row.id}</td>
                     <td>{formatDate(row.date, language)}</td>
                     <td>{row.persons?.name || "-"}</td>
+                    <td>
+                      <div className="delivery-line-summary">
+                        {(row.details || []).map((detail) => (
+                          <div key={`${row.id}-detail-${detail.id}`} className="delivery-line-summary-item">
+                            <strong>{detail.productName || "-"}</strong>
+                            <span>
+                              {t("transactions.quantity")}:{" "}
+                              {formatNumber(detail.quantity || 0, {
+                                showCurrency: false,
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 2
+                              })}
+                            </span>
+                            <span>
+                              {t("inventory.deliveries.deliveredQuantity")}:{" "}
+                              {formatNumber(detail.quantityDelivered || 0, {
+                                showCurrency: false,
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 2
+                              })}
+                            </span>
+                            <span>
+                              {t("inventory.deliveries.pendingQuantity")}:{" "}
+                              {formatNumber(detail.pendingQuantity || 0, {
+                                showCurrency: false,
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 2
+                              })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </td>
                     <td className="num-col">{formatNumber(row.total || 0)}</td>
                     <td className="num-col">
                       {formatNumber(row.pendingTotal || 0, {
@@ -187,59 +264,21 @@ function InventoryDeliveriesPage() {
                     </td>
                     <td className="table-actions">
                       <RowActionsMenu
-                        actions={[
-                          {
-                            key: "deliver",
-                            label: t("inventory.deliveries.register"),
-                            onClick: () => openModalForInvoice(row.id)
-                          }
-                        ]}
-                      />
-                    </td>
+                      actions={[
+                        {
+                          key: "deliver",
+                          label: t("inventory.deliveries.register"),
+                          onClick: () => openModalForInvoice(row.id)
+                        },
+                        {
+                          key: "history",
+                          label: t("inventory.deliveries.viewHistory"),
+                          onClick: () => openDeliveryHistoryModal(row)
+                        }
+                      ]}
+                    />
+                  </td>
                   </tr>
-                  <tr className="nested-table-row">
-                    <td colSpan={6}>
-                      <table className="crud-table nested-crud-table">
-                        <thead>
-                          <tr>
-                            <th>{t("transactions.product")}</th>
-                            <th className="num-col">{t("transactions.quantity")}</th>
-                            <th className="num-col">{t("inventory.deliveries.deliveredQuantity")}</th>
-                            <th className="num-col">{t("inventory.deliveries.pendingQuantity")}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(row.details || []).map((detail) => (
-                            <tr key={`${row.id}-detail-${detail.id}`}>
-                              <td>{detail.productName || "-"}</td>
-                              <td className="num-col">
-                                {formatNumber(detail.quantity || 0, {
-                                  showCurrency: false,
-                                  minimumFractionDigits: 0,
-                                  maximumFractionDigits: 2
-                                })}
-                              </td>
-                              <td className="num-col">
-                                {formatNumber(detail.quantityDelivered || 0, {
-                                  showCurrency: false,
-                                  minimumFractionDigits: 0,
-                                  maximumFractionDigits: 2
-                                })}
-                              </td>
-                              <td className="num-col">
-                                {formatNumber(detail.pendingQuantity || 0, {
-                                  showCurrency: false,
-                                  minimumFractionDigits: 0,
-                                  maximumFractionDigits: 2
-                                })}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </td>
-                  </tr>
-                </Fragment>
               ))}
             </tbody>
           </table>
@@ -376,6 +415,14 @@ function InventoryDeliveriesPage() {
           </div>
         </div>
       ) : null}
+
+      <InventoryDeliveryHistoryModal
+        isOpen={deliveryHistoryModal.open}
+        onClose={closeDeliveryHistoryModal}
+        transaction={deliveryHistoryModal.transaction}
+        history={deliveryHistoryModal.history}
+        isLoading={deliveryHistoryModal.isLoading}
+      />
     </div>
   );
 }

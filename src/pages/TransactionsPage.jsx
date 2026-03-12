@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useSearchParams } from "react-router-dom";
+import InventoryDeliveryHistoryModal from "../components/InventoryDeliveryHistoryModal";
 import Pagination from "../components/Pagination";
 import PaymentRegisterModal from "../components/PaymentRegisterModal";
 import RowActionsMenu from "../components/RowActionsMenu";
@@ -12,6 +13,7 @@ import { useModulePermissions } from "../hooks/useModulePermissions";
 import {
   createSaleReturnTransaction,
   deactivateTransaction,
+  listInventoryDeliveryHistory,
   listPrimaryConceptsByTransactionIds,
   listPaymentsForTransaction,
   listReturnableSaleDetails,
@@ -90,6 +92,12 @@ function TransactionsPage({
     open: false,
     transaction: null,
     payments: [],
+    isLoading: false
+  });
+  const [deliveryHistoryModal, setDeliveryHistoryModal] = useState({
+    open: false,
+    transaction: null,
+    history: [],
     isLoading: false
   });
   const [returnModal, setReturnModal] = useState({
@@ -294,6 +302,42 @@ function TransactionsPage({
       open: false,
       transaction: null,
       payments: [],
+      isLoading: false
+    });
+  };
+
+  const openDeliveryHistoryModal = async (transaction) => {
+    try {
+      setDeliveryHistoryModal({
+        open: true,
+        transaction,
+        history: [],
+        isLoading: true
+      });
+      const history = await listInventoryDeliveryHistory(transaction.id);
+      setDeliveryHistoryModal({
+        open: true,
+        transaction,
+        history,
+        isLoading: false
+      });
+      setError("");
+    } catch {
+      setError(t("common.genericLoadError"));
+      setDeliveryHistoryModal({
+        open: false,
+        transaction: null,
+        history: [],
+        isLoading: false
+      });
+    }
+  };
+
+  const closeDeliveryHistoryModal = () => {
+    setDeliveryHistoryModal({
+      open: false,
+      transaction: null,
+      history: [],
       isLoading: false
     });
   };
@@ -531,7 +575,16 @@ function TransactionsPage({
                                 key: "payments-detail",
                                 label: t("transactions.viewPayments"),
                                 onClick: () => openPaymentsDetailModal(item)
-                              }
+                              },
+                              ...(moduleType === "sale"
+                                ? [
+                                    {
+                                      key: "delivery-history",
+                                      label: t("inventory.deliveries.viewHistory"),
+                                      onClick: () => openDeliveryHistoryModal(item)
+                                    }
+                                  ]
+                                : [])
                             ]
                           : []),
                         ...(moduleType === "purchase" && Number(item.balance || 0) > 0
@@ -799,6 +852,14 @@ function TransactionsPage({
           </div>
         </div>
       ) : null}
+
+      <InventoryDeliveryHistoryModal
+        isOpen={deliveryHistoryModal.open}
+        onClose={closeDeliveryHistoryModal}
+        transaction={deliveryHistoryModal.transaction}
+        history={deliveryHistoryModal.history}
+        isLoading={deliveryHistoryModal.isLoading}
+      />
     </div>
   );
 }

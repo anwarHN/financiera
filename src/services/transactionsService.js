@@ -397,13 +397,15 @@ export async function registerInventoryDelivery({ transactionId, deliveries = []
   const detailIds = toDeliverRows.map((row) => row.detailId);
   const { data: currentDetails, error: currentError } = await supabase
     .from("transactionDetails")
-    .select("id, transactionId, quantity, quantityDelivered")
+    .select("id, transactionId, conceptId, quantity, quantityDelivered, transactions(accountId)")
     .in("id", detailIds)
     .eq("transactionId", txId);
   if (currentError) throw currentError;
 
   const currentById = new Map((currentDetails ?? []).map((row) => [Number(row.id), row]));
   const updates = [];
+  const historyRows = [];
+  const deliveryBatchKey = `delivery-${txId}-${Date.now()}`;
 
   for (const row of toDeliverRows) {
     const current = currentById.get(row.detailId);
@@ -412,8 +414,18 @@ export async function registerInventoryDelivery({ transactionId, deliveries = []
     const delivered = Math.max(Number(current.quantityDelivered || 0), 0);
     const pending = Math.max(qty - delivered, 0);
     if (pending <= 0) continue;
-    const nextDelivered = Math.min(qty, delivered + row.quantityToDeliver);
+    const deliveredNow = Math.min(pending, row.quantityToDeliver);
+    const nextDelivered = Math.min(qty, delivered + deliveredNow);
     updates.push({ id: row.detailId, quantityDelivered: nextDelivered });
+    historyRows.push({
+      accountId: Number(current.transactions?.accountId || 0),
+      transactionId: txId,
+      transactionDetailId: row.detailId,
+      conceptId: current.conceptId ? Number(current.conceptId) : null,
+      deliveryBatchKey,
+      deliveryDate: new Date().toISOString().slice(0, 10),
+      quantity: deliveredNow
+    });
   }
 
   const updateResults = await Promise.all(
@@ -423,6 +435,44 @@ export async function registerInventoryDelivery({ transactionId, deliveries = []
   );
   const failed = updateResults.find((result) => result.error);
   if (failed?.error) throw failed.error;
+
+  if (historyRows.length > 0) {
+    const { error: historyError } = await supabase.from("inventory_delivery_history").insert(historyRows);
+    if (historyError) throw historyError;
+  }
+}
+
+export async function listInventoryDeliveryHistory(transactionId) {
+  const txId = Number(transactionId);
+  if (!Number.isFinite(txId) || txId <= 0) return [];
+
+  const { data, error } = await supabase
+    .from("inventory_delivery_history")
+    .select('id, "deliveryBatchKey", "deliveryDate", quantity, "createdAt", conceptId, concepts(name)')
+    .eq("transactionId", txId)
+    .order("createdAt", { ascending: false })
+    .order("id", { ascending: true });
+  if (error) throw error;
+
+  const batches = new Map();
+  (data ?? []).forEach((row) => {
+    const key = row.deliveryBatchKey || `delivery-${row.id}`;
+    const current = batches.get(key) || {
+      deliveryBatchKey: key,
+      deliveryDate: row.deliveryDate || null,
+      createdAt: row.createdAt || null,
+      lines: []
+    };
+    current.lines.push({
+      id: Number(row.id),
+      conceptId: row.conceptId ? Number(row.conceptId) : null,
+      productName: row.concepts?.name || "-",
+      quantity: Number(row.quantity || 0)
+    });
+    batches.set(key, current);
+  });
+
+  return Array.from(batches.values());
 }
 
 export async function listPaymentsForTransaction(transactionId) {

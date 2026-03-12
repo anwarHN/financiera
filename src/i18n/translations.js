@@ -277,6 +277,10 @@ export const translations = {
       deliveries: {
         title: "Entrega de mercadería",
         register: "Registrar entrega",
+        viewHistory: "Consultar entregas",
+        historyTitle: "Historial de entregas",
+        noHistory: "No hay entregas registradas para esta factura.",
+        deliveryRecordedAt: "Registrada en",
         invoice: "Factura",
         selectInvoice: "Seleccionar factura pendiente",
         pendingUnits: "Unidades pendientes",
@@ -952,6 +956,10 @@ export const translations = {
       deliveries: {
         title: "Merchandise delivery",
         register: "Register delivery",
+        viewHistory: "View deliveries",
+        historyTitle: "Delivery history",
+        noHistory: "No deliveries have been recorded for this invoice.",
+        deliveryRecordedAt: "Recorded at",
         invoice: "Invoice",
         selectInvoice: "Select pending invoice",
         pendingUnits: "Pending units",

@@ -14,6 +14,7 @@ alter table public.budget_lines enable row level security;
 alter table public.appointments enable row level security;
 alter table public.employee_availability enable row level security;
 alter table public.employee_absences enable row level security;
+alter table public.inventory_delivery_history enable row level security;
 
 -- Helper function to identify whether user belongs to account
 create or replace function public.user_belongs_to_account(target_account_id bigint)
@@ -197,6 +198,14 @@ with check (public.user_belongs_to_account("accountId"));
 drop policy if exists "employee_absences_tenant_access" on public.employee_absences;
 create policy "employee_absences_tenant_access"
 on public.employee_absences
+for all
+to authenticated
+using (public.user_belongs_to_account("accountId"))
+with check (public.user_belongs_to_account("accountId"));
+
+drop policy if exists "inventory_delivery_history_tenant_access" on public.inventory_delivery_history;
+create policy "inventory_delivery_history_tenant_access"
+on public.inventory_delivery_history
 for all
 to authenticated
 using (public.user_belongs_to_account("accountId"))
