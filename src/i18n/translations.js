@@ -1,7 +1,7 @@
 export const translations = {
   es: {
     common: {
-      appName: "Financiera",
+      appName: "Daime",
       account: "Cuenta",
       loading: "Cargando...",
       save: "Guardar",
@@ -657,7 +657,7 @@ export const translations = {
   },
   en: {
     common: {
-      appName: "Financiera",
+      appName: "Daime",
       account: "Account",
       loading: "Loading...",
       save: "Save",

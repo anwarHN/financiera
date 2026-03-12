@@ -1,26 +1,27 @@
 :root {
-  --brand: #2b95d4;
-  --brand-soft: #d9eefc;
-  --bg-main: #f4f6f8;
-  --bg-grad-start: #f9fbfd;
+  --brand: #0d9488;
+  --brand-soft: #ccfbf1;
+  --accent: #f59e0b;
+  --bg-main: #f8fafc;
+  --bg-grad-start: #f0fdfa;
   --bg-panel: #ffffff;
-  --bg-muted: #eef1f4;
-  --bg-sidebar: #f2f4f7;
-  --bg-workspace: #f6f7f9;
-  --bg-app-menu: #f5f6f8;
+  --bg-muted: #e2e8f0;
+  --bg-sidebar: #e2e8f0;
+  --bg-workspace: #f8fafc;
+  --bg-app-menu: #f1f5f9;
   --bg-actions: #ffffff;
-  --bg-search: rgba(255, 255, 255, 0.94);
-  --line: #d7dde4;
-  --text: #1f2a36;
-  --text-muted: #5d6773;
-  --text-strong: #2f3b48;
-  --text-ui: #334150;
-  --topbar-text: #ffffff;
-  --floating-border: #dbe1e8;
-  --tile-bg: #f3f6fa;
-  --tile-bg-hover: #e5edf8;
-  --menu-hover: #eef2f6;
-  --row-border: #eceff3;
+  --bg-search: rgba(248, 250, 252, 0.96);
+  --line: #cbd5e1;
+  --text: #334155;
+  --text-muted: #64748b;
+  --text-strong: #1e293b;
+  --text-ui: #334155;
+  --topbar-text: #f8fafc;
+  --floating-border: #cbd5e1;
+  --tile-bg: #ecfeff;
+  --tile-bg-hover: #cffafe;
+  --menu-hover: #e2e8f0;
+  --row-border: #e2e8f0;
   --shadow: 0 1px 2px rgba(10, 20, 30, 0.1);
   --shadow-soft: 0 1px 4px rgba(15, 23, 34, 0.14);
   --shadow-float: 0 12px 30px rgba(10, 20, 35, 0.2);
@@ -29,27 +30,29 @@
 }
 
 [data-theme="dark"] {
-  --brand-soft: #1f3548;
-  --bg-main: #0f161d;
-  --bg-grad-start: #121d27;
-  --bg-panel: #18232e;
-  --bg-muted: #223142;
-  --bg-sidebar: #111b24;
-  --bg-workspace: #101922;
-  --bg-app-menu: #101b25;
-  --bg-actions: #172431;
-  --bg-search: rgba(20, 33, 44, 0.95);
-  --line: #2a3d50;
-  --text: #e5edf4;
-  --text-muted: #a9b6c3;
-  --text-strong: #dce6ef;
-  --text-ui: #c6d3df;
-  --topbar-text: #eaf4fb;
-  --floating-border: #2a3e50;
-  --tile-bg: #223243;
-  --tile-bg-hover: #2a3e53;
-  --menu-hover: #223142;
-  --row-border: #233647;
+  --brand: #14b8a6;
+  --brand-soft: #113f3c;
+  --accent: #fbbf24;
+  --bg-main: #0f172a;
+  --bg-grad-start: #111827;
+  --bg-panel: #162033;
+  --bg-muted: #1f2c41;
+  --bg-sidebar: #0f172a;
+  --bg-workspace: #0b1324;
+  --bg-app-menu: #121d30;
+  --bg-actions: #162235;
+  --bg-search: rgba(15, 23, 42, 0.95);
+  --line: #334155;
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-strong: #f8fafc;
+  --text-ui: #cbd5e1;
+  --topbar-text: #f8fafc;
+  --floating-border: #334155;
+  --tile-bg: #183147;
+  --tile-bg-hover: #1f425c;
+  --menu-hover: #1e293b;
+  --row-border: #243449;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
   --shadow-soft: 0 1px 4px rgba(0, 0, 0, 0.45);
   --shadow-float: 0 12px 30px rgba(0, 0, 0, 0.55);
@@ -170,8 +173,19 @@ button {
 }
 
 .product-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
   color: inherit;
   font-weight: 700;
+}
+
+.product-name-logo {
+  width: 1.9rem;
+  height: 1.9rem;
+  flex: 0 0 auto;
+  display: block;
+  object-fit: contain;
 }
 
 .icon-btn,
@@ -1564,7 +1578,7 @@ button:disabled,
 }
 
 .appointments-legend-swatch.absence {
-  background: color-mix(in oklab, #c026d3 22%, transparent);
+  background: color-mix(in oklab, var(--accent) 24%, transparent);
 }
 
 .appointments-day-grid {
@@ -1929,7 +1943,7 @@ button:disabled,
 }
 
 .appointments-slot-overlay.is-absence {
-  background: color-mix(in oklab, #c026d3 22%, transparent);
+  background: color-mix(in oklab, var(--accent) 24%, transparent);
 }
 
 .appointments-float-event {
@@ -1978,7 +1992,7 @@ button:disabled,
 }
 
 .appointments-calendar-cell.is-absence-date {
-  background: color-mix(in oklab, #c026d3 12%, var(--bg-panel));
+  background: color-mix(in oklab, var(--accent) 14%, var(--bg-panel));
 }
 
 @media (max-width: 980px) {
@@ -2949,10 +2963,16 @@ button:disabled,
   }
 
   .topbar-left .product-name {
+    gap: 0.45rem;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .topbar-left .product-name-logo {
+    width: 1.65rem;
+    height: 1.65rem;
   }
 
   .account-switch-btn {

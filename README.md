@@ -1,6 +1,6 @@
-# Financiera Web
+# Daime Web
 
-Base inicial del app web en React para el proyecto Financiera, usando Supabase como backend.
+Base inicial del app web en React para el proyecto Daime, usando Supabase como backend.
 
 ## Requisitos
 
