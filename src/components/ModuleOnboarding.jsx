@@ -15,14 +15,32 @@ const MODULES = [
   },
   { id: "products", match: (p) => p.startsWith("/products"), titleKey: "nav.products" },
   {
-    id: "transactions",
+    id: "sales",
+    match: (p) => p.startsWith("/sales"),
+    titleKey: "nav.sales"
+  },
+  {
+    id: "receivable",
+    match: (p) => p.startsWith("/accounts-receivable"),
+    titleKey: "nav.accountsReceivable"
+  },
+  {
+    id: "payable",
+    match: (p) => p.startsWith("/accounts-payable"),
+    titleKey: "nav.accountsPayable"
+  },
+  {
+    id: "otherTransactions",
+    match: (p) => p.startsWith("/expenses") || p.startsWith("/incomes"),
+    titleKey: "sidebar.otherTransactions"
+  },
+  {
+    id: "inventory",
     match: (p) =>
-      p.startsWith("/sales") ||
       p.startsWith("/purchases") ||
       p.startsWith("/inventory-adjustments") ||
-      p.startsWith("/expenses") ||
-      p.startsWith("/incomes"),
-    titleKey: "sidebar.transactions"
+      p.startsWith("/inventory-deliveries"),
+    titleKey: "nav.inventory"
   },
   {
     id: "payments",
@@ -36,6 +54,7 @@ const MODULES = [
       p.startsWith("/bank-reconciliation"),
     titleKey: "nav.paymentForms"
   },
+  { id: "employeeLoans", match: (p) => p.startsWith("/employee-loans"), titleKey: "nav.employeeLoans" },
   { id: "planning", match: (p) => p.startsWith("/projects") || p.startsWith("/budgets"), titleKey: "nav.planning" },
   {
     id: "catalogs",

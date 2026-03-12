@@ -60,15 +60,55 @@
         { "name": "Productos", "description": "Listado y mantenimiento del catálogo." }
       ]
     },
-    "transactions": {
-      "intro": "En este módulo registras y consultas movimientos de negocio.",
+    "sales": {
+      "intro": "En este módulo registras facturas y consultas ventas del negocio.",
       "appMenuTitle": "Accesos del app-menu",
-      "appMenuText": "Opciones disponibles en transacciones.",
+      "appMenuText": "Opciones disponibles en ventas.",
       "appMenuOptions": [
-        { "name": "Ventas", "description": "Registro y control de ventas." },
-        { "name": "Compras", "description": "Registro y control de compras." },
-        { "name": "Gastos", "description": "Registro de gastos operativos." },
-        { "name": "Ingresos", "description": "Registro de ingresos adicionales." }
+        { "name": "Facturas", "description": "Registro, consulta y edición de facturas." }
+      ]
+    },
+    "receivable": {
+      "intro": "En este módulo controlas todas las cuentas por cobrar: facturas al crédito y cuentas manuales por cobrar.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Opciones disponibles para cuentas por cobrar.",
+      "appMenuOptions": [
+        { "name": "Cuentas por cobrar", "description": "Consulta facturas al crédito, cuentas manuales y registra cobros." }
+      ]
+    },
+    "payable": {
+      "intro": "En este módulo controlas todas las cuentas por pagar: compras al crédito y cuentas manuales por pagar.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Opciones disponibles para cuentas por pagar.",
+      "appMenuOptions": [
+        { "name": "Cuentas por pagar", "description": "Consulta compras al crédito, cuentas manuales y registra pagos." }
+      ]
+    },
+    "otherTransactions": {
+      "intro": "En este módulo registras otros ingresos y otros gastos no relacionados con ventas o compras de mercadería.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Opciones disponibles para otros ingresos y gastos.",
+      "appMenuOptions": [
+        { "name": "Otros ingresos", "description": "Registro de ingresos adicionales y sus formas de pago." },
+        { "name": "Otros gastos", "description": "Registro de gastos operativos y sus formas de pago." }
+      ]
+    },
+    "inventory": {
+      "intro": "En este módulo controlas movimientos de inventario y entregas de mercadería.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Opciones disponibles para inventario.",
+      "appMenuOptions": [
+        { "name": "Compras de mercadería", "description": "Registra compras que aumentan inventario." },
+        { "name": "Ajuste de inventario de mercadería", "description": "Corrige cantidades de inventario en positivo o negativo." },
+        { "name": "Entrega de mercadería", "description": "Registra entregas pendientes de facturas." }
+      ]
+    },
+    "employeeLoans": {
+      "intro": "En este módulo administras préstamos a empleados y sus pagos.",
+      "appMenuTitle": "Accesos del app-menu",
+      "appMenuText": "Opciones disponibles para préstamos.",
+      "appMenuOptions": [
+        { "name": "Préstamos", "description": "Registra préstamos a empleados y consulta saldos." }
       ]
     },
     "payments": {
@@ -185,15 +225,55 @@
         { "name": "Products", "description": "Catalog list and maintenance." }
       ]
     },
-    "transactions": {
-      "intro": "This module records and tracks business transactions.",
+    "sales": {
+      "intro": "This module records invoices and tracks sales.",
       "appMenuTitle": "App-menu entries",
-      "appMenuText": "Available transaction options.",
+      "appMenuText": "Available sales options.",
       "appMenuOptions": [
-        { "name": "Sales", "description": "Sales registration and control." },
-        { "name": "Purchases", "description": "Purchase registration and control." },
-        { "name": "Expenses", "description": "Operational expense registration." },
-        { "name": "Incomes", "description": "Additional income registration." }
+        { "name": "Invoices", "description": "Register, review and edit invoices." }
+      ]
+    },
+    "receivable": {
+      "intro": "This module controls all accounts receivable: credit invoices and manual receivable entries.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Available accounts receivable options.",
+      "appMenuOptions": [
+        { "name": "Accounts receivable", "description": "Review credit invoices, manual receivables and register collections." }
+      ]
+    },
+    "payable": {
+      "intro": "This module controls all accounts payable: credit purchases and manual payable entries.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Available accounts payable options.",
+      "appMenuOptions": [
+        { "name": "Accounts payable", "description": "Review credit purchases, manual payables and register payments." }
+      ]
+    },
+    "otherTransactions": {
+      "intro": "This module records other incomes and other expenses not tied to invoices or merchandise purchases.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Available other income and expense options.",
+      "appMenuOptions": [
+        { "name": "Other incomes", "description": "Register additional incomes and their payment methods." },
+        { "name": "Other expenses", "description": "Register operating expenses and their payment methods." }
+      ]
+    },
+    "inventory": {
+      "intro": "This module controls inventory movements and merchandise deliveries.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Available inventory options.",
+      "appMenuOptions": [
+        { "name": "Merchandise purchases", "description": "Register purchases that increase inventory." },
+        { "name": "Merchandise inventory adjustment", "description": "Correct inventory quantities upward or downward." },
+        { "name": "Merchandise delivery", "description": "Register pending deliveries from invoices." }
+      ]
+    },
+    "employeeLoans": {
+      "intro": "This module manages employee loans and their payments.",
+      "appMenuTitle": "App-menu entries",
+      "appMenuText": "Available employee loan options.",
+      "appMenuOptions": [
+        { "name": "Employee loans", "description": "Register employee loans and review balances." }
       ]
     },
     "payments": {

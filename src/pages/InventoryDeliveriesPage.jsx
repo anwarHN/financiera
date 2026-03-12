@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import LookupCombobox from "../components/LookupCombobox";
 import Pagination from "../components/Pagination";
@@ -172,26 +172,74 @@ function InventoryDeliveriesPage() {
             </thead>
             <tbody>
               {paginatedItems.map((row) => (
-                <tr key={row.id}>
-                  <td className="num-col">{row.id}</td>
-                  <td>{formatDate(row.date, language)}</td>
-                  <td>{row.persons?.name || "-"}</td>
-                  <td className="num-col">{formatNumber(row.total || 0)}</td>
-                  <td className="num-col">
-                    {formatNumber(row.pendingTotal || 0, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                  </td>
-                  <td className="table-actions">
-                    <RowActionsMenu
-                      actions={[
-                        {
-                          key: "deliver",
-                          label: t("inventory.deliveries.register"),
-                          onClick: () => openModalForInvoice(row.id)
-                        }
-                      ]}
-                    />
-                  </td>
-                </tr>
+                <Fragment key={row.id}>
+                  <tr key={row.id}>
+                    <td className="num-col">{row.id}</td>
+                    <td>{formatDate(row.date, language)}</td>
+                    <td>{row.persons?.name || "-"}</td>
+                    <td className="num-col">{formatNumber(row.total || 0)}</td>
+                    <td className="num-col">
+                      {formatNumber(row.pendingTotal || 0, {
+                        showCurrency: false,
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2
+                      })}
+                    </td>
+                    <td className="table-actions">
+                      <RowActionsMenu
+                        actions={[
+                          {
+                            key: "deliver",
+                            label: t("inventory.deliveries.register"),
+                            onClick: () => openModalForInvoice(row.id)
+                          }
+                        ]}
+                      />
+                    </td>
+                  </tr>
+                  <tr className="nested-table-row">
+                    <td colSpan={6}>
+                      <table className="crud-table nested-crud-table">
+                        <thead>
+                          <tr>
+                            <th>{t("transactions.product")}</th>
+                            <th className="num-col">{t("transactions.quantity")}</th>
+                            <th className="num-col">{t("inventory.deliveries.deliveredQuantity")}</th>
+                            <th className="num-col">{t("inventory.deliveries.pendingQuantity")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(row.details || []).map((detail) => (
+                            <tr key={`${row.id}-detail-${detail.id}`}>
+                              <td>{detail.productName || "-"}</td>
+                              <td className="num-col">
+                                {formatNumber(detail.quantity || 0, {
+                                  showCurrency: false,
+                                  minimumFractionDigits: 0,
+                                  maximumFractionDigits: 2
+                                })}
+                              </td>
+                              <td className="num-col">
+                                {formatNumber(detail.quantityDelivered || 0, {
+                                  showCurrency: false,
+                                  minimumFractionDigits: 0,
+                                  maximumFractionDigits: 2
+                                })}
+                              </td>
+                              <td className="num-col">
+                                {formatNumber(detail.pendingQuantity || 0, {
+                                  showCurrency: false,
+                                  minimumFractionDigits: 0,
+                                  maximumFractionDigits: 2
+                                })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>
