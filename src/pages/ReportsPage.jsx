@@ -118,13 +118,8 @@ function ReportsPage() {
     if (reportId === "sales") return transactions.filter((tx) => tx.type === 1);
     if (reportId === "expenses") return transactions.filter((tx) => tx.type === 2);
     if (reportId === "receivable" || reportId === "payable") {
-      const filtered = transactions.filter((tx) =>
-        reportId === "receivable"
-          ? tx.isAccountReceivable && Number(tx.balance || 0) > 0
-          : tx.isAccountPayable && Number(tx.balance || 0) > 0
-      );
       const byParty = new Map();
-      filtered.forEach((tx) => {
+      (transactions || []).forEach((tx) => {
         const partyId = Number(tx.personId || 0) || 0;
         const partyName = tx.persons?.name || t("reports.unassignedPerson");
         const key = `${partyId}-${partyName}`;
