@@ -120,7 +120,7 @@ export async function getProductKardex(accountId, conceptId, { dateFrom, dateTo 
 
   const { data: txRows, error: txError } = await supabase
     .from("transactions")
-    .select('id, accountId, date, type, name, "referenceNumber", isActive')
+    .select('id, accountId, date, type, name, "referenceNumber", isActive, tags')
     .in("id", txIds)
     .eq("accountId", accountId)
     .eq("isActive", true);
@@ -146,6 +146,9 @@ export async function getProductKardex(accountId, conceptId, { dateFrom, dateTo 
     } else if (Number(tx.type) === TRANSACTION_TYPES.sale) {
       movementQuantity = -delivered;
       movementType = "sale";
+    } else if (Number(tx.type) === TRANSACTION_TYPES.expense && Array.isArray(tx.tags) && tx.tags.includes("__inventory_adjustment__")) {
+      movementQuantity = Number(detail.quantity || 0);
+      movementType = "adjustment";
     } else {
       continue;
     }

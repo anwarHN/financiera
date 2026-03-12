@@ -264,7 +264,8 @@ export const translations = {
       kardexPreviousBalance: "Saldo anterior",
       kardexTotalBalance: "Saldo total",
       kardexPurchase: "Compra",
-      kardexSale: "Factura"
+      kardexSale: "Factura",
+      kardexAdjustment: "Ajuste"
     },
     inventory: {
       deliveries: {
@@ -912,7 +913,8 @@ export const translations = {
       kardexPreviousBalance: "Previous balance",
       kardexTotalBalance: "Total balance",
       kardexPurchase: "Purchase",
-      kardexSale: "Invoice"
+      kardexSale: "Invoice",
+      kardexAdjustment: "Adjustment"
     },
     inventory: {
       deliveries: {

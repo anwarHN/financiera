@@ -807,12 +807,6 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       return;
     }
 
-    const systemConcept = moduleType === "sale" ? incomingPaymentConcept : outgoingPaymentConcept;
-    if (!systemConcept) {
-      setError(t("transactions.missingSystemPaymentConcept"));
-      return;
-    }
-
     const transactionPayload = buildTransactionPayload({
       isCredit: true,
       personId: Number(simpleForm.personId),
@@ -830,24 +824,6 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       incomingPayment: false,
       includeCreatedById: true
     });
-
-    const detailPayload = {
-      conceptId: Number(systemConcept.id),
-      quantity: 1,
-      quantityDelivered: 1,
-      pendingDelivery: false,
-      price: totalAmount,
-      net: totalAmount,
-      taxPercentage: 0,
-      tax: 0,
-      discountPercentage: 0,
-      discount: 0,
-      total: totalAmount,
-      additionalCharges: 0,
-      createdById: user.id,
-      sellerId: null,
-      transactionPaidId: null
-    };
 
     const shouldAddPendingProducts = moduleType === "sale" && priorBalanceAddPendingProducts;
     const pendingProductDetails = shouldAddPendingProducts
@@ -885,7 +861,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       setIsSaving(true);
       const saved = await createTransactionWithDetails({
         transaction: transactionPayload,
-        details: [detailPayload, ...pendingProductDetails]
+        details: pendingProductDetails
       });
       if (embedded) {
         onCreated?.(saved);

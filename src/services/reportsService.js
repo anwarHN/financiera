@@ -40,9 +40,6 @@ export async function getOutstandingTransactionsForReports(accountId, { reportId
     .eq(typeColumn, true)
     .lte("date", asOfDate);
 
-  if (dateFrom) {
-    sourceQuery = sourceQuery.gte("date", dateFrom);
-  }
   if (currencyId) {
     sourceQuery = sourceQuery.eq("currencyId", Number(currencyId));
   }

@@ -90,16 +90,18 @@ export async function createTransactionWithDetails({ transaction, details }) {
     throw transactionError;
   }
 
-  const detailsToInsert = details.map((detail) => ({
+  const detailsToInsert = (details ?? []).map((detail) => ({
     ...detail,
     transactionId: createdTransaction.id
   }));
 
-  const { error: detailError } = await supabase.from("transactionDetails").insert(detailsToInsert);
+  if (detailsToInsert.length > 0) {
+    const { error: detailError } = await supabase.from("transactionDetails").insert(detailsToInsert);
 
-  if (detailError) {
-    await supabase.from("transactions").delete().eq("id", createdTransaction.id);
-    throw detailError;
+    if (detailError) {
+      await supabase.from("transactions").delete().eq("id", createdTransaction.id);
+      throw detailError;
+    }
   }
 
   return createdTransaction;

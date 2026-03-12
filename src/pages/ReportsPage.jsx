@@ -71,6 +71,7 @@ function ReportsPage() {
     () => reportCatalog.find((report) => report.id === selectedReport) ?? reportCatalog[0] ?? null,
     [selectedReport, reportCatalog]
   );
+  const usesAsOfDateOnly = selectedReport === "receivable" || selectedReport === "payable";
 
   useEffect(() => {
     if (!reportCatalog.length) return;
@@ -78,6 +79,12 @@ function ReportsPage() {
       setSelectedReport(reportCatalog[0].id);
     }
   }, [reportCatalog, selectedReport]);
+
+  useEffect(() => {
+    if (selectedReport === "receivable" || selectedReport === "payable") {
+      setFilters((prev) => (prev.dateFrom ? { ...prev, dateFrom: "" } : prev));
+    }
+  }, [selectedReport]);
 
   useEffect(() => {
     if (!account?.accountId) return;
@@ -560,7 +567,7 @@ function ReportsPage() {
                 <>
                   <label className="field-block">
                     <span>{t("reports.dateFrom")}</span>
-                    <input type="date" name="dateFrom" value={filters.dateFrom} onChange={handleFilterChange} />
+                    <input type="date" name="dateFrom" value={filters.dateFrom} onChange={handleFilterChange} disabled={usesAsOfDateOnly} />
                   </label>
                   <label className="field-block">
                     <span>{t("reports.dateTo")}</span>

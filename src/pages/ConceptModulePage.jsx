@@ -344,7 +344,13 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
                           <td>{row.date}</td>
                           <td>{row.referenceNumber || "-"}</td>
                           <td>{row.name || "-"}</td>
-                          <td>{row.type === "purchase" ? t("products.kardexPurchase") : t("products.kardexSale")}</td>
+                          <td>
+                            {row.type === "purchase"
+                              ? t("products.kardexPurchase")
+                              : row.type === "adjustment"
+                                ? t("products.kardexAdjustment")
+                                : t("products.kardexSale")}
+                          </td>
                           <td className="num-col">
                             {row.quantityIn
                               ? formatNumber(row.quantityIn, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })

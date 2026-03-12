@@ -267,7 +267,6 @@ async function fetchOutstandingTransactionsAsOf(
     .eq(isReceivable ? "isAccountReceivable" : "isAccountPayable", true)
     .lte("date", asOfDate);
 
-  if (payload.dateFrom) sourceQuery = sourceQuery.gte("date", payload.dateFrom);
   if (payload.currencyId != null) sourceQuery = sourceQuery.eq("currencyId", payload.currencyId);
 
   const { data: sourceRows, error: sourceError } = await sourceQuery.order("date", { ascending: false });

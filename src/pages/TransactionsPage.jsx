@@ -467,7 +467,7 @@ function TransactionsPage({ moduleType }) {
                               }
                             ]
                           : []),
-                        ...(["sale", "purchase", "expense", "income"].includes(moduleType) && canUpdate
+                        ...(["sale", "purchase", "expense", "income", "inventoryAdjustment"].includes(moduleType) && canUpdate
                           ? [
                               {
                                 key: "edit",
