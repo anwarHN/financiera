@@ -6,7 +6,7 @@ import { getTransactionById, listPaymentsForTransaction, listTransactionDetails 
 import { formatDate } from "../utils/dateFormat";
 import { formatNumber } from "../utils/numberFormat";
 
-function TransactionDetailPage({ moduleType }) {
+function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }) {
   const { t, language } = useI18n();
   const { id } = useParams();
   const [transaction, setTransaction] = useState(null);
@@ -17,7 +17,7 @@ function TransactionDetailPage({ moduleType }) {
   const [isLoading, setIsLoading] = useState(true);
   const showTaxDiscountDetail = moduleType === "sale";
 
-  const backPath = moduleType === "sale" ? "/sales" : "/purchases";
+  const backPath = backPathOverride || (moduleType === "sale" ? "/sales" : "/purchases");
 
   useEffect(() => {
     loadData();
@@ -89,6 +89,11 @@ function TransactionDetailPage({ moduleType }) {
           <p>
             {t("transactions.referenceNumber")}: {transaction.referenceNumber || "-"}
           </p>
+          {transaction.deliveryAddress ? (
+            <p>
+              {t("transactions.comments")}: {transaction.deliveryAddress}
+            </p>
+          ) : null}
         </section>
       )}
 

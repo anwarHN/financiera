@@ -13,6 +13,7 @@ import {
   createSaleReturnTransaction,
   deactivateTransaction,
   listPrimaryConceptsByTransactionIds,
+  listPaymentsForTransaction,
   listReturnableSaleDetails,
   listTransactions,
   TRANSACTION_TYPES
@@ -23,6 +24,15 @@ import { formatNumber } from "../utils/numberFormat";
 const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
 const PRIOR_BALANCE_TAG = "__prior_balance__";
 const SALE_RETURN_TAG = "__sale_return__";
+const MANUAL_RECEIVABLE_TAG = "__manual_receivable__";
+const MANUAL_PAYABLE_TAG = "__manual_payable__";
+const HIDDEN_TABLE_TAGS = [
+  INVENTORY_ADJUSTMENT_TAG,
+  PRIOR_BALANCE_TAG,
+  SALE_RETURN_TAG,
+  MANUAL_RECEIVABLE_TAG,
+  MANUAL_PAYABLE_TAG
+];
 
 const moduleConfig = {
   sale: {
@@ -57,11 +67,18 @@ const moduleConfig = {
 
 const pageSize = 10;
 
-function TransactionsPage({ moduleType }) {
+function TransactionsPage({
+  moduleType,
+  creditOnly = false,
+  titleKeyOverride = null,
+  basePathOverride = null,
+  createEntryMode = "default"
+}) {
   const { t, language } = useI18n();
   const { account, user, canVoidTransactions } = useAuth();
   const { canCreate, canUpdate } = useModulePermissions("transactions");
   const config = moduleConfig[moduleType];
+  const basePath = basePathOverride || (moduleType === "sale" ? "/sales" : moduleType === "purchase" ? "/purchases" : "");
   const supportsTableFilters = ["sale", "purchase", "expense", "income", "inventoryAdjustment"].includes(moduleType);
 
   const [items, setItems] = useState([]);
@@ -69,6 +86,12 @@ function TransactionsPage({ moduleType }) {
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [paymentModal, setPaymentModal] = useState({ open: false, transaction: null, direction: "incoming" });
+  const [paymentsDetailModal, setPaymentsDetailModal] = useState({
+    open: false,
+    transaction: null,
+    payments: [],
+    isLoading: false
+  });
   const [returnModal, setReturnModal] = useState({
     open: false,
     transaction: null,
@@ -107,6 +130,10 @@ function TransactionsPage({ moduleType }) {
     const maxAmount = filters.maxAmount === "" ? null : Number(filters.maxAmount);
 
     return items.filter((item) => {
+      if (creditOnly) {
+        const isCreditRow = moduleType === "sale" ? Boolean(item.isAccountReceivable) : Boolean(item.isAccountPayable);
+        if (!isCreditRow) return false;
+      }
       if (filters.dateFrom && item.date < filters.dateFrom) return false;
       if (filters.dateTo && item.date > filters.dateTo) return false;
       if (personQuery) {
@@ -120,7 +147,7 @@ function TransactionsPage({ moduleType }) {
       if (Number.isFinite(maxAmount) && Number(item.total || 0) > maxAmount) return false;
       return true;
     });
-  }, [items, filters, moduleType]);
+  }, [items, filters, moduleType, creditOnly]);
 
   const employeeFilterOptions = useMemo(() => {
     const unique = new Map();
@@ -140,6 +167,17 @@ function TransactionsPage({ moduleType }) {
     [items, editId]
   );
   const editEntryMode =
+    editingItem &&
+    moduleType === "sale" &&
+    Array.isArray(editingItem.tags) &&
+    editingItem.tags.includes(MANUAL_RECEIVABLE_TAG)
+      ? "receivable"
+      : editingItem &&
+        moduleType === "purchase" &&
+        Array.isArray(editingItem.tags) &&
+        editingItem.tags.includes(MANUAL_PAYABLE_TAG)
+        ? "payable"
+      :
     editingItem &&
     (moduleType === "sale" || moduleType === "purchase") &&
     Array.isArray(editingItem.tags) &&
@@ -224,6 +262,42 @@ function TransactionsPage({ moduleType }) {
     setSearchParams(next);
   };
 
+  const openPaymentsDetailModal = async (transaction) => {
+    try {
+      setPaymentsDetailModal({
+        open: true,
+        transaction,
+        payments: [],
+        isLoading: true
+      });
+      const payments = await listPaymentsForTransaction(transaction.id);
+      setPaymentsDetailModal({
+        open: true,
+        transaction,
+        payments,
+        isLoading: false
+      });
+      setError("");
+    } catch {
+      setError(t("common.genericLoadError"));
+      setPaymentsDetailModal({
+        open: false,
+        transaction: null,
+        payments: [],
+        isLoading: false
+      });
+    }
+  };
+
+  const closePaymentsDetailModal = () => {
+    setPaymentsDetailModal({
+      open: false,
+      transaction: null,
+      payments: [],
+      isLoading: false
+    });
+  };
+
   const openReturnModal = async (transaction) => {
     try {
       const lines = await listReturnableSaleDetails(transaction.id);
@@ -306,7 +380,7 @@ function TransactionsPage({ moduleType }) {
 
   return (
     <div className="module-page">
-      <h1>{t(config.titleKey)}</h1>
+      <h1>{t(titleKeyOverride || config.titleKey)}</h1>
       {supportsTableFilters && (
         <details className="generic-panel filters-accordion">
           <summary className="filters-accordion-summary">{t("reports.applicableFilters")}</summary>
@@ -408,7 +482,7 @@ function TransactionsPage({ moduleType }) {
                 <tr key={item.id}>
                   <td className="num-col">
                     {moduleType === "sale" || moduleType === "purchase" ? (
-                      <Link to={`/${moduleType === "sale" ? "sales" : "purchases"}/${item.id}`}>{item.id}</Link>
+                      <Link to={`${basePath}/${item.id}`}>{item.id}</Link>
                     ) : (
                       item.id
                     )}
@@ -418,11 +492,11 @@ function TransactionsPage({ moduleType }) {
                   <td>
                     {Array.isArray(item.tags) &&
                     item.tags
-                      .filter((tag) => tag !== INVENTORY_ADJUSTMENT_TAG && tag !== PRIOR_BALANCE_TAG && tag !== SALE_RETURN_TAG)
+                      .filter((tag) => !HIDDEN_TABLE_TAGS.includes(tag))
                       .length > 0 ? (
                       <div className="table-tags">
                         {item.tags
-                          .filter((tag) => tag !== INVENTORY_ADJUSTMENT_TAG && tag !== PRIOR_BALANCE_TAG && tag !== SALE_RETURN_TAG)
+                          .filter((tag) => !HIDDEN_TABLE_TAGS.includes(tag))
                           .map((tag, index) => (
                           <span key={`${item.id}-tag-${index}`} className="table-tag-pill">
                             {tag}
@@ -449,7 +523,14 @@ function TransactionsPage({ moduleType }) {
                     <RowActionsMenu
                       actions={[
                         ...(moduleType === "sale" || moduleType === "purchase"
-                          ? [{ key: "detail", label: t("transactions.viewDetail"), to: `/${moduleType === "sale" ? "sales" : "purchases"}/${item.id}` }]
+                          ? [
+                              { key: "detail", label: t("transactions.viewDetail"), to: `${basePath}/${item.id}` },
+                              {
+                                key: "payments-detail",
+                                label: t("transactions.viewPayments"),
+                                onClick: () => openPaymentsDetailModal(item)
+                              }
+                            ]
                           : []),
                         ...(moduleType === "purchase" && Number(item.balance || 0) > 0
                           ? [
@@ -469,7 +550,8 @@ function TransactionsPage({ moduleType }) {
                               }
                             ]
                           : []),
-                        ...(moduleType === "sale"
+                        ...(moduleType === "sale" &&
+                        !(Array.isArray(item.tags) && item.tags.includes(MANUAL_RECEIVABLE_TAG))
                           ? [
                               {
                                 key: "return",
@@ -510,13 +592,74 @@ function TransactionsPage({ moduleType }) {
           </table>
 
           <Pagination page={page} pageSize={pageSize} totalItems={filteredItems.length} onPageChange={setPage} />
-          <PaymentRegisterModal
-            isOpen={paymentModal.open}
-            transaction={paymentModal.transaction}
-            direction={paymentModal.direction}
-            onClose={() => setPaymentModal({ open: false, transaction: null, direction: "incoming" })}
-            onSaved={loadData}
-          />
+      <PaymentRegisterModal
+        isOpen={paymentModal.open}
+        transaction={paymentModal.transaction}
+        direction={paymentModal.direction}
+        onClose={() => setPaymentModal({ open: false, transaction: null, direction: "incoming" })}
+        onSaved={loadData}
+      />
+
+      {paymentsDetailModal.open ? (
+        <div className="modal-backdrop" onClick={closePaymentsDetailModal}>
+          <div className="modal-card modal-card-lg" onClick={(event) => event.stopPropagation()}>
+            <div className="page-header-row">
+              <h3>{t("transactions.paymentsDetailTitle")}</h3>
+              <button type="button" className="button-secondary" onClick={closePaymentsDetailModal}>
+                {t("common.cancel")}
+              </button>
+            </div>
+
+            <section className="generic-panel">
+              <p>ID: {paymentsDetailModal.transaction?.id}</p>
+              <p>
+                {t("transactions.person")}: {paymentsDetailModal.transaction?.persons?.name ?? "-"}
+              </p>
+              <p>
+                {t("transactions.total")}: {formatNumber(paymentsDetailModal.transaction?.total || 0)}
+              </p>
+              <p>
+                {t("transactions.balance")}: {formatNumber(paymentsDetailModal.transaction?.balance || 0)}
+              </p>
+            </section>
+
+            <section className="generic-panel">
+              {paymentsDetailModal.isLoading ? (
+                <p>{t("common.loading")}</p>
+              ) : paymentsDetailModal.payments.length === 0 ? (
+                <p>{t("transactions.noPaymentsApplied")}</p>
+              ) : (
+                <table className="crud-table">
+                  <thead>
+                    <tr>
+                      <th className="num-col">ID</th>
+                      <th>{t("transactions.date")}</th>
+                      <th>{t("transactions.referenceNumber")}</th>
+                      <th>{t("transactions.description")}</th>
+                      <th>{t("transactions.paymentMethod")}</th>
+                      <th>{t("transactions.accountPaymentForm")}</th>
+                      <th className="num-col">{t("transactions.total")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paymentsDetailModal.payments.map((payment) => (
+                      <tr key={payment.id}>
+                        <td className="num-col">{payment.transactionId}</td>
+                        <td>{formatDate(payment.transactions?.date, language)}</td>
+                        <td>{payment.transactions?.referenceNumber ?? "-"}</td>
+                        <td>{payment.transactions?.name ?? "-"}</td>
+                        <td>{payment.transactions?.payment_methods?.name ?? "-"}</td>
+                        <td>{payment.transactions?.account_payment_forms?.name ?? "-"}</td>
+                        <td className="num-col">{formatNumber(payment.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
+          </div>
+        </div>
+      ) : null}
         </>
       )}
 
@@ -528,7 +671,15 @@ function TransactionsPage({ moduleType }) {
             <TransactionCreatePage
               embedded
               moduleType={moduleType}
-              entryMode={isCreatePriorModalOpen || (isEditModalOpen && editEntryMode === "priorBalance") ? "priorBalance" : "default"}
+              entryMode={
+                isCreatePriorModalOpen
+                  ? "priorBalance"
+                  : isCreateModalOpen
+                    ? createEntryMode
+                    : isEditModalOpen
+                      ? editEntryMode
+                      : "default"
+              }
               itemId={isEditModalOpen ? editId : null}
               onCancel={closeModal}
               onCreated={async () => {

@@ -176,6 +176,22 @@ function App() {
         />
         <Route path="sales" element={<TransactionsPage moduleType="sale" />} />
         <Route path="sales/:id" element={<TransactionDetailPage moduleType="sale" />} />
+        <Route
+          path="accounts-receivable"
+          element={
+            <TransactionsPage
+              moduleType="sale"
+              creditOnly
+              titleKeyOverride="transactions.accountsReceivableTitle"
+              basePathOverride="/accounts-receivable"
+              createEntryMode="receivable"
+            />
+          }
+        />
+        <Route
+          path="accounts-receivable/:id"
+          element={<TransactionDetailPage moduleType="sale" backPath="/accounts-receivable" />}
+        />
         <Route path="appointments" element={<Navigate to="/appointments/calendar" replace />} />
         <Route path="appointments/calendar" element={<AppointmentsPage mode="calendar" />} />
         <Route path="appointments/by-employee" element={<AppointmentsPage mode="by-employee" />} />
@@ -190,6 +206,22 @@ function App() {
         <Route path="purchases" element={<TransactionsPage moduleType="purchase" />} />
         <Route path="purchases/new" element={<TransactionCreatePage moduleType="purchase" />} />
         <Route path="purchases/:id" element={<TransactionDetailPage moduleType="purchase" />} />
+        <Route
+          path="accounts-payable"
+          element={
+            <TransactionsPage
+              moduleType="purchase"
+              creditOnly
+              titleKeyOverride="transactions.accountsPayableTitle"
+              basePathOverride="/accounts-payable"
+              createEntryMode="payable"
+            />
+          }
+        />
+        <Route
+          path="accounts-payable/:id"
+          element={<TransactionDetailPage moduleType="purchase" backPath="/accounts-payable" />}
+        />
         <Route path="inventory-deliveries" element={<InventoryDeliveriesPage />} />
         <Route path="payment-forms" element={<AccountPaymentFormsPage />} />
         <Route path="payment-forms/new" element={<AccountPaymentFormPage />} />

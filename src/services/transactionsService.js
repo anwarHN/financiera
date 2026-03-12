@@ -159,7 +159,7 @@ export async function getTransactionById(id) {
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      'id, accountId, personId, "employeeId", date, type, name, tags, total, balance, payments, "projectId", "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "isEmployeeLoan", "sourceTransactionId", "isInternalTransfer", "isDeposit", "affectsPayroll", isActive, currencyId, persons(name), employes(name), projects(name), account_payment_forms(name)'
+      'id, accountId, personId, "employeeId", date, type, name, tags, total, balance, payments, "projectId", "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "isEmployeeLoan", "sourceTransactionId", "isInternalTransfer", "isDeposit", "affectsPayroll", "deliveryAddress", isActive, currencyId, persons(name), employes(name), projects(name), account_payment_forms(name)'
     )
     .eq("id", id)
     .single();
@@ -429,7 +429,7 @@ export async function listPaymentsForTransaction(transactionId) {
   const { data, error } = await supabase
     .from("transactionDetails")
     .select(
-      'id, total, transactionId, transactionPaidId, transactions!transaction_details_transactionId_fkey(id, date, type, name, "referenceNumber", paymentMethodId, accountPaymentFormId)'
+      'id, total, transactionId, transactionPaidId, transactions!transaction_details_transactionId_fkey(id, date, type, name, "referenceNumber", paymentMethodId, accountPaymentFormId, payment_methods(name), account_payment_forms(name))'
     )
     .eq("transactionPaidId", transactionId)
     .order("id", { ascending: false });

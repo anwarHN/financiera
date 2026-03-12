@@ -67,11 +67,30 @@ const navGroups = [
     items: [{ path: "/products", key: "nav.products", icon: FiPackage }]
   },
   {
+    id: "sales",
+    titleKey: "sidebar.sales",
+    icon: FiFileText,
+    items: [
+      { path: "/sales", key: "nav.sales", icon: FiFileText }
+    ]
+  },
+  {
+    id: "receivable",
+    titleKey: "nav.accountsReceivable",
+    icon: FiTrendingUp,
+    items: [{ path: "/accounts-receivable", key: "nav.accountsReceivable", icon: FiTrendingUp }]
+  },
+  {
+    id: "payable",
+    titleKey: "nav.accountsPayable",
+    icon: FiTrendingDown,
+    items: [{ path: "/accounts-payable", key: "nav.accountsPayable", icon: FiTrendingDown }]
+  },
+  {
     id: "transactions",
-    titleKey: "sidebar.transactions",
+    titleKey: "sidebar.otherTransactions",
     icon: FiDollarSign,
     items: [
-      { path: "/sales", key: "nav.sales", icon: FiFileText },
       { path: "/incomes", key: "nav.incomes", icon: FiDollarSign },
       { path: "/expenses", key: "nav.expenses", icon: FiTrendingDown }
     ]
@@ -175,6 +194,8 @@ function resolveCreateModuleByPath(pathname) {
   if (pathname.startsWith("/bank-cash-withdrawals")) return "transactions";
   if (pathname.startsWith("/internal-obligations")) return "transactions";
   if (pathname.startsWith("/employee-loans")) return "transactions";
+  if (pathname.startsWith("/accounts-receivable")) return "transactions";
+  if (pathname.startsWith("/accounts-payable")) return "transactions";
   if (pathname.startsWith("/sales")) return "transactions";
   if (pathname.startsWith("/purchases")) return "transactions";
   if (pathname.startsWith("/inventory-adjustments")) return "transactions";
@@ -206,6 +227,8 @@ function resolveReadModuleByPath(pathname) {
   if (pathname.startsWith("/internal-obligations")) return "transactions";
   if (pathname.startsWith("/employee-loans")) return "transactions";
   if (pathname.startsWith("/bank-reconciliation")) return "transactions";
+  if (pathname.startsWith("/accounts-receivable")) return "transactions";
+  if (pathname.startsWith("/accounts-payable")) return "transactions";
   if (pathname.startsWith("/sales")) return "transactions";
   if (pathname.startsWith("/purchases")) return "transactions";
   if (pathname.startsWith("/inventory-adjustments")) return "transactions";
@@ -379,7 +402,7 @@ function Layout() {
     [canSeeDashboard, hasModulePermission]
   );
   const selectedGroup = allowedNavGroups.find((group) => group.id === selectedGroupId) ?? allowedNavGroups[0] ?? null;
-  const isAccountRoute = pathname.startsWith("/account");
+  const isAccountRoute = pathname === "/account" || pathname.startsWith("/account/");
   const defaultHomePath = useMemo(() => {
     if (canSeeDashboard) return "/";
     const firstAccessible = allowedNavGroups.flatMap((group) => group.items)[0];
@@ -436,6 +459,20 @@ function Layout() {
         createPath: "/sales?create=1",
         createLabel: t("actions.newSale"),
         extraCreateItems: [{ path: "/sales?createPrior=1", label: t("transactions.newPriorBalanceSale") }]
+      };
+    }
+    if (pathname.startsWith("/accounts-receivable")) {
+      return {
+        createPath: "/accounts-receivable?create=1",
+        createLabel: t("actions.newAccountReceivable"),
+        extraCreateItems: []
+      };
+    }
+    if (pathname.startsWith("/accounts-payable")) {
+      return {
+        createPath: "/accounts-payable?create=1",
+        createLabel: t("actions.newAccountPayable"),
+        extraCreateItems: []
       };
     }
     if (pathname.startsWith("/purchases")) {
