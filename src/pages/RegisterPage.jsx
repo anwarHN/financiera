@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import daimeLogoMarkup from "../../assets/logo.svg?raw";
 
 const initialForm = {
   fullName: "",
@@ -66,73 +67,86 @@ function RegisterPage() {
 
   return (
     <div className="auth-page">
-      <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>{t("auth.registerTitle")}</h1>
+      <div className="auth-split-layout">
+        <section className="auth-hero-panel">
+          <div className="auth-hero-mark" aria-hidden="true" dangerouslySetInnerHTML={{ __html: daimeLogoMarkup }} />
+          <div className="auth-hero-copy">
+            <p className="auth-eyebrow">{t("common.appName")}</p>
+            <h1>{t("auth.registerWelcomeTitle")}</h1>
+            <p>{t("auth.registerWelcomeText")}</p>
+          </div>
+        </section>
 
-        <label htmlFor="fullName">{t("auth.fullName")}</label>
-        <input
-          id="fullName"
-          name="fullName"
-          value={form.fullName}
-          onChange={handleChange}
-          required
-        />
+        <section className="auth-form-panel">
+          <form className="auth-card" onSubmit={handleSubmit}>
+            <h1>{t("auth.registerTitle")}</h1>
 
-        <label htmlFor="companyName">{t("auth.companyName")}</label>
-        <input
-          id="companyName"
-          name="companyName"
-          value={form.companyName}
-          onChange={handleChange}
-          required
-        />
+            <label htmlFor="fullName">{t("auth.fullName")}</label>
+            <input
+              id="fullName"
+              name="fullName"
+              value={form.fullName}
+              onChange={handleChange}
+              required
+            />
 
-        <label htmlFor="email">{t("auth.email")}</label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          value={form.email}
-          onChange={handleChange}
-          readOnly={isInvitedFlow}
-          required
-        />
+            <label htmlFor="companyName">{t("auth.companyName")}</label>
+            <input
+              id="companyName"
+              name="companyName"
+              value={form.companyName}
+              onChange={handleChange}
+              required
+            />
 
-        <label htmlFor="password">{t("auth.password")}</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          minLength={8}
-          value={form.password}
-          onChange={handleChange}
-          required
-        />
+            <label htmlFor="email">{t("auth.email")}</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={handleChange}
+              readOnly={isInvitedFlow}
+              required
+            />
 
-        <label className="auth-checkbox">
-          <input
-            name="acceptedTerms"
-            type="checkbox"
-            checked={Boolean(form.acceptedTerms)}
-            onChange={handleChange}
-            required
-          />
-          <span>
-            {t("auth.acceptTermsPrefix")}{" "}
-            <Link to="/terms-of-service">{t("auth.termsOfService")}</Link> {t("auth.and")}{" "}
-            <Link to="/privacy-policy">{t("auth.privacyPolicy")}</Link>.
-          </span>
-        </label>
+            <label htmlFor="password">{t("auth.password")}</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              minLength={8}
+              value={form.password}
+              onChange={handleChange}
+              required
+            />
 
-        {error && <p className="error-text">{error}</p>}
-        {successMessage && <p className="success-text">{successMessage}</p>}
+            <label className="auth-checkbox">
+              <input
+                name="acceptedTerms"
+                type="checkbox"
+                checked={Boolean(form.acceptedTerms)}
+                onChange={handleChange}
+                required
+              />
+              <span>
+                {t("auth.acceptTermsPrefix")}{" "}
+                <Link to="/terms-of-service">{t("auth.termsOfService")}</Link> {t("auth.and")}{" "}
+                <Link to="/privacy-policy">{t("auth.privacyPolicy")}</Link>.
+              </span>
+            </label>
 
-        <button type="submit" disabled={isSubmitting}>
-          {t("auth.createAccount")}
-        </button>
+            {error && <p className="error-text">{error}</p>}
+            {successMessage && <p className="success-text">{successMessage}</p>}
 
-        <Link to="/login">{t("auth.goToLogin")}</Link>
-      </form>
+            <button type="submit" disabled={isSubmitting}>
+              {t("auth.createAccount")}
+            </button>
+
+            <Link to="/login">{t("auth.goToLogin")}</Link>
+          </form>
+        </section>
+      </div>
     </div>
   );
 }

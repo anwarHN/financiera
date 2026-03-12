@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import daimeLogoMarkup from "../../assets/logo.svg?raw";
 
 function LoginPage() {
   const { login, user } = useAuth();
@@ -35,30 +36,43 @@ function LoginPage() {
 
   return (
     <div className="auth-page">
-      <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>{t("auth.loginTitle")}</h1>
+      <div className="auth-split-layout">
+        <section className="auth-hero-panel">
+          <div className="auth-hero-mark" aria-hidden="true" dangerouslySetInnerHTML={{ __html: daimeLogoMarkup }} />
+          <div className="auth-hero-copy">
+            <p className="auth-eyebrow">{t("common.appName")}</p>
+            <h1>{t("auth.welcomeTitle")}</h1>
+            <p>{t("auth.welcomeText")}</p>
+          </div>
+        </section>
 
-        <label htmlFor="email">{t("auth.email")}</label>
-        <input id="email" name="email" type="email" value={form.email} onChange={handleChange} required />
+        <section className="auth-form-panel">
+          <form className="auth-card" onSubmit={handleSubmit}>
+            <h1>{t("auth.loginTitle")}</h1>
 
-        <label htmlFor="password">{t("auth.password")}</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          value={form.password}
-          onChange={handleChange}
-          required
-        />
+            <label htmlFor="email">{t("auth.email")}</label>
+            <input id="email" name="email" type="email" value={form.email} onChange={handleChange} required />
 
-        {error && <p className="error-text">{error}</p>}
+            <label htmlFor="password">{t("auth.password")}</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              value={form.password}
+              onChange={handleChange}
+              required
+            />
 
-        <button type="submit" disabled={isSubmitting}>
-          {t("auth.login")}
-        </button>
+            {error && <p className="error-text">{error}</p>}
 
-        <Link to="/register">{t("auth.goToRegister")}</Link>
-      </form>
+            <button type="submit" disabled={isSubmitting}>
+              {t("auth.login")}
+            </button>
+
+            <Link to="/register">{t("auth.goToRegister")}</Link>
+          </form>
+        </section>
+      </div>
     </div>
   );
 }

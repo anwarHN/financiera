@@ -1075,9 +1075,9 @@ function Layout() {
                 </div>
               );
             })}
-            <Link to="/" className="sidebar-brand" aria-label={t("common.appName")}>
-              <span className="sidebar-brand-mark" aria-hidden="true" dangerouslySetInnerHTML={{ __html: daimeLogoMarkup }} />
-            </Link>
+            <div className="sidebar-brand-watermark" aria-hidden="true">
+              <span className="sidebar-brand-mark" dangerouslySetInnerHTML={{ __html: daimeLogoMarkup }} />
+            </div>
           </aside>
         )}
 
