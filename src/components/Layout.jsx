@@ -36,6 +36,7 @@ import { formatDate } from "../utils/dateFormat";
 import ModuleOnboarding from "./ModuleOnboarding";
 import OnboardingHelpButton from "./OnboardingHelpButton";
 import daimeLogoMarkup from "../../assets/logo.svg?raw";
+import daimeLogoTextMarkup from "../../assets/logo_text.svg?raw";
 
 const navGroups = [
   {
@@ -733,9 +734,8 @@ function Layout() {
     <div className="app-shell">
       <header className="topbar">
         <div className="topbar-left">
-          <Link to="/" className="product-name">
-            <span className="product-name-logo" aria-hidden="true" dangerouslySetInnerHTML={{ __html: daimeLogoMarkup }} />
-            <span>{t("common.appName")}</span>
+          <Link to="/" className="product-name" aria-label={t("common.appName")}>
+            <span className="product-name-wordmark" aria-hidden="true" dangerouslySetInnerHTML={{ __html: daimeLogoTextMarkup }} />
           </Link>
         </div>
 
@@ -1007,6 +1007,9 @@ function Layout() {
             className={`sidebar-icons ${isSidebarForcedCollapsed ? "force-collapsed" : ""}`}
             data-tour="sidebar-icons"
           >
+            <Link to="/" className="sidebar-brand" aria-label={t("common.appName")}>
+              <span className="sidebar-brand-mark" aria-hidden="true" dangerouslySetInnerHTML={{ __html: daimeLogoMarkup }} />
+            </Link>
             <button
               type="button"
               className="sidebar-collapse-btn"

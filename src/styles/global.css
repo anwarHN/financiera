@@ -175,19 +175,18 @@ button {
 .product-name {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
   color: inherit;
   font-weight: 700;
 }
 
-.product-name-logo {
+.product-name-wordmark {
   height: 40px;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
 }
 
-.product-name-logo svg {
+.product-name-wordmark svg {
   width: auto;
   height: 40px;
   display: block;
@@ -346,6 +345,27 @@ button {
   transition: width 180ms ease;
   z-index: 1;
   border-radius: 0;
+}
+
+.sidebar-brand {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.35rem 0.25rem 0.55rem;
+  margin-bottom: 0.15rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.sidebar-brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-brand-mark svg {
+  width: auto;
+  height: 34px;
+  display: block;
 }
 
 .sidebar-icons.force-collapsed,
@@ -2968,18 +2988,17 @@ button:disabled,
   }
 
   .topbar-left .product-name {
-    gap: 0.45rem;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .topbar-left .product-name-logo {
+  .topbar-left .product-name-wordmark {
     height: 40px;
   }
 
-  .topbar-left .product-name-logo svg {
+  .topbar-left .product-name-wordmark svg {
     height: 40px;
   }
 
