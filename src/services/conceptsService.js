@@ -62,7 +62,7 @@ async function attachProductStock(rows) {
   if (txError) throw txError;
 
   const txById = new Map((txRows ?? []).map((row) => [Number(row.id), row]));
-  const stockByProductId = new Map();
+  const currentInventoryByProductId = new Map();
   const pendingByProductId = new Map();
 
   for (const detail of details ?? []) {
@@ -73,13 +73,14 @@ async function attachProductStock(rows) {
     const qty = Number(detail.quantity || 0);
     if (!Number.isFinite(qty) || qty === 0) continue;
 
+    const normalizedQty = Math.abs(qty);
+    const delivered = Math.min(Math.max(Number(detail.quantityDelivered || 0), 0), normalizedQty);
     let delta = 0;
     if (Number(tx.type) === 4) {
-      delta = Math.abs(qty);
+      delta = normalizedQty;
     } else if (Number(tx.type) === 1) {
-      delta = -Math.abs(qty);
-      const delivered = Math.max(Number(detail.quantityDelivered || 0), 0);
-      const pending = Math.max(Math.abs(qty) - delivered, 0);
+      delta = -delivered;
+      const pending = Math.max(normalizedQty - delivered, 0);
       if (pending > 0) {
         pendingByProductId.set(productId, Number(pendingByProductId.get(productId) || 0) + pending);
       }
@@ -88,16 +89,16 @@ async function attachProductStock(rows) {
     }
 
     if (delta !== 0) {
-      stockByProductId.set(productId, Number(stockByProductId.get(productId) || 0) + delta);
+      currentInventoryByProductId.set(productId, Number(currentInventoryByProductId.get(productId) || 0) + delta);
     }
   }
 
   return source.map((row) => ({
     ...row,
-    stock: Number(stockByProductId.get(Number(row.id)) || 0),
+    stock: Number(currentInventoryByProductId.get(Number(row.id)) || 0),
     pendingDelivery: Number(pendingByProductId.get(Number(row.id)) || 0),
     stockFinal:
-      Number(stockByProductId.get(Number(row.id)) || 0) + Number(pendingByProductId.get(Number(row.id)) || 0)
+      Number(currentInventoryByProductId.get(Number(row.id)) || 0) - Number(pendingByProductId.get(Number(row.id)) || 0)
   }));
 }
 
