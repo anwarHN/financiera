@@ -222,37 +222,44 @@ function InventoryDeliveriesPage() {
                     <td>{formatDate(row.date, language)}</td>
                     <td>{row.persons?.name || "-"}</td>
                     <td>
-                      <div className="delivery-line-summary">
-                        {(row.details || []).map((detail) => (
-                          <div key={`${row.id}-detail-${detail.id}`} className="delivery-line-summary-item">
-                            <strong>{detail.productName || "-"}</strong>
-                            <span>
-                              {t("transactions.quantity")}:{" "}
-                              {formatNumber(detail.quantity || 0, {
-                                showCurrency: false,
-                                minimumFractionDigits: 0,
-                                maximumFractionDigits: 2
-                              })}
-                            </span>
-                            <span>
-                              {t("inventory.deliveries.deliveredQuantity")}:{" "}
-                              {formatNumber(detail.quantityDelivered || 0, {
-                                showCurrency: false,
-                                minimumFractionDigits: 0,
-                                maximumFractionDigits: 2
-                              })}
-                            </span>
-                            <span>
-                              {t("inventory.deliveries.pendingQuantity")}:{" "}
-                              {formatNumber(detail.pendingQuantity || 0, {
-                                showCurrency: false,
-                                minimumFractionDigits: 0,
-                                maximumFractionDigits: 2
-                              })}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                      <table className="compact-detail-table">
+                        <thead>
+                          <tr>
+                            <th>{t("transactions.product")}</th>
+                            <th className="num-col">{t("transactions.quantity")}</th>
+                            <th className="num-col">{t("inventory.deliveries.deliveredQuantity")}</th>
+                            <th className="num-col">{t("inventory.deliveries.pendingQuantity")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(row.details || []).map((detail) => (
+                            <tr key={`${row.id}-detail-${detail.id}`}>
+                              <td>{detail.productName || "-"}</td>
+                              <td className="num-col">
+                                {formatNumber(detail.quantity || 0, {
+                                  showCurrency: false,
+                                  minimumFractionDigits: 0,
+                                  maximumFractionDigits: 2
+                                })}
+                              </td>
+                              <td className="num-col">
+                                {formatNumber(detail.quantityDelivered || 0, {
+                                  showCurrency: false,
+                                  minimumFractionDigits: 0,
+                                  maximumFractionDigits: 2
+                                })}
+                              </td>
+                              <td className="num-col">
+                                {formatNumber(detail.pendingQuantity || 0, {
+                                  showCurrency: false,
+                                  minimumFractionDigits: 0,
+                                  maximumFractionDigits: 2
+                                })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </td>
                     <td className="num-col">{formatNumber(row.total || 0)}</td>
                     <td className="num-col">
