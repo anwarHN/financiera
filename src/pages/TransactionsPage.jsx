@@ -468,6 +468,7 @@ function TransactionsPage({
                 <th>{t("transactions.tags")}</th>
                 {(moduleType === "income" || moduleType === "expense") && <th>{t("transactions.concept")}</th>}
                 <th>{t("transactions.person")}</th>
+                {moduleType === "sale" && <th>{t("transactions.paymentMode")}</th>}
                 {(moduleType === "income" || moduleType === "expense") && <th>{t("transactions.employee")}</th>}
                 <th>{t("projects.project")}</th>
                 <th className="num-col">{t("transactions.total")}</th>
@@ -509,6 +510,7 @@ function TransactionsPage({
                   </td>
                   {(moduleType === "income" || moduleType === "expense") && <td>{item.conceptName ?? "-"}</td>}
                   <td>{item.persons?.name ?? "-"}</td>
+                  {moduleType === "sale" && <td>{item.isAccountReceivable ? t("transactions.credit") : t("transactions.cash")}</td>}
                   {(moduleType === "income" || moduleType === "expense") && <td>{item.employes?.name ?? "-"}</td>}
                   <td>{item.projects?.name ?? "-"}</td>
                   <td className="num-col">{formatNumber(item.total)}</td>
