@@ -35,7 +35,7 @@ import { listPendingInvitationsForCurrentUser } from "../services/invitationsSer
 import { formatDate } from "../utils/dateFormat";
 import ModuleOnboarding from "./ModuleOnboarding";
 import OnboardingHelpButton from "./OnboardingHelpButton";
-import daimeLogo from "../../assets/logo.svg";
+import daimeLogoMarkup from "../../assets/logo.svg?raw";
 
 const navGroups = [
   {
@@ -734,7 +734,7 @@ function Layout() {
       <header className="topbar">
         <div className="topbar-left">
           <Link to="/" className="product-name">
-            <img src={daimeLogo} alt={t("common.appName")} className="product-name-logo" />
+            <span className="product-name-logo" aria-hidden="true" dangerouslySetInnerHTML={{ __html: daimeLogoMarkup }} />
             <span>{t("common.appName")}</span>
           </Link>
         </div>

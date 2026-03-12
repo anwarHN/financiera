@@ -1,6 +1,6 @@
 :root {
-  --brand: #0d9488;
-  --brand-soft: #ccfbf1;
+  --brand: #1e293b;
+  --brand-soft: #dbe4f0;
   --accent: #f59e0b;
   --bg-main: #f8fafc;
   --bg-grad-start: #f0fdfa;
@@ -30,8 +30,8 @@
 }
 
 [data-theme="dark"] {
-  --brand: #14b8a6;
-  --brand-soft: #113f3c;
+  --brand: #60a5fa;
+  --brand-soft: #1d3557;
   --accent: #fbbf24;
   --bg-main: #0f172a;
   --bg-grad-start: #111827;
@@ -181,11 +181,16 @@ button {
 }
 
 .product-name-logo {
-  width: 1.9rem;
-  height: 1.9rem;
+  height: 40px;
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+.product-name-logo svg {
+  width: auto;
+  height: 40px;
   display: block;
-  object-fit: contain;
 }
 
 .icon-btn,
@@ -2971,8 +2976,11 @@ button:disabled,
   }
 
   .topbar-left .product-name-logo {
-    width: 1.65rem;
-    height: 1.65rem;
+    height: 40px;
+  }
+
+  .topbar-left .product-name-logo svg {
+    height: 40px;
   }
 
   .account-switch-btn {
