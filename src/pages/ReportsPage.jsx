@@ -560,10 +560,12 @@ function ReportsPage() {
             <div className="form-grid-2">
               {reportConfig.filters.includes("dateRange") && (
                 <>
-                  <label className="field-block">
-                    <span>{t("reports.dateFrom")}</span>
-                    <input type="date" name="dateFrom" value={filters.dateFrom} onChange={handleFilterChange} disabled={usesAsOfDateOnly} />
-                  </label>
+                  {!usesAsOfDateOnly ? (
+                    <label className="field-block">
+                      <span>{t("reports.dateFrom")}</span>
+                      <input type="date" name="dateFrom" value={filters.dateFrom} onChange={handleFilterChange} />
+                    </label>
+                  ) : null}
                   <label className="field-block">
                     <span>{t("reports.dateTo")}</span>
                     <input type="date" name="dateTo" value={filters.dateTo} onChange={handleFilterChange} />
