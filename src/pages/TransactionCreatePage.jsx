@@ -437,8 +437,11 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         );
       } else {
         const firstDetail = details?.[0] ?? null;
+        const priorBalancePendingLines = isPriorBalanceMode
+          ? (details || []).filter((line) => Boolean(line.pendingDelivery) && Number(line.quantity || 0) > 0)
+          : [];
         const conceptId = firstDetail?.conceptId ? String(firstDetail.conceptId) : "";
-        const amountValue = Number(firstDetail?.price || 0);
+        const amountValue = isPriorBalanceMode ? Number(tx.total || 0) : Number(firstDetail?.price || 0);
         const txAdditional = Number(firstDetail?.additionalCharges ?? tx.additionalCharges ?? 0);
         const isExpenseFlow = moduleType === "expense";
 
@@ -458,6 +461,17 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
           employeeId: tx.employeeId ? String(tx.employeeId) : "",
           tags: Array.isArray(tx.tags) ? tx.tags : []
         });
+        if (isPriorBalanceMode && moduleType === "sale") {
+          setPriorBalanceAddPendingProducts(priorBalancePendingLines.length > 0);
+          setPriorBalanceProductLines(
+            priorBalancePendingLines.map((line) => ({
+              rowId: String(line.id || `${Date.now()}-${Math.random()}`),
+              conceptId: Number(line.conceptId),
+              conceptName: line.concepts?.name || "",
+              quantity: Math.max(Number(line.quantity || 0), 0)
+            }))
+          );
+        }
       }
       setError("");
     } catch {
@@ -822,7 +836,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       projectId: null,
       tags: [PRIOR_BALANCE_TAG],
       incomingPayment: false,
-      includeCreatedById: true
+      includeCreatedById: !isEdit
     });
 
     const shouldAddPendingProducts = moduleType === "sale" && priorBalanceAddPendingProducts;
@@ -859,10 +873,16 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
 
     try {
       setIsSaving(true);
-      const saved = await createTransactionWithDetails({
-        transaction: transactionPayload,
-        details: pendingProductDetails
-      });
+      const saved = isEdit
+        ? await updateTransactionWithDetails({
+            transactionId: Number(itemId),
+            transaction: transactionPayload,
+            details: pendingProductDetails
+          })
+        : await createTransactionWithDetails({
+            transaction: transactionPayload,
+            details: pendingProductDetails
+          });
       if (embedded) {
         onCreated?.(saved);
       } else {

@@ -135,6 +135,17 @@ function TransactionsPage({ moduleType }) {
     const start = (page - 1) * pageSize;
     return filteredItems.slice(start, start + pageSize);
   }, [filteredItems, page]);
+  const editingItem = useMemo(
+    () => items.find((item) => String(item.id) === String(editId)) ?? null,
+    [items, editId]
+  );
+  const editEntryMode =
+    editingItem &&
+    (moduleType === "sale" || moduleType === "purchase") &&
+    Array.isArray(editingItem.tags) &&
+    editingItem.tags.includes(PRIOR_BALANCE_TAG)
+      ? "priorBalance"
+      : "default";
 
   useEffect(() => {
     setPage(1);
@@ -517,7 +528,7 @@ function TransactionsPage({ moduleType }) {
             <TransactionCreatePage
               embedded
               moduleType={moduleType}
-              entryMode={isCreatePriorModalOpen ? "priorBalance" : "default"}
+              entryMode={isCreatePriorModalOpen || (isEditModalOpen && editEntryMode === "priorBalance") ? "priorBalance" : "default"}
               itemId={isEditModalOpen ? editId : null}
               onCancel={closeModal}
               onCreated={async () => {

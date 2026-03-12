@@ -16,6 +16,21 @@ if (typeof document !== "undefined" && !window.__crudValidationListenerBound) {
   }, true);
 }
 
+if (typeof document !== "undefined" && !window.__numberWheelGuardBound) {
+  window.__numberWheelGuardBound = true;
+  document.addEventListener(
+    "wheel",
+    (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || target.type !== "number") return;
+      if (document.activeElement === target) {
+        target.blur();
+      }
+    },
+    { capture: true, passive: true }
+  );
+}
+
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
