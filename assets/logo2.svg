@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="1024" height="1024">
+    <!-- Parte trasera de la billetera (Azul Institucional) -->
+    <rect x="20" y="35" width="60" height="45" rx="6" fill="#1E293B" />
+
+    <!-- Moneda / Daime (Cobre / Oro) -->
+    <circle cx="50" cy="30" r="18" fill="#F59E0B" />
+
+    <!-- Signo de dólar -->
+    <text x="50" y="38" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="24" fill="#FFFFFF" text-anchor="middle">$</text>
+
+    <!-- Solapa frontal de la billetera (Verde Lempira / Teal) -->
+    <path d="M 20 45 Q 50 65 80 45 L 80 74 C 80 77.3 77.3 80 74 80 L 26 80 C 22.7 80 20 77.3 20 74 Z" fill="#0D9488" />
+</svg>

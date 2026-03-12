@@ -35,7 +35,7 @@ import { listPendingInvitationsForCurrentUser } from "../services/invitationsSer
 import { formatDate } from "../utils/dateFormat";
 import ModuleOnboarding from "./ModuleOnboarding";
 import OnboardingHelpButton from "./OnboardingHelpButton";
-import daimeLogoMarkup from "../../assets/logo.svg?raw";
+import daimeLogoMarkup from "../../assets/logo2.svg?raw";
 
 const navGroups = [
   {

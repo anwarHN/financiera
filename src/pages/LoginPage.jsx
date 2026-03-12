@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
-import daimeLogoMarkup from "../../assets/logo.svg?raw";
+import daimeLogoMarkup from "../../assets/logo2.svg?raw";
 
 function LoginPage() {
   const { login, user } = useAuth();
