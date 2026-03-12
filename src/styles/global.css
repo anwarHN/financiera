@@ -804,23 +804,49 @@ button {
     radial-gradient(circle at 82% 28%, rgba(13, 148, 136, 0.18), transparent 24%);
 }
 
+.auth-brand-lockup,
 .auth-hero-mark,
+.auth-hero-wordmark,
 .auth-hero-copy {
   position: relative;
   z-index: 1;
 }
 
+.auth-brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  margin-bottom: auto;
+}
+
 .auth-hero-mark {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-start;
-  margin-bottom: auto;
   opacity: 0.92;
+  flex: 0 0 auto;
 }
 
 .auth-hero-mark svg {
   width: auto;
-  height: 104px;
+  height: 142px;
+}
+
+.auth-hero-wordmark {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.auth-hero-wordmark svg {
+  width: min(100%, 320px);
+  height: auto;
+}
+
+.auth-hero-wordmark svg [fill="#1e293b"],
+.auth-hero-wordmark svg [stroke="#1e293b"] {
+  fill: #f8fafc !important;
+  stroke: #f8fafc !important;
 }
 
 .auth-eyebrow {
@@ -3002,8 +3028,16 @@ button:disabled,
     padding: 1.5rem;
   }
 
+  .auth-brand-lockup {
+    gap: 0.9rem;
+  }
+
   .auth-hero-mark svg {
-    height: 72px;
+    height: 96px;
+  }
+
+  .auth-hero-wordmark svg {
+    width: min(100%, 220px);
   }
 
   .auth-hero-copy h1 {

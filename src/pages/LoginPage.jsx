@@ -3,6 +3,7 @@ import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import daimeLogoMarkup from "../../assets/logo2.svg?raw";
+import daimeWordmarkMarkup from "../../assets/logo_text.svg?raw";
 
 function LoginPage() {
   const { login, user } = useAuth();
@@ -38,7 +39,14 @@ function LoginPage() {
     <div className="auth-page">
       <div className="auth-split-layout">
         <section className="auth-hero-panel">
-          <div className="auth-hero-mark" aria-hidden="true" dangerouslySetInnerHTML={{ __html: daimeLogoMarkup }} />
+          <div className="auth-brand-lockup">
+            <div className="auth-hero-mark" aria-hidden="true" dangerouslySetInnerHTML={{ __html: daimeLogoMarkup }} />
+            <div
+              className="auth-hero-wordmark"
+              aria-hidden="true"
+              dangerouslySetInnerHTML={{ __html: daimeWordmarkMarkup }}
+            />
+          </div>
           <div className="auth-hero-copy">
             <p className="auth-eyebrow">{t("common.appName")}</p>
             <h1>{t("auth.welcomeTitle")}</h1>
