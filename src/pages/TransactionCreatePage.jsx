@@ -278,11 +278,12 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   }, [accountPaymentForms, selectedSalePaymentMethod]);
 
   const simpleRequiresAccountPaymentForm = useMemo(() => {
+    if (isManualBalanceMode) return false;
     const asksPayment = moduleType === "income" || moduleType === "expense";
     const purchaseCash = moduleType === "purchase" && simpleForm.paymentMode === "cash";
     if (!asksPayment && !purchaseCash) return false;
     return selectedSimplePaymentMethod?.code === "card" || selectedSimplePaymentMethod?.code === "bank_transfer";
-  }, [moduleType, simpleForm.paymentMode, selectedSimplePaymentMethod]);
+  }, [isManualBalanceMode, moduleType, simpleForm.paymentMode, selectedSimplePaymentMethod]);
 
   const saleRequiresAccountPaymentForm = useMemo(() => {
     if (saleHeader.paymentMode !== "cash") return false;
@@ -733,7 +734,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     }
 
     const purchaseCash = moduleType === "purchase" && simpleForm.paymentMode === "cash";
-    const needsPaymentMethod = moduleType === "income" || moduleType === "expense" || purchaseCash;
+    const needsPaymentMethod = !isManualBalanceMode && (moduleType === "income" || moduleType === "expense" || purchaseCash);
     if (needsPaymentMethod && !simpleForm.paymentMethodId) {
       setError(t("transactions.paymentMethodRequired"));
       return;
@@ -1524,7 +1525,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
             <section className="crud-form-section">
               <h2 className="crud-form-section-title">{t("transactions.sectionPayment")}</h2>
               <div className="form-grid-2">
-                {moduleType === "purchase" && (
+                {!isManualBalanceMode && moduleType === "purchase" && (
                   <label className="field-block">
                     <span>{t("transactions.paymentMode")}</span>
                     <select name="paymentMode" value={simpleForm.paymentMode} onChange={handleSimpleChange}>
@@ -1533,7 +1534,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                     </select>
                   </label>
                 )}
-                {(moduleType !== "purchase" || simpleForm.paymentMode === "cash") && (
+                {!isManualBalanceMode && (moduleType !== "purchase" || simpleForm.paymentMode === "cash") && (
                   <>
                     <div className="field-block required">
                       <span>{t("transactions.paymentMethod")}</span>
