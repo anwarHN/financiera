@@ -84,6 +84,7 @@ const initialSimpleForm = {
   accountPaymentFormId: "",
   projectId: "",
   employeeId: "",
+  affectsPayroll: false,
   tags: []
 };
 
@@ -459,6 +460,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
           accountPaymentFormId: tx.accountPaymentFormId ? String(tx.accountPaymentFormId) : "",
           projectId: tx.projectId ? String(tx.projectId) : "",
           employeeId: tx.employeeId ? String(tx.employeeId) : "",
+          affectsPayroll: Boolean(tx.affectsPayroll),
           tags: Array.isArray(tx.tags) ? tx.tags : []
         });
         if (isPriorBalanceMode && moduleType === "sale") {
@@ -503,6 +505,10 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     }
     if (name === "paymentMethodId") {
       setSimpleForm((prev) => ({ ...prev, paymentMethodId: value, accountPaymentFormId: "" }));
+      return;
+    }
+    if (name === "affectsPayroll") {
+      setSimpleForm((prev) => ({ ...prev, affectsPayroll: event.target.checked }));
       return;
     }
     setSimpleForm((prev) => ({ ...prev, [name]: value }));
@@ -649,7 +655,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     employeeId,
     tags = [],
     incomingPayment = false,
-    includeCreatedById = true
+    includeCreatedById = true,
+    affectsPayroll = false
   }) => {
     const parsedAccountPaymentFormId = accountPaymentFormId ? Number(accountPaymentFormId) : null;
     const shouldAutoReconcile = Boolean(parsedAccountPaymentFormId);
@@ -680,6 +687,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       currencyId: currencyId ? Number(currencyId) : null,
       projectId: projectId ? Number(projectId) : null,
       employeeId: employeeId ? Number(employeeId) : null,
+      affectsPayroll: Boolean(employeeId) && Boolean(affectsPayroll),
       tags: Array.isArray(tags)
         ? tags
             .map((item) => String(item || "").trim())
@@ -746,6 +754,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       accountPaymentFormId: shouldPersistPayment ? simpleForm.accountPaymentFormId : null,
       projectId: simpleForm.projectId,
       employeeId: moduleType === "income" || moduleType === "expense" ? simpleForm.employeeId : null,
+      affectsPayroll: moduleType === "income" || moduleType === "expense" ? simpleForm.affectsPayroll : false,
       tags: simpleForm.tags,
       incomingPayment: moduleType === "income",
       includeCreatedById: !isEdit
@@ -1427,11 +1436,11 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                   label={t("transactions.employee")}
                   value={simpleEmployeeLookup}
                   onValueChange={(nextValue) => {
-                    setSimpleEmployeeLookup(nextValue);
-                    if (!nextValue) {
-                      setSimpleForm((prev) => ({ ...prev, employeeId: "" }));
-                    }
-                  }}
+                      setSimpleEmployeeLookup(nextValue);
+                      if (!nextValue) {
+                      setSimpleForm((prev) => ({ ...prev, employeeId: "", affectsPayroll: false }));
+                      }
+                    }}
                   options={employees}
                   getOptionLabel={(employee) => employee.name || ""}
                   onSelect={(employee) => {
@@ -1442,7 +1451,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                   noResultsText={t("common.empty")}
                   selectedPillText={employees.find((employee) => employee.id === Number(simpleForm.employeeId))?.name || ""}
                   onClearSelection={() => {
-                    setSimpleForm((prev) => ({ ...prev, employeeId: "" }));
+                    setSimpleForm((prev) => ({ ...prev, employeeId: "", affectsPayroll: false }));
                     setSimpleEmployeeLookup("");
                   }}
                   onCreateRecord={handleCreatedEmployee}
@@ -1457,6 +1466,15 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                   }
                 />
               )}
+              {(moduleType === "income" || moduleType === "expense") && simpleForm.employeeId ? (
+                <ToggleSwitch
+                  label={t("transactions.affectsPayroll")}
+                  checked={Boolean(simpleForm.affectsPayroll)}
+                  onChange={handleSimpleChange}
+                  name="affectsPayroll"
+                  helpText={t("transactions.affectsPayrollHelp")}
+                />
+              ) : null}
             </div>
           </section>
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import NumberField from "../components/form/NumberField";
 import TextField from "../components/form/TextField";
 import { createEmployee, getEmployeeById, updateEmployee } from "../services/employeesService";
 
@@ -10,7 +11,8 @@ const initialForm = {
   phone: "",
   email: "",
   address: "",
-  isPartner: false
+  isPartner: false,
+  salary: 0
 };
 
 function EmployeeFormPage({ embedded = false, onCancel, onCreated, itemId = null }) {
@@ -43,7 +45,8 @@ function EmployeeFormPage({ embedded = false, onCancel, onCreated, itemId = null
         phone: item.phone ?? "",
         email: item.email ?? "",
         address: item.address ?? "",
-        isPartner: Boolean(item.isPartner)
+        isPartner: Boolean(item.isPartner),
+        salary: Number(item.salary || 0)
       });
     } catch {
       setError(t("common.genericLoadError"));
@@ -79,7 +82,8 @@ function EmployeeFormPage({ embedded = false, onCancel, onCreated, itemId = null
       phone: form.phone.trim() || null,
       email: form.email.trim() || null,
       address: form.address.trim() || null,
-      isPartner: form.isPartner
+      isPartner: form.isPartner,
+      salary: Number(form.salary || 0)
     };
 
     try {
@@ -132,6 +136,14 @@ function EmployeeFormPage({ embedded = false, onCancel, onCreated, itemId = null
             <TextField label={t("common.phone")} name="phone" placeholder={t("common.phone")} value={form.phone} onChange={handleChange} />
             <TextField label={t("common.email")} name="email" placeholder={t("common.email")} value={form.email} onChange={handleChange} />
             <TextField label={t("common.address")} name="address" placeholder={t("common.address")} value={form.address} onChange={handleChange} />
+            <NumberField
+              label={t("employees.salary")}
+              name="salary"
+              min="0"
+              step="0.01"
+              value={form.salary}
+              onChange={handleChange}
+            />
             <label className="checkbox-field form-span-2">
               <input name="isPartner" type="checkbox" checked={form.isPartner} onChange={handleChange} />
               {t("employees.isPartner")}

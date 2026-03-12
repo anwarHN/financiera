@@ -2,6 +2,7 @@ function ToggleSwitch({
   label,
   checked,
   onChange,
+  name = "",
   disabled = false,
   className = "",
   helpText = "",
@@ -18,7 +19,7 @@ function ToggleSwitch({
   return (
     <div className={wrapperClassName}>
       <label className="toggle-switch">
-        <input type="checkbox" checked={Boolean(checked)} onChange={onChange} disabled={disabled} />
+        <input type="checkbox" name={name} checked={Boolean(checked)} onChange={onChange} disabled={disabled} />
         <span className="toggle-switch-ui" aria-hidden="true" />
         <span className="toggle-switch-label">{label}</span>
       </label>

@@ -492,6 +492,75 @@ export async function getEmployeeLoansReport(accountId, { dateFrom, dateTo, curr
   return data ?? [];
 }
 
+export async function getEmployeePayrollReport(accountId, { dateFrom, dateTo, currencyId } = {}) {
+  let employeesQuery = supabase
+    .from("employes")
+    .select("id, name, salary, isActive")
+    .eq("accountId", accountId)
+    .eq("isActive", true)
+    .order("name", { ascending: true });
+
+  const { data: employeeRows, error: employeeError } = await employeesQuery;
+  if (employeeError) throw employeeError;
+
+  let txQuery = supabase
+    .from("transactions")
+    .select('id, date, type, total, name, "employeeId", currencyId, employes(name)')
+    .eq("accountId", accountId)
+    .eq("isActive", true)
+    .eq("affectsPayroll", true)
+    .not("employeeId", "is", null);
+
+  if (dateFrom) txQuery = txQuery.gte("date", dateFrom);
+  if (dateTo) txQuery = txQuery.lte("date", dateTo);
+  if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
+
+  const { data: txRows, error: txError } = await txQuery.order("date", { ascending: true }).order("id", { ascending: true });
+  if (txError) throw txError;
+
+  const grouped = new Map();
+  (employeeRows ?? []).forEach((employee) => {
+    grouped.set(Number(employee.id), {
+      employeeId: Number(employee.id),
+      employeeName: employee.name || "-",
+      salary: Number(employee.salary || 0),
+      adjustments: 0,
+      totalPayroll: Number(employee.salary || 0),
+      details: []
+    });
+  });
+
+  (txRows ?? []).forEach((tx) => {
+    const employeeId = Number(tx.employeeId || 0);
+    if (!employeeId) return;
+    const type = Number(tx.type);
+    if (type !== 2 && type !== 3) return;
+    const signedAmount = type === 3 ? Math.abs(Number(tx.total || 0)) : -Math.abs(Number(tx.total || 0));
+    const bucket = grouped.get(employeeId) || {
+      employeeId,
+      employeeName: tx.employes?.name || "-",
+      salary: 0,
+      adjustments: 0,
+      totalPayroll: 0,
+      details: []
+    };
+    bucket.details.push({
+      id: Number(tx.id),
+      date: tx.date,
+      type: Number(tx.type),
+      name: tx.name || "-",
+      total: signedAmount
+    });
+    bucket.adjustments += signedAmount;
+    bucket.totalPayroll = bucket.salary + bucket.adjustments;
+    grouped.set(employeeId, bucket);
+  });
+
+  return Array.from(grouped.values())
+    .filter((row) => row.salary !== 0 || row.details.length > 0)
+    .sort((a, b) => a.employeeName.localeCompare(b.employeeName));
+}
+
 export async function getCashboxesBalanceReport(accountId, { dateFrom, dateTo, currencyId } = {}) {
   const { data: forms, error: formsError } = await supabase
     .from("account_payment_forms")

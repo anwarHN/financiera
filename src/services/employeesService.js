@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabase";
 
-const selectColumns = "id, name, phone, email, address, isPartner, isActive";
+const selectColumns = "id, name, phone, email, address, isPartner, salary, isActive";
 
 export async function listEmployees(accountId, { includeInactive = false } = {}) {
   let query = supabase.from("employes").select(selectColumns).eq("accountId", accountId).order("id", { ascending: false });

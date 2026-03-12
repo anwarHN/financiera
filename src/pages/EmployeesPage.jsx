@@ -9,6 +9,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { useModulePermissions } from "../hooks/useModulePermissions";
 import { deactivateEmployee, listEmployees } from "../services/employeesService";
+import { formatNumber } from "../utils/numberFormat";
 
 const pageSize = 10;
 
@@ -94,6 +95,7 @@ function EmployeesPage() {
                 <th>{t("common.phone")}</th>
                 <th>{t("common.email")}</th>
                 <th>{t("common.address")}</th>
+                <th className="num-col">{t("employees.salary")}</th>
                 <th>{t("employees.isPartner")}</th>
                 <th>{t("common.status")}</th>
                 <th>{t("common.actions")}</th>
@@ -106,6 +108,7 @@ function EmployeesPage() {
                   <td>{item.phone ?? "-"}</td>
                   <td>{item.email ?? "-"}</td>
                   <td>{item.address ?? "-"}</td>
+                  <td className="num-col">{formatNumber(item.salary || 0)}</td>
                   <td>{item.isPartner ? t("common.yes") : t("common.no")}</td>
                   <td>
                     <StatusBadge tone={item.isActive ? "success" : "muted"}>

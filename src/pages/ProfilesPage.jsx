@@ -37,6 +37,7 @@ const initialForm = {
       sales_by_employee: true,
       expenses_by_tag_payment_form: true,
       employee_loans: true,
+      employee_payroll: true,
       cashboxes_balance: true,
       pending_deliveries: true
     }
@@ -92,6 +93,7 @@ function ProfilesPage() {
     { id: "sales_by_employee", titleKey: "reports.salesByEmployee" },
     { id: "expenses_by_tag_payment_form", titleKey: "reports.expensesByTagPaymentForm" },
     { id: "employee_loans", titleKey: "reports.employeeLoans" },
+    { id: "employee_payroll", titleKey: "reports.employeePayroll" },
     { id: "cashboxes_balance", titleKey: "reports.cashboxesBalance" },
     { id: "pending_deliveries", titleKey: "reports.pendingDeliveries" }
   ];

@@ -11,6 +11,7 @@ import {
   getCashflowConceptTotals,
   getCashflowOutstandingBalanceSummary,
   getEmployeeAbsenceTotals,
+  getEmployeePayrollReport,
   getEmployeeLoansReport,
   getExpensesByTagAndPaymentForm,
   getOutstandingTransactionsForReports,
@@ -35,6 +36,7 @@ const fullReportCatalog = [
   { id: "sales_by_employee", titleKey: "reports.salesByEmployee", filters: ["dateRange", "currency"] },
   { id: "expenses_by_tag_payment_form", titleKey: "reports.expensesByTagPaymentForm", filters: ["dateRange", "currency"] },
   { id: "employee_loans", titleKey: "reports.employeeLoans", filters: ["dateRange", "currency"] },
+  { id: "employee_payroll", titleKey: "reports.employeePayroll", filters: ["dateRange", "currency"] },
   { id: "cashboxes_balance", titleKey: "reports.cashboxesBalance", filters: ["dateRange", "currency"] },
   { id: "pending_deliveries", titleKey: "reports.pendingDeliveries", filters: ["dateRange", "currency"] }
 ];
@@ -326,6 +328,21 @@ function ReportsPage() {
           payableOutstanding: 0
         });
         setCashflowBankBalances([]);
+      } else if (selectedReport === "employee_payroll") {
+        const rows = await getEmployeePayrollReport(account.accountId, {
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined,
+          currencyId: filters.currencyId || undefined
+        });
+        setResults(rows);
+        setCashflowSummary({
+          previousBalance: 0,
+          periodMovements: 0,
+          newBalance: 0,
+          receivableOutstanding: 0,
+          payableOutstanding: 0
+        });
+        setCashflowBankBalances([]);
       } else if (selectedReport === "cashboxes_balance") {
         const rows = await getCashboxesBalanceReport(account.accountId, {
           dateFrom: filters.dateFrom || undefined,
@@ -466,6 +483,9 @@ function ReportsPage() {
   const total = useMemo(() => {
     if (selectedReport === "receivable" || selectedReport === "payable") {
       return results.reduce((acc, group) => acc + Number(group.total || 0), 0);
+    }
+    if (selectedReport === "employee_payroll") {
+      return results.reduce((acc, item) => acc + Number(item.totalPayroll || 0), 0);
     }
     if (selectedReport === "employee_absences") {
       return results.reduce((acc, item) => acc + Number(item.totalAbsences || 0), 0);
@@ -688,6 +708,11 @@ function ReportsPage() {
                   {t("transactions.balance")}: {formatNumber(balance)}
                 </p>
               ) : null}
+              {selectedReport === "employee_payroll" ? (
+                <p>
+                  {t("reports.payrollTotal")}: {formatNumber(total)}
+                </p>
+              ) : null}
               {selectedReport === "cashboxes_balance" ? (
                 <p>
                   {t("reports.cashboxesBalancesTotal")}: {formatNumber(total)}
@@ -791,6 +816,16 @@ function ReportsPage() {
                   <th>{t("transactions.accountPaymentForm")}</th>
                   <th className="num-col">{t("transactions.total")}</th>
                 </tr>
+              ) : selectedReport === "employee_payroll" ? (
+                <tr>
+                  <th>{t("transactions.employee")}</th>
+                  <th>{t("common.name")}</th>
+                  <th>{t("common.type")}</th>
+                  <th>{t("transactions.date")}</th>
+                  <th className="num-col">{t("employees.salary")}</th>
+                  <th className="num-col">{t("reports.payrollAdjustment")}</th>
+                  <th className="num-col">{t("reports.payrollTotal")}</th>
+                </tr>
               ) : selectedReport === "employee_loans" ? (
                 <tr>
                   <th className="num-col">ID</th>
@@ -847,6 +882,8 @@ function ReportsPage() {
                 ? cashflowRowCount === 0
                 : selectedReport === "receivable" || selectedReport === "payable"
                   ? results.length === 0
+                  : selectedReport === "employee_payroll"
+                    ? results.length === 0
                   : rowsWithTypeLabel.length === 0) ? (
                 <tr>
                   <td
@@ -865,6 +902,8 @@ function ReportsPage() {
                                 ? 3
                                 : selectedReport === "employee_loans"
                                   ? 7
+                                  : selectedReport === "employee_payroll"
+                                    ? 7
                                   : selectedReport === "cashboxes_balance"
                                     ? 4
                                     : selectedReport === "pending_deliveries"
@@ -950,6 +989,29 @@ function ReportsPage() {
                     <td className="num-col">{formatNumber(row.balance || 0)}</td>
                   </tr>
                 ))
+              ) : selectedReport === "employee_payroll" ? (
+                results.flatMap((row) => [
+                  <tr key={`employee-payroll-${row.employeeId}`} className="report-group-row">
+                    <td>{row.employeeName || "-"}</td>
+                    <td>{t("reports.subtotal")}</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td className="num-col">{formatNumber(row.salary || 0)}</td>
+                    <td className="num-col">{formatNumber(row.adjustments || 0)}</td>
+                    <td className="num-col">{formatNumber(row.totalPayroll || 0)}</td>
+                  </tr>,
+                  ...(row.details || []).map((detail) => (
+                    <tr key={`employee-payroll-detail-${row.employeeId}-${detail.id}`} className="report-concept-row">
+                      <td>{row.employeeName || "-"}</td>
+                      <td>{detail.name || "-"}</td>
+                      <td>{detail.type === 3 ? t("reports.incomes") : t("reports.expenses")}</td>
+                      <td>{formatDate(detail.date, language)}</td>
+                      <td className="num-col">-</td>
+                      <td className="num-col">{formatNumber(detail.total || 0)}</td>
+                      <td className="num-col">-</td>
+                    </tr>
+                  ))
+                ])
               ) : selectedReport === "cashboxes_balance" ? (
                 results.map((row) => (
                   <tr key={`cashbox-balance-${row.id}`}>

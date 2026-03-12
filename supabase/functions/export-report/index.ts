@@ -16,6 +16,7 @@ interface ExportPayload {
     | "sales_by_employee"
     | "expenses_by_tag_payment_form"
     | "employee_loans"
+    | "employee_payroll"
     | "cashboxes_balance"
     | "pending_deliveries";
   dateFrom?: string | null;
@@ -174,6 +175,7 @@ const reportTitles: Record<ExportPayload["reportId"], string> = {
   sales_by_employee: "Ventas por empleado",
   expenses_by_tag_payment_form: "Gastos por etiqueta y forma de pago",
   employee_loans: "Préstamos a empleados",
+  employee_payroll: "Planilla de empleados",
   cashboxes_balance: "Saldos de cajas",
   pending_deliveries: "Pendientes de entrega"
 };
@@ -1125,6 +1127,111 @@ async function buildPendingDeliveriesReport(
   };
 }
 
+async function buildEmployeePayrollReport(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payload: ExportPayload
+): Promise<ExportBuildResult> {
+  const { data: employeeRows, error: employeeError } = await supabaseAdmin
+    .from("employes")
+    .select("id, name, salary, isActive")
+    .eq("accountId", payload.accountId)
+    .eq("isActive", true)
+    .order("name", { ascending: true });
+  if (employeeError) throw employeeError;
+
+  let txQuery = supabaseAdmin
+    .from("transactions")
+    .select('id, date, type, total, name, "employeeId", currencyId, employes(name)')
+    .eq("accountId", payload.accountId)
+    .eq("isActive", true)
+    .eq("affectsPayroll", true)
+    .not("employeeId", "is", null);
+
+  if (payload.dateFrom) txQuery = txQuery.gte("date", payload.dateFrom);
+  if (payload.dateTo) txQuery = txQuery.lte("date", payload.dateTo);
+  if (payload.currencyId != null) txQuery = txQuery.eq("currencyId", payload.currencyId);
+
+  const { data: txRows, error: txError } = await txQuery.order("date", { ascending: true }).order("id", { ascending: true });
+  if (txError) throw txError;
+
+  const grouped = new Map<number, {
+    employeeName: string;
+    salary: number;
+    adjustments: number;
+    totalPayroll: number;
+    details: Array<{ id: number; date: string; type: number; name: string; total: number }>;
+  }>();
+
+  (employeeRows ?? []).forEach((row) => {
+    grouped.set(Number(row.id), {
+      employeeName: row.name || "-",
+      salary: sanitizeNumber(row.salary),
+      adjustments: 0,
+      totalPayroll: sanitizeNumber(row.salary),
+      details: []
+    });
+  });
+
+  (txRows ?? []).forEach((row) => {
+    const employeeId = Number(row.employeeId || 0);
+    if (!employeeId) return;
+    const type = Number(row.type);
+    if (type !== 2 && type !== 3) return;
+    const signedAmount = type === 3 ? Math.abs(Number(row.total || 0)) : -Math.abs(Number(row.total || 0));
+    const current = grouped.get(employeeId) || {
+      employeeName: row.employes?.name || "-",
+      salary: 0,
+      adjustments: 0,
+      totalPayroll: 0,
+      details: []
+    };
+    current.details.push({
+      id: Number(row.id),
+      date: row.date,
+      type: Number(row.type),
+      name: row.name || "-",
+      total: sanitizeNumber(signedAmount)
+    });
+    current.adjustments = sanitizeNumber(current.adjustments + signedAmount);
+    current.totalPayroll = sanitizeNumber(current.salary + current.adjustments);
+    grouped.set(employeeId, current);
+  });
+
+  const rows: Record<string, string | number>[] = [];
+  Array.from(grouped.values())
+    .filter((row) => row.salary !== 0 || row.details.length > 0)
+    .sort((a, b) => a.employeeName.localeCompare(b.employeeName))
+    .forEach((row) => {
+      rows.push({
+        empleado: row.employeeName,
+        detalle: "Subtotal",
+        tipo: "-",
+        fecha: "-",
+        salario: sanitizeNumber(row.salary),
+        ajuste_periodo: sanitizeNumber(row.adjustments),
+        total_planilla: sanitizeNumber(row.totalPayroll)
+      });
+
+      row.details.forEach((detail) => {
+        rows.push({
+          empleado: row.employeeName,
+          detalle: detail.name,
+          tipo: detail.type === 3 ? "Ingreso" : "Gasto",
+          fecha: detail.date,
+          salario: "",
+          ajuste_periodo: sanitizeNumber(detail.total),
+          total_planilla: ""
+        });
+      });
+    });
+
+  return {
+    rows,
+    total: sanitizeNumber(rows.reduce((acc, row) => acc + Number(row.total_planilla || 0), 0)),
+    balance: 0
+  };
+}
+
 async function buildReportData(supabaseAdmin: ReturnType<typeof createClient>, payload: ExportPayload): Promise<ExportBuildResult> {
   if (payload.reportId === "internal_obligations") {
     return buildInternalObligationsReport(supabaseAdmin, payload);
@@ -1143,6 +1250,9 @@ async function buildReportData(supabaseAdmin: ReturnType<typeof createClient>, p
   }
   if (payload.reportId === "employee_loans") {
     return buildEmployeeLoansReport(supabaseAdmin, payload);
+  }
+  if (payload.reportId === "employee_payroll") {
+    return buildEmployeePayrollReport(supabaseAdmin, payload);
   }
   if (payload.reportId === "cashboxes_balance") {
     return buildCashboxesBalanceReport(supabaseAdmin, payload);
