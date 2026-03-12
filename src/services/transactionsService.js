@@ -18,7 +18,7 @@ export async function listTransactions({
   let query = supabase
     .from("transactions")
     .select(
-      'id, personId, "employeeId", date, type, status, total, balance, payments, name, tags, currencyId, "projectId", "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "isEmployeeLoan", "sourceTransactionId", "isInternalTransfer", "isDeposit", "affectsPayroll", isActive, persons(name), employes(name), projects(name), account_payment_forms(name)'
+      'id, personId, "employeeId", date, type, status, total, balance, payments, name, tags, currencyId, "projectId", "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "isEmployeeLoan", "sourceTransactionId", "isInternalTransfer", "isDeposit", "isAccountReceivable", "isAccountPayable", "affectsPayroll", isActive, persons(name), employes(name), projects(name), account_payment_forms(name)'
     )
     .eq("accountId", accountId)
     .eq("type", type);

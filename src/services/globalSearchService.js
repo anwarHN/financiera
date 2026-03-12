@@ -4,6 +4,15 @@ function buildTextSearchFilter(term) {
   return `name.ilike.%${term}%,referenceNumber.ilike.%${term}%,deliverTo.ilike.%${term}%,deliveryAddress.ilike.%${term}%`;
 }
 
+function buildTransactionSearchFilter(term) {
+  const baseFilter = buildTextSearchFilter(term);
+  if (!/^\d+$/.test(String(term || "").trim())) {
+    return baseFilter;
+  }
+
+  return `id.eq.${Number(term)},${baseFilter}`;
+}
+
 function buildPersonSearchFilter(term) {
   return `name.ilike.%${term}%,phone.ilike.%${term}%,address.ilike.%${term}%`;
 }
@@ -35,7 +44,7 @@ export async function searchGlobalByAccount({ accountId, term, limit = 8 }) {
       .eq("accountId", accountId)
       .eq("isActive", true)
       .eq("isDeposit", false)
-      .or(buildTextSearchFilter(normalizedTerm))
+      .or(buildTransactionSearchFilter(normalizedTerm))
       .order("id", { ascending: false })
       .limit(limit),
     supabase
@@ -77,7 +86,7 @@ export async function searchGlobalByAccount({ accountId, term, limit = 8 }) {
       .eq("accountId", accountId)
       .eq("isActive", true)
       .eq("isDeposit", true)
-      .or(buildTextSearchFilter(normalizedTerm))
+      .or(buildTransactionSearchFilter(normalizedTerm))
       .order("id", { ascending: false })
       .limit(limit)
   ]);
