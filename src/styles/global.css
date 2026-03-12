@@ -175,21 +175,10 @@ button {
 .product-name {
   display: inline-flex;
   align-items: center;
-  color: inherit;
+  color: var(--accent);
   font-weight: 700;
-}
-
-.product-name-wordmark {
-  height: 40px;
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-}
-
-.product-name-wordmark svg {
-  width: auto;
-  height: 40px;
-  display: block;
+  font-size: 1.25rem;
+  letter-spacing: 0.01em;
 }
 
 .icon-btn,
@@ -351,9 +340,9 @@ button {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 0.35rem 0.25rem 0.55rem;
-  margin-bottom: 0.15rem;
-  border-bottom: 1px solid var(--line);
+  padding: 0.8rem 0.25rem 0.35rem;
+  margin-top: auto;
+  border-top: 1px solid var(--line);
 }
 
 .sidebar-brand-mark {
@@ -364,7 +353,7 @@ button {
 
 .sidebar-brand-mark svg {
   width: auto;
-  height: 34px;
+  height: 64px;
   display: block;
 }
 
@@ -2994,12 +2983,8 @@ button:disabled,
     white-space: nowrap;
   }
 
-  .topbar-left .product-name-wordmark {
-    height: 40px;
-  }
-
-  .topbar-left .product-name-wordmark svg {
-    height: 40px;
+  .topbar-left .product-name {
+    font-size: 1.1rem;
   }
 
   .account-switch-btn {
