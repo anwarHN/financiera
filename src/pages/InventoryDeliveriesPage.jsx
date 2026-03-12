@@ -203,90 +203,84 @@ function InventoryDeliveriesPage() {
         <p>{t("common.empty")}</p>
       ) : (
         <>
-          <table className="crud-table">
+          <table className="crud-table inventory-deliveries-table">
             <thead>
               <tr>
-                <th className="num-col">ID</th>
-                <th>{t("transactions.date")}</th>
-                <th>{t("transactions.person")}</th>
-                <th>{t("transactions.detailLines")}</th>
-                <th className="num-col">{t("transactions.total")}</th>
-                <th className="num-col">{t("inventory.deliveries.pendingUnits")}</th>
-                <th>{t("common.actions")}</th>
+                <th className="num-col" rowSpan={2}>ID</th>
+                <th rowSpan={2}>{t("transactions.date")}</th>
+                <th rowSpan={2}>{t("transactions.person")}</th>
+                <th colSpan={4}>{t("transactions.detailLines")}</th>
+                <th className="num-col" rowSpan={2}>{t("transactions.total")}</th>
+                <th className="num-col" rowSpan={2}>{t("inventory.deliveries.pendingUnits")}</th>
+                <th rowSpan={2}>{t("common.actions")}</th>
+              </tr>
+              <tr>
+                <th>{t("transactions.product")}</th>
+                <th className="num-col">{t("transactions.quantity")}</th>
+                <th className="num-col">{t("inventory.deliveries.deliveredQuantity")}</th>
+                <th className="num-col">{t("inventory.deliveries.pendingQuantity")}</th>
               </tr>
             </thead>
             <tbody>
-              {paginatedItems.map((row) => (
-                  <tr key={row.id}>
-                    <td className="num-col">{row.id}</td>
-                    <td>{formatDate(row.date, language)}</td>
-                    <td>{row.persons?.name || "-"}</td>
-                    <td>
-                      <table className="compact-detail-table">
-                        <thead>
-                          <tr>
-                            <th>{t("transactions.product")}</th>
-                            <th className="num-col">{t("transactions.quantity")}</th>
-                            <th className="num-col">{t("inventory.deliveries.deliveredQuantity")}</th>
-                            <th className="num-col">{t("inventory.deliveries.pendingQuantity")}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(row.details || []).map((detail) => (
-                            <tr key={`${row.id}-detail-${detail.id}`}>
-                              <td>{detail.productName || "-"}</td>
-                              <td className="num-col">
-                                {formatNumber(detail.quantity || 0, {
-                                  showCurrency: false,
-                                  minimumFractionDigits: 0,
-                                  maximumFractionDigits: 2
-                                })}
-                              </td>
-                              <td className="num-col">
-                                {formatNumber(detail.quantityDelivered || 0, {
-                                  showCurrency: false,
-                                  minimumFractionDigits: 0,
-                                  maximumFractionDigits: 2
-                                })}
-                              </td>
-                              <td className="num-col">
-                                {formatNumber(detail.pendingQuantity || 0, {
-                                  showCurrency: false,
-                                  minimumFractionDigits: 0,
-                                  maximumFractionDigits: 2
-                                })}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </td>
-                    <td className="num-col">{formatNumber(row.total || 0)}</td>
+              {paginatedItems.flatMap((row) =>
+                (row.details || []).map((detail, index) => (
+                  <tr key={`${row.id}-detail-${detail.id}`}>
+                    {index === 0 ? <td className="num-col" rowSpan={row.details.length}>{row.id}</td> : null}
+                    {index === 0 ? <td rowSpan={row.details.length}>{formatDate(row.date, language)}</td> : null}
+                    {index === 0 ? <td rowSpan={row.details.length}>{row.persons?.name || "-"}</td> : null}
+                    <td>{detail.productName || "-"}</td>
                     <td className="num-col">
-                      {formatNumber(row.pendingTotal || 0, {
+                      {formatNumber(detail.quantity || 0, {
                         showCurrency: false,
                         minimumFractionDigits: 0,
                         maximumFractionDigits: 2
                       })}
                     </td>
-                    <td className="table-actions">
-                      <RowActionsMenu
-                      actions={[
-                        {
-                          key: "deliver",
-                          label: t("inventory.deliveries.register"),
-                          onClick: () => openModalForInvoice(row.id)
-                        },
-                        {
-                          key: "history",
-                          label: t("inventory.deliveries.viewHistory"),
-                          onClick: () => openDeliveryHistoryModal(row)
-                        }
-                      ]}
-                    />
-                  </td>
+                    <td className="num-col">
+                      {formatNumber(detail.quantityDelivered || 0, {
+                        showCurrency: false,
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2
+                      })}
+                    </td>
+                    <td className="num-col">
+                      {formatNumber(detail.pendingQuantity || 0, {
+                        showCurrency: false,
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2
+                      })}
+                    </td>
+                    {index === 0 ? <td className="num-col" rowSpan={row.details.length}>{formatNumber(row.total || 0)}</td> : null}
+                    {index === 0 ? (
+                      <td className="num-col" rowSpan={row.details.length}>
+                        {formatNumber(row.pendingTotal || 0, {
+                          showCurrency: false,
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 2
+                        })}
+                      </td>
+                    ) : null}
+                    {index === 0 ? (
+                      <td className="table-actions" rowSpan={row.details.length}>
+                        <RowActionsMenu
+                          actions={[
+                            {
+                              key: "deliver",
+                              label: t("inventory.deliveries.register"),
+                              onClick: () => openModalForInvoice(row.id)
+                            },
+                            {
+                              key: "history",
+                              label: t("inventory.deliveries.viewHistory"),
+                              onClick: () => openDeliveryHistoryModal(row)
+                            }
+                          ]}
+                        />
+                      </td>
+                    ) : null}
                   </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
           <Pagination page={page} pageSize={pageSize} totalItems={items.length} onPageChange={setPage} />
