@@ -421,7 +421,7 @@ function ReportsPage() {
           dateTo: filters.dateTo || undefined,
           currencyId: filters.currencyId || undefined
         });
-        setResults(rows);
+        setResults(buildResults(rows, selectedReport));
         setCashflowSummary({
           previousBalance: 0,
           periodMovements: 0,
