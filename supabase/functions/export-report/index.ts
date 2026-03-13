@@ -1127,7 +1127,15 @@ async function buildPendingDeliveriesReport(
   if (detailsError) throw detailsError;
 
   const txById = new Map(saleRows.map((row) => [Number(row.id), row]));
-  const rows: Record<string, string | number>[] = [];
+  const rawRows: Array<{
+    factura_id: number;
+    fecha: string;
+    cliente: string;
+    producto: string;
+    cantidad: number;
+    cantidad_entregada: number;
+    pendiente_entrega: number;
+  }> = [];
   let totalPending = 0;
 
   ((details ?? []) as PendingDeliveryDetailRow[]).forEach((row) => {
@@ -1138,7 +1146,7 @@ async function buildPendingDeliveriesReport(
     const pending = Math.max(quantity - delivered, 0);
     if (pending <= 0) return;
     totalPending += pending;
-    rows.push({
+    rawRows.push({
       factura_id: tx.id,
       fecha: tx.date,
       cliente: tx.persons?.name || "-",
@@ -1149,12 +1157,66 @@ async function buildPendingDeliveriesReport(
     });
   });
 
-  rows.sort((a, b) => {
+  rawRows.sort((a, b) => {
+    if (String(a.cliente || "") !== String(b.cliente || "")) {
+      return String(a.cliente || "").localeCompare(String(b.cliente || ""));
+    }
+    if (String(a.producto || "") !== String(b.producto || "")) {
+      return String(a.producto || "").localeCompare(String(b.producto || ""));
+    }
     const txA = Number(a.factura_id || 0);
     const txB = Number(b.factura_id || 0);
     if (txA !== txB) return txB - txA;
-    return String(a.producto || "").localeCompare(String(b.producto || ""));
+    return String(b.fecha || "").localeCompare(String(a.fecha || ""));
   });
+
+  const rows: Record<string, string | number>[] = [];
+  const byClient = new Map<string, typeof rawRows>();
+  rawRows.forEach((row) => {
+    const key = row.cliente || "-";
+    const bucket = byClient.get(key) || [];
+    bucket.push(row);
+    byClient.set(key, bucket);
+  });
+
+  Array.from(byClient.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .forEach(([clientName, clientRows]) => {
+      const clientPending = clientRows.reduce((acc, row) => acc + Number(row.pendiente_entrega || 0), 0);
+      rows.push({
+        factura_id: "",
+        fecha: "",
+        cliente: clientName,
+        producto: "Subtotal por cliente",
+        cantidad: "",
+        cantidad_entregada: "",
+        pendiente_entrega: sanitizeNumber(clientPending)
+      });
+
+      const byProduct = new Map<string, typeof rawRows>();
+      clientRows.forEach((row) => {
+        const productKey = row.producto || "-";
+        const productBucket = byProduct.get(productKey) || [];
+        productBucket.push(row);
+        byProduct.set(productKey, productBucket);
+      });
+
+      Array.from(byProduct.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .forEach(([productName, productRows]) => {
+          const productPending = productRows.reduce((acc, row) => acc + Number(row.pendiente_entrega || 0), 0);
+          rows.push({
+            factura_id: "",
+            fecha: "",
+            cliente: "",
+            producto: `${productName} - Subtotal por producto`,
+            cantidad: "",
+            cantidad_entregada: "",
+            pendiente_entrega: sanitizeNumber(productPending)
+          });
+          productRows.forEach((row) => rows.push(row));
+        });
+    });
 
   return {
     rows,

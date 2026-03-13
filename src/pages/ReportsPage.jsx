@@ -195,6 +195,54 @@ function ReportsPage() {
         };
       });
     }
+    if (reportId === "pending_deliveries") {
+      const byParty = new Map();
+      (transactions || []).forEach((row) => {
+        const partyName = row.personName || t("reports.unassignedPerson");
+        if (!byParty.has(partyName)) {
+          byParty.set(partyName, {
+            personName: partyName,
+            totalPendingQuantity: 0,
+            products: new Map()
+          });
+        }
+
+        const partyBucket = byParty.get(partyName);
+        partyBucket.totalPendingQuantity += Number(row.pendingQuantity || 0);
+
+        const productName = row.conceptName || "-";
+        if (!partyBucket.products.has(productName)) {
+          partyBucket.products.set(productName, {
+            conceptName: productName,
+            totalPendingQuantity: 0,
+            details: []
+          });
+        }
+
+        const productBucket = partyBucket.products.get(productName);
+        productBucket.totalPendingQuantity += Number(row.pendingQuantity || 0);
+        productBucket.details.push(row);
+      });
+
+      return Array.from(byParty.values())
+        .map((party) => ({
+          personName: party.personName,
+          totalPendingQuantity: party.totalPendingQuantity,
+          products: Array.from(party.products.values())
+            .map((product) => ({
+              conceptName: product.conceptName,
+              totalPendingQuantity: product.totalPendingQuantity,
+              details: product.details.sort((a, b) => {
+                if (String(b.date || "") !== String(a.date || "")) {
+                  return String(b.date || "").localeCompare(String(a.date || ""));
+                }
+                return Number(b.transactionId || 0) - Number(a.transactionId || 0);
+              })
+            }))
+            .sort((a, b) => a.conceptName.localeCompare(b.conceptName))
+        }))
+        .sort((a, b) => a.personName.localeCompare(b.personName));
+    }
     return transactions;
   };
 
@@ -475,6 +523,18 @@ function ReportsPage() {
     if (selectedReport !== "sales_by_employee") return 0;
     return results.reduce((acc, seller) => acc + (seller.products?.length || 0), 0);
   }, [results, selectedReport]);
+  const pendingDeliveriesRowCount = useMemo(() => {
+    if (selectedReport !== "pending_deliveries") return 0;
+    return results.reduce(
+      (acc, party) =>
+        acc +
+        (party.products || []).reduce(
+          (productAcc, product) => productAcc + (product.details?.length || 0),
+          0
+        ),
+      0
+    );
+  }, [results, selectedReport]);
 
   const appliedFilters = useMemo(() => {
     const currencyName = currencies.find((c) => String(c.id) === String(filters.currencyId))?.name || t("reports.currencyFilterHint");
@@ -506,7 +566,7 @@ function ReportsPage() {
       return results.reduce((acc, item) => acc + Number(item.balance || 0), 0);
     }
     if (selectedReport === "pending_deliveries") {
-      return results.reduce((acc, item) => acc + Number(item.pendingQuantity || 0), 0);
+      return results.reduce((acc, item) => acc + Number(item.totalPendingQuantity || 0), 0);
     }
     if (selectedReport === "cashflow") {
       return results.reduce((acc, section) => acc + Number(section.total || 0), 0);
@@ -680,7 +740,13 @@ function ReportsPage() {
           <p>
             {t("reports.totalRecords")}:{" "}
             {formatNumber(
-              selectedReport === "cashflow" ? cashflowRowCount : selectedReport === "sales_by_employee" ? salesByEmployeeRowCount : results.length,
+              selectedReport === "cashflow"
+                ? cashflowRowCount
+                : selectedReport === "sales_by_employee"
+                  ? salesByEmployeeRowCount
+                  : selectedReport === "pending_deliveries"
+                    ? pendingDeliveriesRowCount
+                    : results.length,
               {
               minimumFractionDigits: 0,
               maximumFractionDigits: 0
@@ -893,6 +959,8 @@ function ReportsPage() {
                   ? results.length === 0
                   : selectedReport === "employee_payroll"
                     ? results.length === 0
+                    : selectedReport === "pending_deliveries"
+                      ? results.length === 0
                   : rowsWithTypeLabel.length === 0) ? (
                 <tr>
                   <td
@@ -1031,31 +1099,61 @@ function ReportsPage() {
                   </tr>
                 ))
               ) : selectedReport === "pending_deliveries" ? (
-                results.map((row) => (
-                  <tr key={`pending-delivery-${row.transactionId}-${row.conceptName}`}>
-                    <td className="num-col">{row.transactionId}</td>
-                    <td>{formatDate(row.date, language)}</td>
-                    <td>{row.personName || "-"}</td>
-                    <td>{row.conceptName || "-"}</td>
+                results.flatMap((party) => [
+                  <tr key={`pending-party-${party.personName}`} className="report-group-row">
+                    <td>{party.personName}</td>
+                    <td colSpan={5}>{t("reports.subtotal")}</td>
                     <td className="num-col">
-                      {formatNumber(row.quantity || 0, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="num-col">
-                      {formatNumber(row.quantityDelivered || 0, {
+                      {formatNumber(party.totalPendingQuantity || 0, {
                         showCurrency: false,
                         minimumFractionDigits: 0,
                         maximumFractionDigits: 2
                       })}
                     </td>
-                    <td className="num-col">
-                      {formatNumber(row.pendingQuantity || 0, {
-                        showCurrency: false,
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 2
-                      })}
-                    </td>
-                  </tr>
-                ))
+                  </tr>,
+                  ...(party.products || []).flatMap((product) => [
+                    <tr key={`pending-product-${party.personName}-${product.conceptName}`} className="report-section-row">
+                      <td colSpan={3}>{product.conceptName}</td>
+                      <td colSpan={3}>{t("reports.subtotal")}</td>
+                      <td className="num-col">
+                        {formatNumber(product.totalPendingQuantity || 0, {
+                          showCurrency: false,
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 2
+                        })}
+                      </td>
+                    </tr>,
+                    ...(product.details || []).map((row) => (
+                      <tr key={`pending-delivery-${row.transactionId}-${product.conceptName}`}>
+                        <td className="num-col">{row.transactionId}</td>
+                        <td>{formatDate(row.date, language)}</td>
+                        <td>{row.personName || "-"}</td>
+                        <td>{row.conceptName || "-"}</td>
+                        <td className="num-col">
+                          {formatNumber(row.quantity || 0, {
+                            showCurrency: false,
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 2
+                          })}
+                        </td>
+                        <td className="num-col">
+                          {formatNumber(row.quantityDelivered || 0, {
+                            showCurrency: false,
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 2
+                          })}
+                        </td>
+                        <td className="num-col">
+                          {formatNumber(row.pendingQuantity || 0, {
+                            showCurrency: false,
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 2
+                          })}
+                        </td>
+                      </tr>
+                    ))
+                  ])
+                ])
               ) : selectedReport === "employee_absences" ? (
                 results.map((row) => (
                   <tr key={`employee-absence-${row.employeeId}`}>
