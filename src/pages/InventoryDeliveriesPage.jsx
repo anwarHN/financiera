@@ -188,8 +188,9 @@ function InventoryDeliveriesPage() {
       await loadData();
       closeModal();
       setError("");
-    } catch {
-      setError(t("common.genericSaveError"));
+    } catch (err) {
+      console.error("Failed to register inventory delivery", err);
+      setError(err?.message || t("common.genericSaveError"));
     } finally {
       setIsSaving(false);
     }

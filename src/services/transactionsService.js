@@ -405,6 +405,9 @@ export async function registerInventoryDelivery({ transactionId, deliveryDate, d
     .in("id", detailIds)
     .eq("transactionId", txId);
   if (currentError) throw currentError;
+  if (!currentDetails?.length) {
+    throw new Error("No se encontraron líneas válidas para registrar la entrega.");
+  }
 
   const currentById = new Map((currentDetails ?? []).map((row) => [Number(row.id), row]));
   const updates = [];
@@ -430,6 +433,10 @@ export async function registerInventoryDelivery({ transactionId, deliveryDate, d
       deliveryDate: normalizedDeliveryDate,
       quantity: deliveredNow
     });
+  }
+
+  if (!updates.length || !historyRows.length) {
+    throw new Error("No hay cantidades pendientes válidas para registrar.");
   }
 
   const updateResults = await Promise.all(
