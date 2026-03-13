@@ -84,7 +84,10 @@ const navGroups = [
     id: "payable",
     titleKey: "nav.accountsPayable",
     icon: FiTrendingDown,
-    items: [{ path: "/accounts-payable", key: "nav.accountsPayable", icon: FiTrendingDown }]
+    items: [
+      { path: "/accounts-payable", key: "nav.accountsPayable", icon: FiTrendingDown },
+      { path: "/internal-obligations", key: "nav.internalObligations", icon: FiFileText }
+    ]
   },
   {
     id: "transactions",
@@ -115,7 +118,6 @@ const navGroups = [
       { path: "/bank-deposits", key: "nav.bankDeposits", icon: FiDollarSign },
       { path: "/bank-transfers", key: "nav.bankTransfers", icon: FiShare2 },
       { path: "/bank-cash-withdrawals", key: "nav.cashWithdrawals", icon: FiTrendingDown },
-      { path: "/internal-obligations", key: "nav.internalObligations", icon: FiFileText },
       { path: "/bank-reconciliation", key: "nav.bankReconciliation", icon: FiGitMerge }
     ]
   },

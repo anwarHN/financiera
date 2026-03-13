@@ -185,7 +185,7 @@ export const translations = {
       incomes: "Otros ingresos",
       outgoingPayments: "Pagos salientes",
       incomingPayments: "Pagos entrantes",
-      paymentForms: "Cuentas y tarjetas",
+      paymentForms: "Bancos y Tarjetas de Crédito",
       cashboxes: "Cajas",
       internalObligations: "Obligaciones internas",
       employeeLoans: "Préstamos",
@@ -868,7 +868,7 @@ export const translations = {
       incomes: "Other incomes",
       outgoingPayments: "Outgoing payments",
       incomingPayments: "Incoming payments",
-      paymentForms: "Bank accounts & cards",
+      paymentForms: "Banks & Credit Cards",
       cashboxes: "Cashboxes",
       internalObligations: "Internal obligations",
       employeeLoans: "Loans",
@@ -1024,7 +1024,7 @@ export const translations = {
       groups: "Concept groups"
     },
     paymentForms: {
-      title: "Bank accounts and credit cards",
+      title: "Banks and credit cards",
       cashboxesTitle: "Cashboxes",
       kind: "Type",
       provider: "Bank / issuer",
