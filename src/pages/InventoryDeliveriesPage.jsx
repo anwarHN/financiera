@@ -28,6 +28,7 @@ function InventoryDeliveriesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [page, setPage] = useState(1);
   const [deliveryDraft, setDeliveryDraft] = useState([]);
+  const [deliveryDate, setDeliveryDate] = useState(new Date().toISOString().slice(0, 10));
   const [deliveryHistoryModal, setDeliveryHistoryModal] = useState({
     open: false,
     transaction: null,
@@ -47,6 +48,7 @@ function InventoryDeliveriesPage() {
   useEffect(() => {
     if (!isCreateModalOpen || !selectedInvoiceId) {
       setDeliveryDraft([]);
+      setDeliveryDate(new Date().toISOString().slice(0, 10));
       return;
     }
     buildDraft(selectedInvoiceId);
@@ -180,6 +182,7 @@ function InventoryDeliveriesPage() {
       setIsSaving(true);
       await registerInventoryDelivery({
         transactionId: selectedInvoiceId,
+        deliveryDate,
         deliveries
       });
       await loadData();
@@ -329,8 +332,17 @@ function InventoryDeliveriesPage() {
                 </div>
 
                 <label className="field-block">
-                  <span>{t("transactions.date")}</span>
+                  <span>{t("inventory.deliveries.invoiceDate")}</span>
                   <input value={selectedInvoice ? formatDate(selectedInvoice.date, language) : "-"} readOnly />
+                </label>
+                <label className="field-block required">
+                  <span>{t("inventory.deliveries.deliveryDate")}</span>
+                  <input
+                    type="date"
+                    value={deliveryDate}
+                    onChange={(event) => setDeliveryDate(event.target.value)}
+                    required
+                  />
                 </label>
                 <label className="field-block">
                   <span>{t("transactions.person")}</span>

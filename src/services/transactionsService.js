@@ -382,9 +382,13 @@ export async function createSaleReturnTransaction({
   });
 }
 
-export async function registerInventoryDelivery({ transactionId, deliveries = [] }) {
+export async function registerInventoryDelivery({ transactionId, deliveryDate, deliveries = [] }) {
   const txId = Number(transactionId);
   if (!Number.isFinite(txId) || txId <= 0) throw new Error("Invalid transaction id");
+  const normalizedDeliveryDate =
+    typeof deliveryDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(deliveryDate)
+      ? deliveryDate
+      : new Date().toISOString().slice(0, 10);
   const toDeliverRows = (deliveries || [])
     .map((row) => ({
       detailId: Number(row.detailId),
@@ -423,7 +427,7 @@ export async function registerInventoryDelivery({ transactionId, deliveries = []
       transactionDetailId: row.detailId,
       conceptId: current.conceptId ? Number(current.conceptId) : null,
       deliveryBatchKey,
-      deliveryDate: new Date().toISOString().slice(0, 10),
+      deliveryDate: normalizedDeliveryDate,
       quantity: deliveredNow
     });
   }

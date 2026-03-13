@@ -114,11 +114,18 @@ const navGroups = [
     icon: FiCreditCard,
     items: [
       { path: "/payment-forms", key: "nav.paymentForms", icon: FiCreditCard },
-      { path: "/cashboxes", key: "nav.cashboxes", icon: FiDollarSign },
-      { path: "/bank-deposits", key: "nav.bankDeposits", icon: FiDollarSign },
       { path: "/bank-transfers", key: "nav.bankTransfers", icon: FiShare2 },
-      { path: "/bank-cash-withdrawals", key: "nav.cashWithdrawals", icon: FiTrendingDown },
       { path: "/bank-reconciliation", key: "nav.bankReconciliation", icon: FiGitMerge }
+    ]
+  },
+  {
+    id: "cash",
+    titleKey: "nav.cashManagement",
+    icon: FiDollarSign,
+    items: [
+      { path: "/cashboxes", key: "nav.cashboxes", icon: FiDollarSign },
+      { path: "/bank-deposits", key: "nav.bankDeposits", icon: FiTrendingUp },
+      { path: "/bank-cash-withdrawals", key: "nav.cashWithdrawals", icon: FiTrendingDown }
     ]
   },
   {
