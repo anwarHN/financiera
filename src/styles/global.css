@@ -141,6 +141,35 @@ textarea {
   width: 100%;
 }
 
+.readonly-field-value {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: calc(0.65rem * var(--density-scale));
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-panel);
+  width: 100%;
+  min-height: calc(2.55rem * var(--density-scale));
+  display: flex;
+  align-items: center;
+}
+
+.readonly-field-value a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.readonly-field-value a:hover {
+  text-decoration: underline;
+}
+
+.readonly-field-value-multiline {
+  min-height: calc(5rem * var(--density-scale));
+  align-items: flex-start;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 button {
   font: inherit;
 }

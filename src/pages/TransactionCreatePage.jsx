@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import LookupCombobox from "../components/LookupCombobox";
+import ReadOnlyField from "../components/form/ReadOnlyField";
 import ToggleSwitch from "../components/ToggleSwitch";
 import TagsLookupField from "../components/TagsLookupField";
 import AccountPaymentFormPage from "./AccountPaymentFormPage";
@@ -1668,10 +1669,11 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
               <span>{t("transactions.amount")}</span>
               <input name="amount" type="number" min="0" step="0.01" value={simpleForm.amount} onChange={handleSimpleChange} required />
             </label>
-            <label className="field-block">
-              <span>{t("transactions.additionalCharges")}</span>
-              <input name="additionalCharges" type="number" step="0.01" value={simpleForm.additionalCharges} readOnly />
-            </label>
+            <ReadOnlyField
+              label={t("transactions.additionalCharges")}
+              value={simpleForm.additionalCharges}
+              type="currency"
+            />
             </div>
           </section>
 

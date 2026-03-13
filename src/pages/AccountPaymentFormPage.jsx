@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import ReadOnlyField from "../components/form/ReadOnlyField";
 import SelectField from "../components/form/SelectField";
 import TextField from "../components/form/TextField";
 import {
@@ -173,7 +174,7 @@ function AccountPaymentFormPage({
                 ) : null}
               </SelectField>
             ) : (
-              <TextField label={t("paymentForms.kind")} value={t(`paymentForms.kinds.${fixedKind}`)} readOnly />
+              <ReadOnlyField label={t("paymentForms.kind")} value={t(`paymentForms.kinds.${fixedKind}`)} />
             )}
             {!isCashboxOnlyForm ? (
               <>

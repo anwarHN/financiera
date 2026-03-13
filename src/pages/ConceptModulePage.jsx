@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Pagination from "../components/Pagination";
+import ReadOnlyField from "../components/form/ReadOnlyField";
 import ConceptModuleFormPage from "./ConceptModuleFormPage";
 import RowActionsMenu from "../components/RowActionsMenu";
 import { useAuth } from "../contexts/AuthContext";
@@ -254,10 +255,7 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
               <section className="crud-form-section">
                 <h2 className="crud-form-section-title">{t("products.kardexFiltersTitle")}</h2>
                 <div className="form-grid-2">
-                  <label className="field-block form-span-2">
-                    <span>{t("common.name")}</span>
-                    <input value={kardexItem?.name || ""} readOnly />
-                  </label>
+                  <ReadOnlyField label={t("common.name")} value={kardexItem?.name || ""} className="form-span-2" />
                   <label className="field-block">
                     <span>{t("reports.dateFrom")}</span>
                     <input type="date" name="dateFrom" value={kardexFilters.dateFrom} onChange={handleKardexFilterChange} required />
@@ -289,18 +287,9 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
               <section className="crud-form-section">
                 <h2 className="crud-form-section-title">{t("products.kardexTitle")}</h2>
                 <div className="form-grid-2">
-                  <label className="field-block form-span-2">
-                    <span>{t("common.name")}</span>
-                    <input value={kardexItem?.name || ""} readOnly />
-                  </label>
-                  <label className="field-block">
-                    <span>{t("reports.dateFrom")}</span>
-                    <input value={kardexFilters.dateFrom} readOnly />
-                  </label>
-                  <label className="field-block">
-                    <span>{t("reports.dateTo")}</span>
-                    <input value={kardexFilters.dateTo} readOnly />
-                  </label>
+                  <ReadOnlyField label={t("common.name")} value={kardexItem?.name || ""} className="form-span-2" />
+                  <ReadOnlyField label={t("reports.dateFrom")} value={kardexFilters.dateFrom} type="date" />
+                  <ReadOnlyField label={t("reports.dateTo")} value={kardexFilters.dateTo} type="date" />
                 </div>
               </section>
 

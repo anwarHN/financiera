@@ -4,6 +4,7 @@ import LookupCombobox from "../components/LookupCombobox";
 import InventoryDeliveryHistoryModal from "../components/InventoryDeliveryHistoryModal";
 import Pagination from "../components/Pagination";
 import RowActionsMenu from "../components/RowActionsMenu";
+import ReadOnlyField from "../components/form/ReadOnlyField";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { useModulePermissions } from "../hooks/useModulePermissions";
@@ -332,10 +333,11 @@ function InventoryDeliveriesPage() {
                   />
                 </div>
 
-                <label className="field-block">
-                  <span>{t("inventory.deliveries.invoiceDate")}</span>
-                  <input value={selectedInvoice ? formatDate(selectedInvoice.date, language) : "-"} readOnly />
-                </label>
+                <ReadOnlyField
+                  label={t("inventory.deliveries.invoiceDate")}
+                  value={selectedInvoice?.date || null}
+                  type="date"
+                />
                 <label className="field-block required">
                   <span>{t("inventory.deliveries.deliveryDate")}</span>
                   <input
@@ -345,25 +347,14 @@ function InventoryDeliveriesPage() {
                     required
                   />
                 </label>
-                <label className="field-block">
-                  <span>{t("transactions.person")}</span>
-                  <input value={selectedInvoice?.persons?.name || "-"} readOnly />
-                </label>
-                <label className="field-block">
-                  <span>{t("transactions.total")}</span>
-                  <input value={selectedInvoice ? formatNumber(selectedInvoice.total || 0) : formatNumber(0)} readOnly />
-                </label>
-                <label className="field-block">
-                  <span>{t("inventory.deliveries.pendingUnits")}</span>
-                  <input
-                    value={formatNumber(selectedInvoice?.pendingTotal || 0, {
-                      showCurrency: false,
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 2
-                    })}
-                    readOnly
-                  />
-                </label>
+                <ReadOnlyField label={t("transactions.person")} value={selectedInvoice?.persons?.name || ""} />
+                <ReadOnlyField label={t("transactions.total")} value={selectedInvoice?.total || 0} type="currency" />
+                <ReadOnlyField
+                  label={t("inventory.deliveries.pendingUnits")}
+                  value={selectedInvoice?.pendingTotal || 0}
+                  type="number"
+                  numberOptions={{ minimumFractionDigits: 0, maximumFractionDigits: 2 }}
+                />
               </div>
 
               <table className="crud-table">

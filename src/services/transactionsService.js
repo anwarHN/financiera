@@ -401,7 +401,7 @@ export async function registerInventoryDelivery({ transactionId, deliveryDate, d
   const detailIds = toDeliverRows.map((row) => row.detailId);
   const { data: currentDetails, error: currentError } = await supabase
     .from("transactionDetails")
-    .select("id, transactionId, conceptId, quantity, quantityDelivered, transactions(accountId)")
+    .select('id, transactionId, conceptId, quantity, quantityDelivered, transactions!transaction_details_transactionId_fkey(accountId)')
     .in("id", detailIds)
     .eq("transactionId", txId);
   if (currentError) throw currentError;
