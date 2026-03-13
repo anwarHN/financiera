@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import PaymentRegisterModal from "../components/PaymentRegisterModal";
+import ReadOnlyField from "../components/form/ReadOnlyField";
 import { useI18n } from "../contexts/I18nContext";
 import { getTransactionById, listPaymentsForTransaction, listTransactionDetails } from "../services/transactionsService";
 import { formatDate } from "../utils/dateFormat";
@@ -66,34 +67,28 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
       {error && <p className="error-text">{error}</p>}
       {transaction && (
         <section className="generic-panel">
-          <p>ID: {transaction.id}</p>
-          <p>
-            {t("transactions.person")}: {transaction.persons?.name ?? "-"}
-          </p>
-          <p>
-            {t("transactions.total")}: {formatNumber(transaction.total)}
-          </p>
-          {showTaxDiscountDetail ? (
-            <>
-              <p>
-                {t("transactions.tax")}: {formatNumber(taxesTotal)}
-              </p>
-              <p>
-                {t("transactions.discount")}: {formatNumber(discountsTotal)}
-              </p>
-            </>
-          ) : null}
-          <p>
-            {t("transactions.balance")}: {formatNumber(transaction.balance)}
-          </p>
-          <p>
-            {t("transactions.referenceNumber")}: {transaction.referenceNumber || "-"}
-          </p>
-          {transaction.deliveryAddress ? (
-            <p>
-              {t("transactions.comments")}: {transaction.deliveryAddress}
-            </p>
-          ) : null}
+          <div className="transaction-detail-summary-grid">
+            <ReadOnlyField label="ID" value={transaction.id} type="number" numberOptions={{ minimumFractionDigits: 0, maximumFractionDigits: 0 }} />
+            <ReadOnlyField label={t("transactions.person")} value={transaction.persons?.name ?? ""} />
+            <ReadOnlyField label={t("transactions.total")} value={transaction.total} type="currency" />
+            <ReadOnlyField label={t("transactions.balance")} value={transaction.balance} type="currency" />
+            <ReadOnlyField label={t("transactions.date")} value={transaction.date} type="date" />
+            <ReadOnlyField label={t("transactions.referenceNumber")} value={transaction.referenceNumber || ""} />
+            {showTaxDiscountDetail ? (
+              <>
+                <ReadOnlyField label={t("transactions.tax")} value={taxesTotal} type="currency" />
+                <ReadOnlyField label={t("transactions.discount")} value={discountsTotal} type="currency" />
+              </>
+            ) : null}
+            {transaction.deliveryAddress ? (
+              <ReadOnlyField
+                label={t("transactions.comments")}
+                value={transaction.deliveryAddress}
+                type="multiline"
+                className="form-span-4"
+              />
+            ) : null}
+          </div>
         </section>
       )}
 

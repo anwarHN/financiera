@@ -142,14 +142,11 @@ textarea {
 }
 
 .readonly-field-value {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: calc(0.65rem * var(--density-scale));
+  padding: calc(0.65rem * var(--density-scale)) calc(0.65rem * var(--density-scale)) calc(0.65rem * var(--density-scale)) 0;
   font: inherit;
   color: var(--text);
-  background: var(--bg-panel);
   width: 100%;
-  min-height: calc(2.55rem * var(--density-scale));
+  min-height: calc(2.2rem * var(--density-scale));
   display: flex;
   align-items: center;
 }
@@ -168,6 +165,12 @@ textarea {
   align-items: flex-start;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.transaction-detail-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: calc(0.8rem * var(--density-scale));
 }
 
 button {
@@ -1038,7 +1041,8 @@ button {
 
 .field-block > span {
   font-size: 0.86rem;
-  color: var(--text-muted);
+  color: color-mix(in srgb, var(--text) 72%, var(--text-muted) 28%);
+  font-weight: 700;
 }
 
 .field-block:has(:is(input, select, textarea)[required]) > span::before,
@@ -1135,6 +1139,10 @@ button {
 
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  .transaction-detail-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -3072,6 +3080,10 @@ button:disabled,
   .auth-hero-copy h1 {
     max-width: none;
     font-size: clamp(1.7rem, 8vw, 2.6rem);
+  }
+
+  .transaction-detail-summary-grid {
+    grid-template-columns: 1fr;
   }
 
   .mobile-only {
