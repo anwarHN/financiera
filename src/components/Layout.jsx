@@ -32,6 +32,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { searchGlobalByAccount } from "../services/globalSearchService";
 import { listPendingInvitationsForCurrentUser } from "../services/invitationsService";
+import { resolveReadModuleByPath } from "../utils/accessControl";
 import { formatDate } from "../utils/dateFormat";
 import ModuleOnboarding from "./ModuleOnboarding";
 import OnboardingHelpButton from "./OnboardingHelpButton";
@@ -217,42 +218,22 @@ function resolveCreateModuleByPath(pathname) {
   return null;
 }
 
-function resolveReadModuleByPath(pathname) {
-  if (pathname === "/") return "dashboard";
-  if (pathname.startsWith("/clients")) return "clients";
-  if (pathname.startsWith("/providers")) return "providers";
-  if (pathname.startsWith("/employees")) return "employees";
-  if (pathname.startsWith("/appointments")) return "appointments";
-  if (pathname.startsWith("/employee-absences")) return "appointments";
-  if (pathname.startsWith("/products")) return "concepts";
-  if (pathname.startsWith("/income-concepts")) return "concepts";
-  if (pathname.startsWith("/expense-concepts")) return "concepts";
-  if (pathname.startsWith("/concept-groups")) return "concepts";
-  if (pathname.startsWith("/payment-forms")) return "paymentForms";
-  if (pathname.startsWith("/cashboxes")) return "paymentForms";
-  if (pathname.startsWith("/bank-deposits")) return "transactions";
-  if (pathname.startsWith("/bank-transfers")) return "transactions";
-  if (pathname.startsWith("/bank-cash-withdrawals")) return "transactions";
-  if (pathname.startsWith("/internal-obligations")) return "transactions";
-  if (pathname.startsWith("/employee-loans")) return "transactions";
-  if (pathname.startsWith("/bank-reconciliation")) return "transactions";
-  if (pathname.startsWith("/accounts-receivable")) return "transactions";
-  if (pathname.startsWith("/accounts-payable")) return "transactions";
-  if (pathname.startsWith("/sales")) return "transactions";
-  if (pathname.startsWith("/purchases")) return "transactions";
-  if (pathname.startsWith("/inventory-adjustments")) return "transactions";
-  if (pathname.startsWith("/inventory-deliveries")) return "transactions";
-  if (pathname.startsWith("/expenses")) return "transactions";
-  if (pathname.startsWith("/incomes")) return "transactions";
-  if (pathname.startsWith("/projects")) return "planning";
-  if (pathname.startsWith("/budgets")) return "planning";
-  if (pathname.startsWith("/currencies")) return "catalogs";
-  if (pathname.startsWith("/reports")) return "reports";
-  return null;
-}
-
 function Layout() {
-  const { logout, user, account, accounts, switchAccount, hasModulePermission, hasDashboardAccess, canCreateProfiles, canCreateUsers } = useAuth();
+  const {
+    logout,
+    user,
+    account,
+    accounts,
+    switchAccount,
+    hasModulePermission,
+    hasDashboardAccess,
+    canCreateProfiles,
+    canCreateUsers,
+    hasAccountSectionAccess,
+    hasPathAccess,
+    accountNotice,
+    dismissAccountNotice
+  } = useAuth();
   const { t, language, setLanguage } = useI18n();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -554,71 +535,90 @@ function Layout() {
   const actionOverflowItems = useMemo(() => actionItems.filter((item) => item.overflowable), [actionItems]);
 
   const shouldShowAppMenu = !isAccountRoute && Boolean(selectedGroup);
+  const canManageAccount =
+    Boolean(account?.isOriginalAccount) &&
+    (hasAccountSectionAccess("billing") ||
+      hasAccountSectionAccess("settings") ||
+      hasAccountSectionAccess("users") ||
+      hasAccountSectionAccess("profiles") ||
+      hasAccountSectionAccess("invitations"));
   const hasSearchTerm = searchTerm.trim().length >= 2;
   const searchGroups = useMemo(
     () => [
       {
         key: "transactions",
         title: t("sidebar.transactions"),
-        rows: (searchResults.transactions ?? []).map((row) => ({
-          id: `tx-${row.id}`,
-          title: row.name || `${t("sidebar.transactions")} #${row.id}`,
-          subtitle: `${formatDate(row.date, language)} · ${row.referenceNumber || "-"}`,
-          to: resolveTransactionSearchTarget(row)
-        }))
+        rows: (searchResults.transactions ?? [])
+          .map((row) => ({
+            id: `tx-${row.id}`,
+            title: row.name || `${t("sidebar.transactions")} #${row.id}`,
+            subtitle: `${formatDate(row.date, language)} · ${row.referenceNumber || "-"}`,
+            to: resolveTransactionSearchTarget(row)
+          }))
+          .filter((row) => hasPathAccess(row.to))
       },
       {
         key: "clients",
         title: t("nav.clients"),
-        rows: (searchResults.clients ?? []).map((row) => ({
-          id: `client-${row.id}`,
-          title: row.name || `#${row.id}`,
-          subtitle: row.phone || row.address || "-",
-          to: "/clients"
-        }))
+        rows: (searchResults.clients ?? [])
+          .map((row) => ({
+            id: `client-${row.id}`,
+            title: row.name || `#${row.id}`,
+            subtitle: row.phone || row.address || "-",
+            to: "/clients"
+          }))
+          .filter((row) => hasPathAccess(row.to))
       },
       {
         key: "providers",
         title: t("nav.providers"),
-        rows: (searchResults.providers ?? []).map((row) => ({
-          id: `provider-${row.id}`,
-          title: row.name || `#${row.id}`,
-          subtitle: row.phone || row.address || "-",
-          to: "/providers"
-        }))
+        rows: (searchResults.providers ?? [])
+          .map((row) => ({
+            id: `provider-${row.id}`,
+            title: row.name || `#${row.id}`,
+            subtitle: row.phone || row.address || "-",
+            to: "/providers"
+          }))
+          .filter((row) => hasPathAccess(row.to))
       },
       {
         key: "products",
         title: t("nav.products"),
-        rows: (searchResults.products ?? []).map((row) => ({
-          id: `product-${row.id}`,
-          title: row.name || `#${row.id}`,
-          subtitle: `ID ${row.id}`,
-          to: "/products"
-        }))
+        rows: (searchResults.products ?? [])
+          .map((row) => ({
+            id: `product-${row.id}`,
+            title: row.name || `#${row.id}`,
+            subtitle: `ID ${row.id}`,
+            to: "/products"
+          }))
+          .filter((row) => hasPathAccess(row.to))
       },
       {
         key: "concepts",
         title: t("sidebar.concepts"),
-        rows: (searchResults.concepts ?? []).map((row) => ({
-          id: `concept-${row.id}`,
-          title: row.name || `#${row.id}`,
-          subtitle: `ID ${row.id}`,
-          to: "/concept-groups"
-        }))
+        rows: (searchResults.concepts ?? [])
+          .map((row) => ({
+            id: `concept-${row.id}`,
+            title: row.name || `#${row.id}`,
+            subtitle: `ID ${row.id}`,
+            to: "/concept-groups"
+          }))
+          .filter((row) => hasPathAccess(row.to))
       },
       {
         key: "deposits",
         title: t("nav.bankDeposits"),
-        rows: (searchResults.deposits ?? []).map((row) => ({
-          id: `deposit-${row.id}`,
-          title: row.name || `${t("nav.bankDeposits")} #${row.id}`,
-          subtitle: `${formatDate(row.date, language)} · ${row.referenceNumber || "-"}`,
-          to: "/bank-deposits"
-        }))
+        rows: (searchResults.deposits ?? [])
+          .map((row) => ({
+            id: `deposit-${row.id}`,
+            title: row.name || `${t("nav.bankDeposits")} #${row.id}`,
+            subtitle: `${formatDate(row.date, language)} · ${row.referenceNumber || "-"}`,
+            to: "/bank-deposits"
+          }))
+          .filter((row) => hasPathAccess(row.to))
       }
     ],
-    [searchResults, t, language]
+    [searchResults, t, language, hasPathAccess]
   );
   const totalSearchRows = useMemo(
     () => searchGroups.reduce((sum, group) => sum + group.rows.length, 0),
@@ -863,6 +863,14 @@ function Layout() {
         </div>
       </header>
 
+      {!account?.isOriginalAccount ? (
+        <div className="related-account-banner">
+          <strong>{t("topbar.relatedAccountBannerTitle")}</strong>
+          <span>{t("topbar.relatedAccountBannerText")}</span>
+          <span className="related-account-banner-name">{account?.accountName || t("topbar.currentAccount")}</span>
+        </div>
+      ) : null}
+
       <div
         className={`floating-panel panel-right panel-anchor search-results-panel ${openPanel === "search" ? "open" : ""}`}
         style={searchPanelStyle}
@@ -964,10 +972,10 @@ function Layout() {
                 key={row.accountId}
                 type="button"
                 className={`panel-action ${account?.accountId === row.accountId ? "active" : ""}`}
-                onClick={() => {
-                  switchAccount(row.accountId);
+                onClick={async () => {
+                  await switchAccount(row.accountId);
                   setOpenPanel(null);
-                  window.location.assign("/");
+                  navigate("/");
                 }}
               >
                 {!row.isOriginalAccount ? <FiShare2 /> : null}
@@ -986,7 +994,7 @@ function Layout() {
         <h3>{t("topbar.account")}</h3>
         <ul className="panel-list">
           <li>{user?.email}</li>
-          {account?.isOriginalAccount ? (
+          {canManageAccount ? (
             <li className="panel-section-separator">
               <button
                 type="button"
@@ -1271,6 +1279,20 @@ function Layout() {
           </div>
         </section>
       </main>
+      {accountNotice ? (
+        <div className="modal-backdrop" onClick={dismissAccountNotice}>
+          <div className="modal-card account-notice-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>{accountNotice.type === "welcome" ? t("topbar.welcomeAccountTitle") : t("topbar.accountChangedTitle")}</h3>
+            <p>{t("topbar.workingOnAccount")}</p>
+            <p className="account-notice-name">{accountNotice.accountName || t("topbar.currentAccount")}</p>
+            <div className="crud-form-actions">
+              <button type="button" className="button-link-primary" onClick={dismissAccountNotice}>
+                {t("common.continue")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <ModuleOnboarding />
     </div>
   );

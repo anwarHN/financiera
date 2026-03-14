@@ -43,7 +43,11 @@ export const translations = {
       searchNoResults: "No hay resultados",
       genericLoadError: "No fue posible cargar los datos",
       genericSaveError: "No fue posible guardar los cambios",
-      deactivate: "Anular"
+      deactivate: "Anular",
+      continue: "Continuar",
+      accessDeniedTitle: "Acceso denegado",
+      accessDeniedDescription: "No tienes permisos para entrar a esta sección con el perfil asignado.",
+      goToAvailableArea: "Ir a un área disponible"
     },
     topbar: {
       apps: "Aplicaciones",
@@ -55,6 +59,11 @@ export const translations = {
       goToInvitations: "Ir a invitaciones",
       account: "Cuenta",
       currentAccount: "Cuenta actual",
+      relatedAccountBannerTitle: "Cuenta relacionada activa.",
+      relatedAccountBannerText: "Estás trabajando sobre:",
+      welcomeAccountTitle: "Bienvenido",
+      accountChangedTitle: "Cuenta cambiada",
+      workingOnAccount: "Actualmente estás trabajando sobre la cuenta:",
       manageAccount: "Gestionar cuenta",
       textSize: "Tamaño de letra",
       density: "Espaciado",
@@ -731,7 +740,11 @@ export const translations = {
       searchNoResults: "No results found",
       genericLoadError: "Could not load data",
       genericSaveError: "Could not save changes",
-      deactivate: "Void"
+      deactivate: "Void",
+      continue: "Continue",
+      accessDeniedTitle: "Access denied",
+      accessDeniedDescription: "You do not have permission to access this section with your assigned profile.",
+      goToAvailableArea: "Go to an available area"
     },
     topbar: {
       apps: "Applications",
@@ -743,6 +756,11 @@ export const translations = {
       goToInvitations: "Go to invitations",
       account: "Account",
       currentAccount: "Current account",
+      relatedAccountBannerTitle: "Related account active.",
+      relatedAccountBannerText: "You are working on:",
+      welcomeAccountTitle: "Welcome",
+      accountChangedTitle: "Account changed",
+      workingOnAccount: "You are currently working on the account:",
       manageAccount: "Manage account",
       textSize: "Text size",
       density: "Density",

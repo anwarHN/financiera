@@ -204,6 +204,26 @@ button {
   justify-self: end;
 }
 
+.related-account-banner {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 1rem;
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg-main));
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  color: var(--text);
+}
+
+.related-account-banner strong {
+  color: var(--text-strong);
+}
+
+.related-account-banner-name {
+  font-weight: 700;
+  color: var(--brand);
+}
+
 .product-name {
   display: inline-flex;
   align-items: center;
@@ -357,7 +377,8 @@ button {
   width: 280px;
   min-height: 0;
   height: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   padding: 0.6rem 0.45rem;
@@ -366,6 +387,16 @@ button {
   transition: width 180ms ease;
   z-index: 1;
   border-radius: 0;
+  scrollbar-width: thin;
+}
+
+.sidebar-icons::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar-icons::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 999px;
 }
 
 .sidebar-brand-watermark {
@@ -792,6 +823,27 @@ button {
 .screen-message {
   padding: 2rem;
   text-align: center;
+}
+
+.access-denied-state {
+  max-width: 34rem;
+  margin: 8vh auto 0;
+}
+
+.access-denied-state p {
+  color: var(--text-muted);
+  margin: 0 0 1rem;
+}
+
+.account-notice-modal {
+  max-width: 34rem;
+}
+
+.account-notice-name {
+  margin: 0.35rem 0 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--brand);
 }
 
 .auth-page {

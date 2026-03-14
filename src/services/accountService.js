@@ -13,16 +13,21 @@ export async function listUserAccounts(userId) {
     throw error;
   }
 
-  return (data ?? []).map((row) => ({
-    accountId: row.accountId,
-    accountName: row.accounts?.name ?? "",
-    isOriginalAccount: row.accounts?.createdById === userId,
-    billingStatus: row.accounts?.billingStatus ?? "trialing",
-    trialEndsAt: row.accounts?.trialEndsAt ?? null,
-    subscriptionCurrentPeriodEnd: row.accounts?.subscriptionCurrentPeriodEnd ?? null,
-    paypalSubscriptionId: row.accounts?.paypalSubscriptionId ?? null,
-    stripeSubscriptionId: row.accounts?.stripeSubscriptionId ?? null
-  }));
+  return (data ?? [])
+    .map((row) => ({
+      accountId: row.accountId,
+      accountName: row.accounts?.name ?? "",
+      isOriginalAccount: row.accounts?.createdById === userId,
+      billingStatus: row.accounts?.billingStatus ?? "trialing",
+      trialEndsAt: row.accounts?.trialEndsAt ?? null,
+      subscriptionCurrentPeriodEnd: row.accounts?.subscriptionCurrentPeriodEnd ?? null,
+      paypalSubscriptionId: row.accounts?.paypalSubscriptionId ?? null,
+      stripeSubscriptionId: row.accounts?.stripeSubscriptionId ?? null
+    }))
+    .sort((a, b) => {
+      if (a.isOriginalAccount !== b.isOriginalAccount) return a.isOriginalAccount ? -1 : 1;
+      return a.accountName.localeCompare(b.accountName);
+    });
 }
 
 export async function getCurrentAccount(userId) {

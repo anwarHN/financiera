@@ -15,15 +15,28 @@ const accountTabs = [
 
 function AccountManagePage() {
   const { t } = useI18n();
-  const { account } = useAuth();
+  const { account, hasAccountSectionAccess } = useAuth();
   const { pathname } = useLocation();
 
+  const visibleTabs = useMemo(
+    () =>
+      accountTabs.filter((item) => {
+        const section = item.path.replace("/account/", "");
+        return hasAccountSectionAccess(section);
+      }),
+    [hasAccountSectionAccess]
+  );
+
   const activeTab = useMemo(
-    () => accountTabs.find((item) => pathname.startsWith(item.path)) ?? accountTabs[0],
-    [pathname]
+    () => visibleTabs.find((item) => pathname.startsWith(item.path)) ?? visibleTabs[0],
+    [pathname, visibleTabs]
   );
 
   if (account && !account.isOriginalAccount) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (!visibleTabs.length) {
     return <Navigate to="/" replace />;
   }
 
@@ -32,7 +45,7 @@ function AccountManagePage() {
       <section className="account-manage-content">
         <nav className="app-menu account-app-menu">
           <div className="app-menu-primary">
-            {accountTabs.map((item) => (
+            {visibleTabs.map((item) => (
               <NavLink key={item.path} to={item.path} className={({ isActive }) => `app-menu-entry ${isActive ? "active" : ""}`}>
                 {t(item.key)}
               </NavLink>

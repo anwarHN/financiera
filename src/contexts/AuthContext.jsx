@@ -3,6 +3,7 @@ import { getCurrentSession, onAuthStateChange, signIn, signOut, signUp } from ".
 import { listUserAccounts } from "../services/accountService";
 import { listCurrencies } from "../services/currenciesService";
 import { getCurrentUserProfile } from "../services/profilesService";
+import { resolveAccountSectionByPath, resolveReadModuleByPath } from "../utils/accessControl";
 
 const AuthContext = createContext(null);
 
@@ -11,6 +12,7 @@ export function AuthProvider({ children }) {
   const [account, setAccount] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [currentProfile, setCurrentProfile] = useState(null);
+  const [accountNotice, setAccountNotice] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export function AuthProvider({ children }) {
 
       setSession(activeSession);
       if (activeSession?.user?.id) {
-        await loadAccountsAndSelection(activeSession.user.id, isMounted);
+        await loadAccountsAndSelection(activeSession.user.id, isMounted, { preferPrimary: true, noticeType: null });
       }
       setIsLoading(false);
     }
@@ -37,14 +39,16 @@ export function AuthProvider({ children }) {
 
     let subscription;
 
-    onAuthStateChange(async (nextSession) => {
+    onAuthStateChange(async (event, nextSession) => {
       setSession(nextSession);
       if (nextSession?.user?.id) {
-        await loadAccountsAndSelection(nextSession.user.id, true);
+        const noticeType = event === "SIGNED_IN" ? "welcome" : null;
+        await loadAccountsAndSelection(nextSession.user.id, true, { preferPrimary: true, noticeType });
       } else {
         setAccount(null);
         setAccounts([]);
         setCurrentProfile(null);
+        setAccountNotice(null);
         localStorage.removeItem("activeAccountId");
       }
       setIsLoading(false);
@@ -58,17 +62,18 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  async function loadAccountsAndSelection(userId, isMounted = true) {
+  async function loadAccountsAndSelection(userId, isMounted = true, options = {}) {
+    const { preferPrimary = false, noticeType = null } = options;
     const userAccounts = await listUserAccounts(userId);
     if (!isMounted) return;
     setAccounts(userAccounts);
 
     const preferredAccountIdRaw = localStorage.getItem("activeAccountId");
     const preferredAccountId = preferredAccountIdRaw ? Number(preferredAccountIdRaw) : null;
-    const selected =
-      userAccounts.find((item) => item.accountId === preferredAccountId) ??
-      userAccounts[0] ??
-      null;
+    const primaryAccount = userAccounts.find((item) => item.isOriginalAccount) ?? null;
+    const selected = preferPrimary
+      ? primaryAccount ?? userAccounts[0] ?? null
+      : userAccounts.find((item) => item.accountId === preferredAccountId) ?? primaryAccount ?? userAccounts[0] ?? null;
 
     setAccount(selected);
     if (selected?.accountId) {
@@ -88,36 +93,50 @@ export function AuthProvider({ children }) {
       } catch {
         if (isMounted) setCurrentProfile(null);
       }
+      if (noticeType && isMounted) {
+        setAccountNotice({
+          type: noticeType,
+          accountName: selected.accountName || ""
+        });
+      }
     } else {
       localStorage.removeItem("activeAccountId");
       localStorage.removeItem("activeCurrencySymbol");
       setCurrentProfile(null);
+      setAccountNotice(null);
     }
   }
 
-  const switchAccount = (nextAccountId) => {
+  const switchAccount = async (nextAccountId) => {
     const accountId = Number(nextAccountId);
     const nextAccount = accounts.find((item) => item.accountId === accountId) ?? null;
     if (!nextAccount) return;
+    if (account?.accountId === nextAccount.accountId) return;
     setAccount(nextAccount);
     localStorage.setItem("activeAccountId", String(nextAccount.accountId));
-    listCurrencies(nextAccount.accountId)
-      .then((currencies) => {
-        const localCurrency = currencies.find((item) => item.isLocal) ?? currencies[0] ?? null;
-        if (localCurrency?.symbol) {
-          localStorage.setItem("activeCurrencySymbol", localCurrency.symbol);
-          return;
-        }
+    try {
+      const currencies = await listCurrencies(nextAccount.accountId);
+      const localCurrency = currencies.find((item) => item.isLocal) ?? currencies[0] ?? null;
+      if (localCurrency?.symbol) {
+        localStorage.setItem("activeCurrencySymbol", localCurrency.symbol);
+      } else {
         localStorage.removeItem("activeCurrencySymbol");
-      })
-      .catch(() => {
-        localStorage.removeItem("activeCurrencySymbol");
-      });
-    if (session?.user?.id) {
-      getCurrentUserProfile(nextAccount.accountId, session.user.id)
-        .then((profile) => setCurrentProfile(profile))
-        .catch(() => setCurrentProfile(null));
+      }
+    } catch {
+      localStorage.removeItem("activeCurrencySymbol");
     }
+    if (session?.user?.id) {
+      try {
+        const profile = await getCurrentUserProfile(nextAccount.accountId, session.user.id);
+        setCurrentProfile(profile);
+      } catch {
+        setCurrentProfile(null);
+      }
+    }
+    setAccountNotice({
+      type: "switched",
+      accountName: nextAccount.accountName || ""
+    });
   };
 
   const refreshAccounts = async () => {
@@ -142,6 +161,22 @@ export function AuthProvider({ children }) {
       if (isSystemAdmin) return true;
       return Boolean(reportAccess?.[reportId]);
     };
+    const hasAccountSectionAccess = (section) => {
+      if (!account?.isOriginalAccount) return false;
+      if (isSystemAdmin) return true;
+      if (section === "billing" || section === "settings" || section === "root") return true;
+      if (section === "users" || section === "invitations") return Boolean(profileData?.canCreateUsers);
+      if (section === "profiles") return Boolean(profileData?.canCreateProfiles);
+      return false;
+    };
+    const hasPathAccess = (pathname) => {
+      const accountSection = resolveAccountSectionByPath(pathname);
+      if (accountSection) return hasAccountSectionAccess(accountSection);
+      const moduleKey = resolveReadModuleByPath(pathname);
+      if (moduleKey === "dashboard") return hasDashboardAccess();
+      if (!moduleKey) return true;
+      return hasModulePermission(moduleKey, "read");
+    };
 
     return {
       session,
@@ -156,6 +191,10 @@ export function AuthProvider({ children }) {
       hasModulePermission,
       hasDashboardAccess,
       hasReportPermission,
+      hasAccountSectionAccess,
+      hasPathAccess,
+      accountNotice,
+      dismissAccountNotice: () => setAccountNotice(null),
       isLoading,
       switchAccount,
       refreshAccounts,
