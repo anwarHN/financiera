@@ -1,7 +1,6 @@
 import { supabase } from "../lib/supabase";
 import { TRANSACTION_TYPES } from "./transactionsService";
 
-const PRIOR_BALANCE_TAG = "__prior_balance__";
 const selectColumns =
   "id, name, parentConceptId, isGroup, isIncome, isExpense, isProduct, productType, isPaymentForm, isAccountPayableConcept, isIncomingPaymentConcept, isOutgoingPaymentConcept, isLoanConcept, isLoanPaymentConcept, isCashWithdrawalConcept, isSystem, taxPercentage, price, additionalCharges";
 
@@ -145,9 +144,6 @@ export async function getProductKardex(accountId, conceptId, { dateFrom, dateTo 
       movementQuantity = quantity;
       movementType = "purchase";
     } else if (Number(tx.type) === TRANSACTION_TYPES.sale) {
-      if (Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG)) {
-        continue;
-      }
       movementQuantity = -delivered;
       movementType = "sale";
     } else if (Number(tx.type) === TRANSACTION_TYPES.expense && Array.isArray(tx.tags) && tx.tags.includes("__inventory_adjustment__")) {
