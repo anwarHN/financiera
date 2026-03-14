@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import { getCashflowBankBalances } from "./reportsService";
 
 export const DASHBOARD_TYPES = {
   sale: 1,
@@ -35,6 +36,7 @@ function recentMonths(count = 6) {
 }
 
 export async function getDashboardData(accountId, language = "es") {
+  const today = new Date().toISOString().slice(0, 10);
   const { data: forms, error: formsError } = await supabase
     .from("account_payment_forms")
     .select('id, name, kind, provider, reference, "isActive"')
@@ -63,18 +65,14 @@ export async function getDashboardData(accountId, language = "es") {
   const formsById = new Map((forms ?? []).map((row) => [Number(row.id), row]));
   const txById = new Map((transactions ?? []).map((row) => [Number(row.id), row]));
 
-  const bankAccounts = (forms ?? []).filter((row) => row.kind === "bank_account");
-  const bankBalances = bankAccounts.map((form) => {
-    const total = (transactions ?? [])
-      .filter((tx) => Number(tx.accountPaymentFormId) === Number(form.id))
-      .reduce((acc, tx) => acc + Number(tx.total || 0), 0);
-    return {
-      id: form.id,
-      name: form.name,
-      provider: form.provider,
-      balance: total
-    };
-  });
+  const bankBalances = (await getCashflowBankBalances(accountId, { dateTo: today }))
+    .filter((row) => row.kind === "bank_account")
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      provider: row.provider,
+      balance: Number(row.balance || 0)
+    }));
 
   const { from: monthFrom, to: monthTo, daysInMonth } = monthBounds();
   const salesDays = Array.from({ length: daysInMonth }, (_, index) => index + 1);

@@ -152,11 +152,14 @@ begin
   select coalesce(sum(td.total), 0)
   into current_paid_amount
   from public."transactionDetails" td
+  inner join public.transactions payment_tx
+    on payment_tx.id = td."transactionId"
   where td."transactionPaidId" = new."transactionPaidId"
+    and payment_tx."isActive" = true
     and (tg_op = 'INSERT' or td.id <> new.id);
 
   attempted_total := current_paid_amount + coalesce(new.total, 0);
-  if attempted_total > paid_transaction_total then
+  if round(attempted_total, 2) > round(paid_transaction_total, 2) then
     raise exception 'El monto del pago excede el saldo pendiente de la transacción %.', new."transactionPaidId";
   end if;
 
