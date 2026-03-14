@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import LookupCombobox from "../components/LookupCombobox";
 import InventoryDeliveryHistoryModal from "../components/InventoryDeliveryHistoryModal";
+import LoadingSkeleton from "../components/LoadingSkeleton";
 import Pagination from "../components/Pagination";
 import RowActionsMenu from "../components/RowActionsMenu";
 import ReadOnlyField from "../components/form/ReadOnlyField";
@@ -203,7 +204,7 @@ function InventoryDeliveriesPage() {
       {error && <p className="error-text">{error}</p>}
 
       {isLoading ? (
-        <p>{t("common.loading")}</p>
+        <LoadingSkeleton lines={6} />
       ) : items.length === 0 ? (
         <p>{t("common.empty")}</p>
       ) : (

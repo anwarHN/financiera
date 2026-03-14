@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import DateField from "../components/form/DateField";
+import LoadingSkeleton from "../components/LoadingSkeleton";
 import NumberField from "../components/form/NumberField";
 import ReadOnlyField from "../components/form/ReadOnlyField";
 import SelectField from "../components/form/SelectField";
@@ -177,7 +178,7 @@ function TransactionPaymentPage({ direction }) {
     }
   };
 
-  if (isLoading) return <p>{t("common.loading")}</p>;
+  if (isLoading) return <LoadingSkeleton lines={4} />;
 
   return (
     <div className="module-page">

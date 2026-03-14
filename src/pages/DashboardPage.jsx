@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ChartCanvas from "../components/ChartCanvas";
+import LoadingSkeleton from "../components/LoadingSkeleton";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { getDashboardData } from "../services/dashboardService";
@@ -110,7 +111,7 @@ function DashboardPage() {
 
   if (!hasDashboardAccess()) return null;
 
-  if (isLoading) return <p>{t("common.loading")}</p>;
+  if (isLoading) return <LoadingSkeleton lines={6} />;
 
   return (
     <div className="module-page dashboard-page">

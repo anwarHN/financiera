@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
+import LoadingSkeleton from "./LoadingSkeleton";
 import AccessDeniedPage from "./AccessDeniedPage";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
@@ -10,7 +11,11 @@ function ProtectedRoute({ children }) {
   const location = useLocation();
 
   if (isLoading) {
-    return <p className="screen-message">{t("common.loading")}</p>;
+    return (
+      <div className="screen-message">
+        <LoadingSkeleton lines={4} className="screen-message-skeleton" />
+      </div>
+    );
   }
 
   if (!user) {

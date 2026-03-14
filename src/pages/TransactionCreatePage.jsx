@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import LookupCombobox from "../components/LookupCombobox";
+import LoadingSkeleton from "../components/LoadingSkeleton";
 import ReadOnlyField from "../components/form/ReadOnlyField";
 import ToggleSwitch from "../components/ToggleSwitch";
 import TagsLookupField from "../components/TagsLookupField";
@@ -1086,7 +1087,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     }
   };
 
-  if (isLoading) return <p>{t("common.loading")}</p>;
+  if (isLoading) return <LoadingSkeleton lines={6} />;
 
   return (
     <div className={embedded ? "" : "module-page"}>

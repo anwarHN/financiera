@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import PaymentRegisterModal from "../components/PaymentRegisterModal";
 import StatusBadge from "../components/StatusBadge";
+import LoadingSkeleton from "../components/LoadingSkeleton";
 import ReadOnlyField from "../components/form/ReadOnlyField";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
@@ -64,7 +65,7 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
     }
   };
 
-  if (isLoading) return <p>{t("common.loading")}</p>;
+  if (isLoading) return <LoadingSkeleton lines={5} />;
 
   const taxesTotal = details.reduce((acc, line) => acc + Number(line.tax || 0), 0);
   const discountsTotal = details.reduce((acc, line) => acc + Number(line.discount || 0), 0);

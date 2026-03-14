@@ -6,6 +6,7 @@ import Pagination from "../components/Pagination";
 import PaymentRegisterModal from "../components/PaymentRegisterModal";
 import RowActionsMenu from "../components/RowActionsMenu";
 import StatusBadge from "../components/StatusBadge";
+import LoadingSkeleton from "../components/LoadingSkeleton";
 import TransactionCreatePage from "./TransactionCreatePage";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
@@ -519,7 +520,7 @@ function TransactionsPage({
       {error && <p className="error-text">{error}</p>}
 
       {isLoading ? (
-        <p>{t("common.loading")}</p>
+        <LoadingSkeleton lines={7} />
       ) : filteredItems.length === 0 ? (
         <p>{t("common.empty")}</p>
       ) : (

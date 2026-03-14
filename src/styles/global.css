@@ -206,6 +206,8 @@ button {
 
 .related-account-banner {
   width: 100%;
+  min-height: 46px;
+  height: 46px;
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -222,6 +224,68 @@ button {
 .related-account-banner-name {
   font-weight: 700;
   color: var(--brand);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.loading-skeleton {
+  display: grid;
+  gap: 1rem;
+}
+
+.loading-skeleton-header,
+.loading-skeleton-line {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--bg-muted) 82%, var(--bg-panel));
+  border-radius: 10px;
+}
+
+.loading-skeleton-header::after,
+.loading-skeleton-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.48), transparent);
+  animation: skeleton-shimmer 1.35s ease-in-out infinite;
+}
+
+.loading-skeleton-header {
+  width: min(22rem, 48%);
+  height: 1.8rem;
+}
+
+.loading-skeleton-card {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-panel);
+}
+
+.loading-skeleton-line {
+  height: 1rem;
+}
+
+.loading-skeleton-line:nth-child(2n) {
+  width: 88%;
+}
+
+.loading-skeleton-line:nth-child(3n) {
+  width: 72%;
+}
+
+.loading-skeleton-compact .loading-skeleton-card {
+  gap: 0.55rem;
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .product-name {
