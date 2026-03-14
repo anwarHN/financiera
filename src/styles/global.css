@@ -377,8 +377,7 @@ button {
   width: 280px;
   min-height: 0;
   height: 100%;
-  overflow-x: hidden;
-  overflow-y: hidden;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   padding: 0.6rem 0.45rem;
@@ -389,16 +388,23 @@ button {
   border-radius: 0;
 }
 
-.sidebar-icons.has-overflow {
+.sidebar-scroll-area {
+  min-height: 0;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+.sidebar-scroll-area.has-overflow {
   overflow-y: auto;
   scrollbar-width: thin;
 }
 
-.sidebar-icons.has-overflow::-webkit-scrollbar {
+.sidebar-scroll-area.has-overflow::-webkit-scrollbar {
   width: 8px;
 }
 
-.sidebar-icons.has-overflow::-webkit-scrollbar-thumb {
+.sidebar-scroll-area.has-overflow::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--line) 72%, transparent);
   border-radius: 999px;
 }

@@ -269,7 +269,7 @@ function Layout() {
   const [sidebarHasOverflow, setSidebarHasOverflow] = useState(false);
 
   const workspaceRef = useRef(null);
-  const sidebarIconsRef = useRef(null);
+  const sidebarScrollAreaRef = useRef(null);
   const appMenuPrimaryRef = useRef(null);
   const actionsPrimaryRef = useRef(null);
   const sidebarMobileBtnRef = useRef(null);
@@ -706,8 +706,8 @@ function Layout() {
         setUserPanelStyle(positionPanelUnderButton(userMenuBtnRef.current));
       }
 
-      if (sidebarIconsRef.current) {
-        setSidebarHasOverflow(sidebarIconsRef.current.scrollHeight > sidebarIconsRef.current.clientHeight + 1);
+      if (sidebarScrollAreaRef.current) {
+        setSidebarHasOverflow(sidebarScrollAreaRef.current.scrollHeight > sidebarScrollAreaRef.current.clientHeight + 1);
       }
     };
 
@@ -721,8 +721,8 @@ function Layout() {
   }, [openToolbarPanel, openPanel, selectedGroup, isMobile980]);
 
   useEffect(() => {
-    if (!sidebarIconsRef.current) return;
-    setSidebarHasOverflow(sidebarIconsRef.current.scrollHeight > sidebarIconsRef.current.clientHeight + 1);
+    if (!sidebarScrollAreaRef.current) return;
+    setSidebarHasOverflow(sidebarScrollAreaRef.current.scrollHeight > sidebarScrollAreaRef.current.clientHeight + 1);
   }, [allowedNavGroups, isSidebarForcedCollapsed]);
 
   useEffect(() => {
@@ -1068,42 +1068,46 @@ function Layout() {
       <main className={`content ${isAccountRoute ? "account-route" : ""}`.trim()}>
         {!isAccountRoute && (
           <aside
-            ref={sidebarIconsRef}
-            className={`sidebar-icons ${isSidebarForcedCollapsed ? "force-collapsed" : ""} ${sidebarHasOverflow ? "has-overflow" : ""}`.trim()}
+            className={`sidebar-icons ${isSidebarForcedCollapsed ? "force-collapsed" : ""}`.trim()}
             data-tour="sidebar-icons"
           >
-            <button
-              type="button"
-              className="sidebar-collapse-btn"
-              onClick={() => setIsSidebarForcedCollapsed((prev) => !prev)}
-              aria-label={isSidebarForcedCollapsed ? t("common.expand") : t("common.collapse")}
-              title={isSidebarForcedCollapsed ? t("common.expand") : t("common.collapse")}
+            <div
+              ref={sidebarScrollAreaRef}
+              className={`sidebar-scroll-area ${sidebarHasOverflow ? "has-overflow" : ""}`.trim()}
             >
-              <span className="side-icon-glyph">{isSidebarForcedCollapsed ? <FiChevronRight /> : <FiChevronLeft />}</span>
-              <span className="side-icon-label">{isSidebarForcedCollapsed ? t("common.expand") : t("common.collapse")}</span>
-            </button>
-            {allowedNavGroups.map((group) => {
-              const isActiveGroup = selectedGroupId === group.id;
-              const firstPath = group.items?.[0]?.path ?? "/";
+              <button
+                type="button"
+                className="sidebar-collapse-btn"
+                onClick={() => setIsSidebarForcedCollapsed((prev) => !prev)}
+                aria-label={isSidebarForcedCollapsed ? t("common.expand") : t("common.collapse")}
+                title={isSidebarForcedCollapsed ? t("common.expand") : t("common.collapse")}
+              >
+                <span className="side-icon-glyph">{isSidebarForcedCollapsed ? <FiChevronRight /> : <FiChevronLeft />}</span>
+                <span className="side-icon-label">{isSidebarForcedCollapsed ? t("common.expand") : t("common.collapse")}</span>
+              </button>
+              {allowedNavGroups.map((group) => {
+                const isActiveGroup = selectedGroupId === group.id;
+                const firstPath = group.items?.[0]?.path ?? "/";
 
-              return (
-                <div key={group.id} className="sidebar-group">
-                  <NavLink
-                    to={firstPath}
-                    end={firstPath === "/"}
-                    className={`side-icon group-root ${isActiveGroup ? "active" : ""}`}
-                    onClick={() => {
-                      setSelectedGroupId(group.id);
-                    }}
-                  >
-                    <span className="side-icon-glyph">
-                      <group.icon />
-                    </span>
-                    <span className="side-icon-label">{t(group.titleKey)}</span>
-                  </NavLink>
-                </div>
-              );
-            })}
+                return (
+                  <div key={group.id} className="sidebar-group">
+                    <NavLink
+                      to={firstPath}
+                      end={firstPath === "/"}
+                      className={`side-icon group-root ${isActiveGroup ? "active" : ""}`}
+                      onClick={() => {
+                        setSelectedGroupId(group.id);
+                      }}
+                    >
+                      <span className="side-icon-glyph">
+                        <group.icon />
+                      </span>
+                      <span className="side-icon-label">{t(group.titleKey)}</span>
+                    </NavLink>
+                  </div>
+                );
+              })}
+            </div>
             <div className="sidebar-brand-watermark" aria-hidden="true">
               <span className="sidebar-brand-mark" dangerouslySetInnerHTML={{ __html: daimeLogoMarkup }} />
             </div>
