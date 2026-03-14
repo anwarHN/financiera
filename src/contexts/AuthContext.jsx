@@ -42,16 +42,17 @@ export function AuthProvider({ children }) {
     let subscription;
 
     onAuthStateChange(async (event, nextSession) => {
-      const hadSessionBefore = Boolean(sessionRef.current?.user?.id);
+      const previousUserId = sessionRef.current?.user?.id ?? null;
+      const nextUserId = nextSession?.user?.id ?? null;
+      const isFreshLogin = event === "SIGNED_IN" && Boolean(nextUserId) && previousUserId !== nextUserId;
       setSession(nextSession);
       sessionRef.current = nextSession;
-      if (nextSession?.user?.id) {
-        const noticeType = event === "SIGNED_IN" ? "welcome" : null;
+      if (nextUserId && isFreshLogin) {
         await loadAccountsAndSelection(nextSession.user.id, true, {
-          preferPrimary: event === "SIGNED_IN" && !hadSessionBefore,
-          noticeType
+          preferPrimary: true,
+          noticeType: "welcome"
         });
-      } else {
+      } else if (!nextUserId) {
         setAccount(null);
         setAccounts([]);
         setCurrentProfile(null);
