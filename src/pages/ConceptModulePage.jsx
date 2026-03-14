@@ -298,6 +298,7 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
                 <table className="crud-table">
                   <thead>
                     <tr>
+                      <th className="num-col">ID</th>
                       <th>{t("transactions.date")}</th>
                       <th>{t("transactions.referenceNumber")}</th>
                       <th>{t("transactions.description")}</th>
@@ -309,6 +310,7 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
                   </thead>
                   <tbody>
                     <tr>
+                      <td className="num-col">-</td>
                       <td>{kardexFilters.dateFrom}</td>
                       <td>-</td>
                       <td>{t("products.kardexPreviousBalance")}</td>
@@ -325,11 +327,12 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
                     </tr>
                     {kardexData.movements.length === 0 ? (
                       <tr>
-                        <td colSpan={7}>{t("common.empty")}</td>
+                        <td colSpan={8}>{t("common.empty")}</td>
                       </tr>
                     ) : (
                       kardexData.movements.map((row) => (
                         <tr key={`${row.transactionId}-${row.id}`}>
+                          <td className="num-col">{row.transactionId}</td>
                           <td>{row.date}</td>
                           <td>{row.referenceNumber || "-"}</td>
                           <td>{row.name || "-"}</td>
@@ -357,7 +360,7 @@ function ConceptModulePage({ moduleType, titleKey, basePath }) {
                       ))
                     )}
                     <tr>
-                      <td colSpan={6}><strong>{t("products.kardexTotalBalance")}</strong></td>
+                      <td colSpan={7}><strong>{t("products.kardexTotalBalance")}</strong></td>
                       <td className="num-col">
                         <strong>
                           {formatNumber(kardexData.totalBalance || 0, {
