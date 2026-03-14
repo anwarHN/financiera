@@ -266,8 +266,10 @@ function Layout() {
   const [isActionsCompact, setIsActionsCompact] = useState(false);
   const [isSidebarForcedCollapsed, setIsSidebarForcedCollapsed] = useState(false);
   const [isAppMenuStuck, setIsAppMenuStuck] = useState(false);
+  const [sidebarHasOverflow, setSidebarHasOverflow] = useState(false);
 
   const workspaceRef = useRef(null);
+  const sidebarIconsRef = useRef(null);
   const appMenuPrimaryRef = useRef(null);
   const actionsPrimaryRef = useRef(null);
   const sidebarMobileBtnRef = useRef(null);
@@ -703,6 +705,10 @@ function Layout() {
       if (openPanel === "user") {
         setUserPanelStyle(positionPanelUnderButton(userMenuBtnRef.current));
       }
+
+      if (sidebarIconsRef.current) {
+        setSidebarHasOverflow(sidebarIconsRef.current.scrollHeight > sidebarIconsRef.current.clientHeight + 1);
+      }
     };
 
     onResize();
@@ -713,6 +719,11 @@ function Layout() {
       window.removeEventListener("scroll", onResize, true);
     };
   }, [openToolbarPanel, openPanel, selectedGroup, isMobile980]);
+
+  useEffect(() => {
+    if (!sidebarIconsRef.current) return;
+    setSidebarHasOverflow(sidebarIconsRef.current.scrollHeight > sidebarIconsRef.current.clientHeight + 1);
+  }, [allowedNavGroups, isSidebarForcedCollapsed]);
 
   useEffect(() => {
     const routeGroupId = resolveGroupByPath(pathname);
@@ -1057,7 +1068,8 @@ function Layout() {
       <main className={`content ${isAccountRoute ? "account-route" : ""}`.trim()}>
         {!isAccountRoute && (
           <aside
-            className={`sidebar-icons ${isSidebarForcedCollapsed ? "force-collapsed" : ""}`}
+            ref={sidebarIconsRef}
+            className={`sidebar-icons ${isSidebarForcedCollapsed ? "force-collapsed" : ""} ${sidebarHasOverflow ? "has-overflow" : ""}`.trim()}
             data-tour="sidebar-icons"
           >
             <button

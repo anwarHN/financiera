@@ -378,7 +378,7 @@ button {
   min-height: 0;
   height: 100%;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
   display: flex;
   flex-direction: column;
   padding: 0.6rem 0.45rem;
@@ -387,14 +387,18 @@ button {
   transition: width 180ms ease;
   z-index: 1;
   border-radius: 0;
+}
+
+.sidebar-icons.has-overflow {
+  overflow-y: auto;
   scrollbar-width: thin;
 }
 
-.sidebar-icons::-webkit-scrollbar {
+.sidebar-icons.has-overflow::-webkit-scrollbar {
   width: 8px;
 }
 
-.sidebar-icons::-webkit-scrollbar-thumb {
+.sidebar-icons.has-overflow::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--line) 72%, transparent);
   border-radius: 999px;
 }
