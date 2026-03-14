@@ -10,7 +10,7 @@ import { listAccountPaymentForms } from "../services/accountPaymentFormsService"
 import { listConcepts } from "../services/conceptsService";
 import { listCurrencies } from "../services/currenciesService";
 import { listPaymentMethods } from "../services/paymentMethodsService";
-import { createBankDeposit } from "../services/transactionsService";
+import { createBankDeposit, getBankDepositGroup, updateBankDepositGroup } from "../services/transactionsService";
 import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
 
 const initialForm = {
@@ -23,7 +23,7 @@ const initialForm = {
   description: ""
 };
 
-function BankDepositFormPage({ embedded = false, onCancel, onCreated }) {
+function BankDepositFormPage({ embedded = false, itemId = null, onCancel, onCreated }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
   const navigate = useNavigate();
@@ -33,7 +33,9 @@ function BankDepositFormPage({ embedded = false, onCancel, onCreated }) {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [concepts, setConcepts] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingItem, setIsLoadingItem] = useState(false);
   const [error, setError] = useState("");
+  const isEditMode = Boolean(itemId);
 
   const cashForms = useMemo(() => paymentForms.filter((item) => item.kind === "cashbox"), [paymentForms]);
   const bankForms = useMemo(() => paymentForms.filter((item) => item.kind === "bank_account"), [paymentForms]);
@@ -42,6 +44,11 @@ function BankDepositFormPage({ embedded = false, onCancel, onCreated }) {
     if (!account?.accountId) return;
     loadData();
   }, [account?.accountId]);
+
+  useEffect(() => {
+    if (!account?.accountId || !itemId) return;
+    loadItem();
+  }, [account?.accountId, itemId]);
 
   const loadData = async () => {
     try {
@@ -60,6 +67,31 @@ function BankDepositFormPage({ embedded = false, onCancel, onCreated }) {
       setError("");
     } catch {
       setError(t("common.genericLoadError"));
+    }
+  };
+
+  const loadItem = async () => {
+    try {
+      setIsLoadingItem(true);
+      const row = await getBankDepositGroup(itemId);
+      const incoming = row.incoming;
+      const outgoing = row.outgoing;
+      const description = String(incoming?.name || "").replace(/\s*\(entrada\)\s*$/i, "");
+      setForm((prev) => ({
+        ...prev,
+        date: incoming?.date || prev.date,
+        amount: Math.abs(Number(incoming?.total || 0)),
+        currencyId: incoming?.currencyId ? String(incoming.currencyId) : prev.currencyId,
+        fromCashFormId: outgoing?.accountPaymentFormId ? String(outgoing.accountPaymentFormId) : "",
+        toBankFormId: incoming?.accountPaymentFormId ? String(incoming.accountPaymentFormId) : "",
+        referenceNumber: incoming?.referenceNumber || "",
+        description
+      }));
+      setError("");
+    } catch (err) {
+      setError(err?.message || t("common.genericLoadError"));
+    } finally {
+      setIsLoadingItem(false);
     }
   };
 
@@ -98,7 +130,7 @@ function BankDepositFormPage({ embedded = false, onCancel, onCreated }) {
 
     try {
       setIsSaving(true);
-      const created = await createBankDeposit({
+      const payload = {
         accountId: account.accountId,
         userId: user.id,
         date: form.date,
@@ -112,9 +144,18 @@ function BankDepositFormPage({ embedded = false, onCancel, onCreated }) {
         toBankFormId: Number(form.toBankFormId),
         outgoingConceptId: outgoingConcept.id,
         incomingConceptId: incomingConcept.id
-      });
+      };
+
+      if (isEditMode) {
+        await updateBankDepositGroup({
+          incomingDepositId: Number(itemId),
+          ...payload
+        });
+      } else {
+        await createBankDeposit(payload);
+      }
       if (embedded) {
-        onCreated?.(created);
+        onCreated?.();
       } else {
         navigate("/bank-deposits");
       }
@@ -135,10 +176,13 @@ function BankDepositFormPage({ embedded = false, onCancel, onCreated }) {
           </Link>
         </div>
       ) : (
-        <h3>{t("actions.newBankDeposit")}</h3>
+        <h3>{isEditMode ? t("common.edit") : t("actions.newBankDeposit")}</h3>
       )}
       {error && <p className="error-text">{error}</p>}
 
+      {isLoadingItem ? (
+        <p>{t("common.loading")}</p>
+      ) : (
       <form className="crud-form" onSubmit={handleSubmit}>
         <div className="form-grid-2">
           <DateField label={t("transactions.date")} name="date" value={form.date} onChange={handleChange} required />
@@ -178,10 +222,11 @@ function BankDepositFormPage({ embedded = false, onCancel, onCreated }) {
             </button>
           ) : null}
           <button type="submit" disabled={isSaving} className={isSaving ? "is-saving" : ""}>
-            {t("common.create")}
+            {isEditMode ? t("common.save") : t("common.create")}
           </button>
         </div>
       </form>
+      )}
     </div>
   );
 }

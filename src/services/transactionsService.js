@@ -1531,6 +1531,124 @@ export async function listBankDeposits(accountId) {
   return data ?? [];
 }
 
+export async function getBankDepositGroup(incomingDepositId) {
+  const { data: incomingTx, error: incomingError } = await supabase
+    .from("transactions")
+    .select('id, date, name, total, currencyId, "referenceNumber", "accountPaymentFormId", "sourceTransactionId", isDeposit, isIncomingPayment, isActive')
+    .eq("id", incomingDepositId)
+    .eq("isDeposit", true)
+    .eq("isIncomingPayment", true)
+    .single();
+  if (incomingError) throw incomingError;
+
+  if (!incomingTx?.sourceTransactionId) {
+    throw new Error("Deposit source transaction not found.");
+  }
+
+  const { data: outgoingTx, error: outgoingError } = await supabase
+    .from("transactions")
+    .select('id, name, "accountPaymentFormId", isDeposit, isOutcomingPayment, isActive')
+    .eq("id", incomingTx.sourceTransactionId)
+    .eq("isDeposit", true)
+    .eq("isOutcomingPayment", true)
+    .single();
+  if (outgoingError) throw outgoingError;
+
+  return {
+    incoming: incomingTx,
+    outgoing: outgoingTx
+  };
+}
+
+export async function updateBankDepositGroup({
+  incomingDepositId,
+  date,
+  amount,
+  currencyId,
+  referenceNumber,
+  description,
+  cashPaymentMethodId,
+  transferPaymentMethodId,
+  fromCashFormId,
+  toBankFormId,
+  outgoingConceptId,
+  incomingConceptId
+}) {
+  const safeAmount = Math.abs(Number(amount || 0));
+  if (!safeAmount) throw new Error("Invalid amount");
+
+  const depositGroup = await getBankDepositGroup(incomingDepositId);
+  const outgoingId = Number(depositGroup.outgoing?.id || 0);
+  const incomingId = Number(depositGroup.incoming?.id || 0);
+  if (!incomingId || !outgoingId) throw new Error("Deposit transactions not found.");
+
+  const baseName = description?.trim() || "Depósito bancario";
+
+  const outgoingTx = {
+    date,
+    name: `${baseName} (salida)`,
+    net: safeAmount,
+    total: safeAmount,
+    payments: safeAmount,
+    currencyId: Number(currencyId),
+    referenceNumber: referenceNumber?.trim() || null,
+    paymentMethodId: Number(cashPaymentMethodId),
+    accountPaymentFormId: Number(fromCashFormId)
+  };
+
+  const incomingTx = {
+    date,
+    name: `${baseName} (entrada)`,
+    net: safeAmount,
+    total: safeAmount,
+    payments: safeAmount,
+    currencyId: Number(currencyId),
+    referenceNumber: referenceNumber?.trim() || null,
+    paymentMethodId: Number(transferPaymentMethodId),
+    accountPaymentFormId: Number(toBankFormId)
+  };
+
+  const { error: outgoingTxError } = await supabase.from("transactions").update(outgoingTx).eq("id", outgoingId);
+  if (outgoingTxError) throw outgoingTxError;
+
+  const { error: incomingTxError } = await supabase.from("transactions").update(incomingTx).eq("id", incomingId);
+  if (incomingTxError) throw incomingTxError;
+
+  const { error: outgoingDetailError } = await supabase
+    .from("transactionDetails")
+    .update({
+      conceptId: Number(outgoingConceptId),
+      quantity: 1,
+      price: safeAmount,
+      net: safeAmount,
+      taxPercentage: 0,
+      tax: 0,
+      discountPercentage: 0,
+      discount: 0,
+      total: safeAmount,
+      additionalCharges: 0
+    })
+    .eq("transactionId", outgoingId);
+  if (outgoingDetailError) throw outgoingDetailError;
+
+  const { error: incomingDetailError } = await supabase
+    .from("transactionDetails")
+    .update({
+      conceptId: Number(incomingConceptId),
+      quantity: 1,
+      price: safeAmount,
+      net: safeAmount,
+      taxPercentage: 0,
+      tax: 0,
+      discountPercentage: 0,
+      discount: 0,
+      total: safeAmount,
+      additionalCharges: 0
+    })
+    .eq("transactionId", incomingId);
+  if (incomingDetailError) throw incomingDetailError;
+}
+
 export async function deactivateBankDepositGroup(incomingDepositId) {
   const { data: incomingTx, error: incomingError } = await supabase
     .from("transactions")

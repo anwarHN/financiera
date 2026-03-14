@@ -60,6 +60,7 @@ type CashflowTxRow = {
   isAccountReceivable: boolean;
   isAccountPayable: boolean;
   isInternalTransfer: boolean;
+  isDeposit: boolean;
   isCashWithdrawal: boolean;
 };
 
@@ -560,7 +561,7 @@ async function fetchCashflowBankBalances(
   let txQuery = supabaseAdmin
     .from("transactions")
     .select(
-      'id, type, total, currencyId, "accountPaymentFormId", "paymentMethodId", tags, isActive, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isCashWithdrawal, payment_methods(code)'
+      'id, type, total, currencyId, "accountPaymentFormId", "paymentMethodId", tags, isActive, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isDeposit, isCashWithdrawal, payment_methods(code)'
     )
     .eq("accountId", payload.accountId)
     .eq("isActive", true)
@@ -591,7 +592,7 @@ async function fetchCashflowBankBalances(
   };
 
   const filteredTransactions = (transactions ?? []).filter((tx) => {
-    if (Boolean(tx.isInternalTransfer) && !Boolean(tx.isCashWithdrawal)) return false;
+    if (Boolean(tx.isInternalTransfer) && !Boolean(tx.isCashWithdrawal) && !Boolean(tx.isDeposit)) return false;
     if (Boolean(tx.isAccountReceivable) || Boolean(tx.isAccountPayable)) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG)) return false;
@@ -1033,7 +1034,7 @@ async function buildCashboxesBalanceReport(
   let txQuery = supabaseAdmin
     .from("transactions")
     .select(
-      'id, type, total, currencyId, "accountPaymentFormId", "paymentMethodId", isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isCashWithdrawal, tags, payment_methods(code)'
+      'id, type, total, currencyId, "accountPaymentFormId", "paymentMethodId", isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isDeposit, isCashWithdrawal, tags, payment_methods(code)'
     )
     .eq("accountId", payload.accountId)
     .eq("isActive", true)
@@ -1062,7 +1063,7 @@ async function buildCashboxesBalanceReport(
   };
 
   const filteredTransactions = (txRows ?? []).filter((row) => {
-    if (Boolean(row.isInternalTransfer) && !Boolean(row.isCashWithdrawal)) return false;
+    if (Boolean(row.isInternalTransfer) && !Boolean(row.isCashWithdrawal) && !Boolean(row.isDeposit)) return false;
     if (Boolean(row.isAccountReceivable) || Boolean(row.isAccountPayable)) return false;
     if (Array.isArray(row.tags) && row.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
     if (Array.isArray(row.tags) && row.tags.includes(PRIOR_BALANCE_TAG)) return false;

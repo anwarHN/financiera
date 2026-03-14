@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { FiChevronRight } from "react-icons/fi";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { getBudgetExecutionReport, getProjectExecutionReport, listBudgets } from "../services/budgetsService";
@@ -638,7 +639,10 @@ function ReportsPage() {
                   aria-selected={selectedReport === report.id}
                   onClick={() => setSelectedReport(report.id)}
                 >
-                  {t(report.titleKey)}
+                  <span>{t(report.titleKey)}</span>
+                  <span className="reports-list-item-indicator" aria-hidden="true">
+                    {selectedReport === report.id ? <FiChevronRight /> : null}
+                  </span>
                 </button>
               ))}
             </div>

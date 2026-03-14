@@ -206,7 +206,7 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
   let txQuery = supabase
     .from("transactions")
     .select(
-      'id, type, total, currencyId, "accountPaymentFormId", "paymentMethodId", isActive, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isCashWithdrawal, tags, payment_methods(code)'
+      'id, type, total, currencyId, "accountPaymentFormId", "paymentMethodId", isActive, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isDeposit, isCashWithdrawal, tags, payment_methods(code)'
     )
     .eq("accountId", accountId)
     .eq("isActive", true)
@@ -230,7 +230,7 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
   };
 
   const filteredTransactions = (transactions ?? []).filter((tx) => {
-    if (Boolean(tx.isInternalTransfer) && !Boolean(tx.isCashWithdrawal)) return false;
+    if (Boolean(tx.isInternalTransfer) && !Boolean(tx.isCashWithdrawal) && !Boolean(tx.isDeposit)) return false;
     if (Boolean(tx.isAccountReceivable) || Boolean(tx.isAccountPayable)) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG)) return false;
@@ -586,7 +586,7 @@ export async function getCashboxesBalanceReport(accountId, { dateFrom, dateTo, c
   let txQuery = supabase
     .from("transactions")
     .select(
-      'id, type, total, currencyId, "accountPaymentFormId", "paymentMethodId", isActive, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isCashWithdrawal, tags, payment_methods(code)'
+      'id, type, total, currencyId, "accountPaymentFormId", "paymentMethodId", isActive, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isDeposit, isCashWithdrawal, tags, payment_methods(code)'
     )
     .eq("accountId", accountId)
     .eq("isActive", true)
@@ -610,7 +610,7 @@ export async function getCashboxesBalanceReport(accountId, { dateFrom, dateTo, c
   };
 
   const filteredTransactions = (transactions ?? []).filter((tx) => {
-    if (Boolean(tx.isInternalTransfer) && !Boolean(tx.isCashWithdrawal)) return false;
+    if (Boolean(tx.isInternalTransfer) && !Boolean(tx.isCashWithdrawal) && !Boolean(tx.isDeposit)) return false;
     if (Boolean(tx.isAccountReceivable) || Boolean(tx.isAccountPayable)) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG)) return false;

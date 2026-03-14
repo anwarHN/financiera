@@ -22,6 +22,8 @@ function BankDepositsPage() {
   const [page, setPage] = useState(1);
   const [searchParams, setSearchParams] = useSearchParams();
   const isCreateModalOpen = searchParams.get("create") === "1" && canCreate;
+  const editId = searchParams.get("edit");
+  const isEditModalOpen = Boolean(editId) && canUpdate;
 
   useEffect(() => {
     if (!account?.accountId) return;
@@ -90,6 +92,17 @@ function BankDepositsPage() {
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[
+                        ...(canUpdate
+                          ? [{
+                          key: "edit",
+                          label: t("common.edit"),
+                          onClick: () => {
+                            const next = new URLSearchParams(searchParams);
+                            next.set("edit", String(item.id));
+                            setSearchParams(next);
+                          }
+                        }]
+                          : []),
                         ...(canVoidTransactions || canUpdate
                           ? [{
                           key: "deactivate",
@@ -115,6 +128,7 @@ function BankDepositsPage() {
           onClick={() => {
             const next = new URLSearchParams(searchParams);
             next.delete("create");
+            next.delete("edit");
             setSearchParams(next);
           }}
         >
@@ -124,12 +138,46 @@ function BankDepositsPage() {
               onCancel={() => {
                 const next = new URLSearchParams(searchParams);
                 next.delete("create");
+                next.delete("edit");
                 setSearchParams(next);
               }}
               onCreated={async () => {
                 await loadData();
                 const next = new URLSearchParams(searchParams);
                 next.delete("create");
+                next.delete("edit");
+                setSearchParams(next);
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {isEditModalOpen ? (
+        <div
+          className="modal-backdrop"
+          onClick={() => {
+            const next = new URLSearchParams(searchParams);
+            next.delete("create");
+            next.delete("edit");
+            setSearchParams(next);
+          }}
+        >
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <BankDepositFormPage
+              embedded
+              itemId={editId}
+              onCancel={() => {
+                const next = new URLSearchParams(searchParams);
+                next.delete("create");
+                next.delete("edit");
+                setSearchParams(next);
+              }}
+              onCreated={async () => {
+                await loadData();
+                const next = new URLSearchParams(searchParams);
+                next.delete("create");
+                next.delete("edit");
                 setSearchParams(next);
               }}
             />
