@@ -501,21 +501,60 @@ export async function listPaymentsForTransaction(transactionId) {
   }));
 }
 
+async function getAppliedPaymentsSnapshot(transactionId) {
+  const txId = Number(transactionId);
+  const { data: transaction, error: transactionError } = await supabase
+    .from("transactions")
+    .select("id, total")
+    .eq("id", txId)
+    .single();
+  if (transactionError) throw transactionError;
+
+  const { data: paymentLinks, error: paymentLinksError } = await supabase
+    .from("transactionDetails")
+    .select("transactionId, total")
+    .eq("transactionPaidId", txId);
+  if (paymentLinksError) throw paymentLinksError;
+
+  const paymentTxIds = Array.from(
+    new Set((paymentLinks ?? []).map((row) => Number(row.transactionId || 0)).filter((id) => Number.isFinite(id) && id > 0))
+  );
+
+  let activePaymentTxIds = new Set();
+  if (paymentTxIds.length > 0) {
+    const { data: activePayments, error: activePaymentsError } = await supabase
+      .from("transactions")
+      .select("id")
+      .in("id", paymentTxIds)
+      .eq("isActive", true);
+    if (activePaymentsError) throw activePaymentsError;
+    activePaymentTxIds = new Set((activePayments ?? []).map((row) => Number(row.id)));
+  }
+
+  const payments = (paymentLinks ?? []).reduce((acc, row) => {
+    const paymentId = Number(row.transactionId || 0);
+    if (!activePaymentTxIds.has(paymentId)) return acc;
+    return acc + Math.abs(Number(row.total || 0));
+  }, 0);
+
+  const total = Math.abs(Number(transaction.total || 0));
+  return {
+    total,
+    payments,
+    balance: Math.max(total - payments, 0)
+  };
+}
+
 export async function registerPaymentForTransaction({
   paidTransaction,
   paymentTransaction,
   paymentDetail
 }) {
-  const { data: latestPaidTransaction, error: latestPaidError } = await supabase
-    .from("transactions")
-    .select("id, total, balance, payments")
-    .eq("id", paidTransaction.id)
-    .single();
-  if (latestPaidError) throw latestPaidError;
+  const latestPaidTransaction = await getAppliedPaymentsSnapshot(paidTransaction.id);
 
   const amount = Number(paymentTransaction.total || 0);
   if (amount <= 0 || amount > Number(latestPaidTransaction.balance || 0)) {
-    throw new Error("Payment amount exceeds current balance.");
+    throw new Error("El monto del pago excede el saldo pendiente.");
   }
 
   const { data: createdPaymentTx, error: txError } = await supabase
@@ -576,27 +615,17 @@ export async function voidPaymentForTransaction({ paymentTransactionId, paidTran
     throw new Error("No se encontró la aplicación del pago para esta transacción.");
   }
 
-  const { data: paidTransaction, error: paidTxError } = await supabase
-    .from("transactions")
-    .select("id, total, payments")
-    .eq("id", sourceTxId)
-    .single();
-  if (paidTxError) throw paidTxError;
-
-  const paymentAmount = Math.abs(Number(paymentTx.total || 0));
-  const currentPayments = Math.max(Number(paidTransaction.payments || 0), 0);
-  const updatedPayments = Math.max(currentPayments - paymentAmount, 0);
-  const updatedBalance = Math.max(Number(paidTransaction.total || 0) - updatedPayments, 0);
-
   const { error: voidPaymentError } = await supabase
     .from("transactions")
     .update({ isActive: false })
     .eq("id", paymentTxId);
   if (voidPaymentError) throw voidPaymentError;
 
+  const paidTransaction = await getAppliedPaymentsSnapshot(sourceTxId);
+
   const { error: updatePaidError } = await supabase
     .from("transactions")
-    .update({ payments: updatedPayments, balance: updatedBalance })
+    .update({ payments: paidTransaction.payments, balance: paidTransaction.balance })
     .eq("id", sourceTxId);
   if (updatePaidError) throw updatePaidError;
 }

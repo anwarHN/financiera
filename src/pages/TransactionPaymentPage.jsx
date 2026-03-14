@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import DateField from "../components/form/DateField";
 import NumberField from "../components/form/NumberField";
+import ReadOnlyField from "../components/form/ReadOnlyField";
 import SelectField from "../components/form/SelectField";
 import TextField from "../components/form/TextField";
 import { listAccountPaymentForms } from "../services/accountPaymentFormsService";
@@ -168,8 +169,8 @@ function TransactionPaymentPage({ direction }) {
         paymentDetail
       });
       navigate(backPath);
-    } catch {
-      setError(t("common.genericSaveError"));
+    } catch (err) {
+      setError(err?.message || t("common.genericSaveError"));
     } finally {
       setIsSaving(false);
     }
@@ -187,6 +188,12 @@ function TransactionPaymentPage({ direction }) {
       </div>
       {error && <p className="error-text">{error}</p>}
       <form className="crud-form" onSubmit={handleSubmit}>
+        <div className="form-grid-4">
+          <ReadOnlyField label="ID" value={paidTransaction?.id} type="number" numberOptions={{ minimumFractionDigits: 0, maximumFractionDigits: 0 }} />
+          <ReadOnlyField label={t("transactions.person")} value={paidTransaction?.persons?.name ?? ""} />
+          <ReadOnlyField label={t("transactions.total")} value={paidTransaction?.total || 0} type="currency" />
+          <ReadOnlyField label={t("transactions.balance")} value={paidTransaction?.balance || 0} type="currency" />
+        </div>
         <div className="form-grid-2">
           <DateField label={t("transactions.date")} name="date" value={form.date} onChange={handleChange} required />
           <NumberField label={t("transactions.amount")} name="amount" value={form.amount} min="0" step="0.01" onChange={handleChange} required />

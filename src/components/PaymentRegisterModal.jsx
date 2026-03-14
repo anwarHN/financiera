@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ReadOnlyField from "../components/form/ReadOnlyField";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { listAccountPaymentForms } from "../services/accountPaymentFormsService";
@@ -173,6 +174,12 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
         <h3>{direction === "incoming" ? t("transactions.newIncomingPayment") : t("transactions.newOutgoingPayment")}</h3>
         {error && <p className="error-text">{error}</p>}
         <form className="crud-form" onSubmit={handleSubmit}>
+          <div className="form-grid-4">
+            <ReadOnlyField label="ID" value={transaction.id} type="number" numberOptions={{ minimumFractionDigits: 0, maximumFractionDigits: 0 }} />
+            <ReadOnlyField label={t("transactions.person")} value={transaction.persons?.name ?? ""} />
+            <ReadOnlyField label={t("transactions.total")} value={transaction.total} type="currency" />
+            <ReadOnlyField label={t("transactions.balance")} value={transaction.balance} type="currency" />
+          </div>
           <div className="form-grid-2">
             <label className="field-block">
               <span>{t("transactions.date")}</span>
