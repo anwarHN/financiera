@@ -26,7 +26,7 @@ export function AuthProvider({ children }) {
 
       setSession(activeSession);
       if (activeSession?.user?.id) {
-        await loadAccountsAndSelection(activeSession.user.id, isMounted, { preferPrimary: true, noticeType: null });
+        await loadAccountsAndSelection(activeSession.user.id, isMounted, { preferPrimary: false, noticeType: null });
       }
       setIsLoading(false);
     }
@@ -43,7 +43,10 @@ export function AuthProvider({ children }) {
       setSession(nextSession);
       if (nextSession?.user?.id) {
         const noticeType = event === "SIGNED_IN" ? "welcome" : null;
-        await loadAccountsAndSelection(nextSession.user.id, true, { preferPrimary: true, noticeType });
+        await loadAccountsAndSelection(nextSession.user.id, true, {
+          preferPrimary: event === "SIGNED_IN",
+          noticeType
+        });
       } else {
         setAccount(null);
         setAccounts([]);
