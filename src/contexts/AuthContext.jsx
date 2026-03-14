@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentSession, onAuthStateChange, signIn, signOut, signUp } from "../services/authService";
 import { listUserAccounts } from "../services/accountService";
 import { listCurrencies } from "../services/currenciesService";
@@ -14,6 +14,7 @@ export function AuthProvider({ children }) {
   const [currentProfile, setCurrentProfile] = useState(null);
   const [accountNotice, setAccountNotice] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const sessionRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -25,6 +26,7 @@ export function AuthProvider({ children }) {
       }
 
       setSession(activeSession);
+      sessionRef.current = activeSession;
       if (activeSession?.user?.id) {
         await loadAccountsAndSelection(activeSession.user.id, isMounted, { preferPrimary: false, noticeType: null });
       }
@@ -40,11 +42,13 @@ export function AuthProvider({ children }) {
     let subscription;
 
     onAuthStateChange(async (event, nextSession) => {
+      const hadSessionBefore = Boolean(sessionRef.current?.user?.id);
       setSession(nextSession);
+      sessionRef.current = nextSession;
       if (nextSession?.user?.id) {
         const noticeType = event === "SIGNED_IN" ? "welcome" : null;
         await loadAccountsAndSelection(nextSession.user.id, true, {
-          preferPrimary: event === "SIGNED_IN",
+          preferPrimary: event === "SIGNED_IN" && !hadSessionBefore,
           noticeType
         });
       } else {
