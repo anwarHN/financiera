@@ -629,10 +629,18 @@ async function fetchCashflowBankBalances(
   });
 
   const hasCashbox = bankBalanceRows.some((row) => row.kind === "cashbox");
-  if (!hasCashbox) {
+  if (!hasCashbox && cashTotal !== 0) {
     bankBalanceRows.push({
       id: -1,
       name: "Efectivo",
+      provider: "",
+      kind: "cashbox",
+      balance: sanitizeNumber(cashTotal)
+    });
+  } else if (cashTotal !== 0) {
+    bankBalanceRows.push({
+      id: -2,
+      name: "Efectivo sin caja",
       provider: "",
       kind: "cashbox",
       balance: sanitizeNumber(cashTotal)
@@ -1085,6 +1093,14 @@ async function buildCashboxesBalanceReport(
     rows.push({
       id: "cash-summary",
       caja: "Efectivo",
+      entidad: "-",
+      referencia: "-",
+      saldo: sanitizeNumber(cashTotal)
+    });
+  } else if (cashTotal !== 0) {
+    rows.push({
+      id: "cash-unassigned",
+      caja: "Efectivo sin caja",
       entidad: "-",
       referencia: "-",
       saldo: sanitizeNumber(cashTotal)

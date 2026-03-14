@@ -1,14 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import PaymentRegisterModal from "../components/PaymentRegisterModal";
+import StatusBadge from "../components/StatusBadge";
 import ReadOnlyField from "../components/form/ReadOnlyField";
+import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
-import { getTransactionById, listPaymentsForTransaction, listTransactionDetails } from "../services/transactionsService";
+import {
+  getTransactionById,
+  listPaymentsForTransaction,
+  listTransactionDetails,
+  voidPaymentForTransaction
+} from "../services/transactionsService";
 import { formatDate } from "../utils/dateFormat";
 import { formatNumber } from "../utils/numberFormat";
 
 function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }) {
   const { t, language } = useI18n();
+  const { canVoidTransactions } = useAuth();
   const { id } = useParams();
   const [transaction, setTransaction] = useState(null);
   const [details, setDetails] = useState([]);
@@ -40,6 +48,19 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
       setError(t("common.genericLoadError"));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleVoidPayment = async (payment) => {
+    try {
+      await voidPaymentForTransaction({
+        paymentTransactionId: payment.transactionId,
+        paidTransactionId: id
+      });
+      await loadData();
+      setError("");
+    } catch (err) {
+      setError(err?.message || t("common.genericSaveError"));
     }
   };
 
@@ -135,16 +156,18 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
         <table className="crud-table">
           <thead>
             <tr>
-                <th className="num-col">ID</th>
-                <th>{t("transactions.date")}</th>
-                <th>{t("transactions.referenceNumber")}</th>
-                <th className="num-col">{t("transactions.total")}</th>
-              </tr>
-            </thead>
+              <th className="num-col">ID</th>
+              <th>{t("transactions.date")}</th>
+              <th>{t("transactions.referenceNumber")}</th>
+              <th>{t("common.status")}</th>
+              <th className="num-col">{t("transactions.total")}</th>
+              <th>{t("common.actions")}</th>
+            </tr>
+          </thead>
           <tbody>
             {payments.length === 0 ? (
               <tr>
-                <td colSpan={3}>{t("common.empty")}</td>
+                <td colSpan={6}>{t("common.empty")}</td>
               </tr>
             ) : (
               payments.map((payment) => (
@@ -152,7 +175,24 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
                   <td className="num-col">{payment.transactionId}</td>
                   <td>{formatDate(payment.transactions?.date, language)}</td>
                   <td>{payment.transactions?.referenceNumber ?? "-"}</td>
+                  <td>
+                    <StatusBadge tone={payment.transactions?.isActive === false ? "muted" : "success"}>
+                      {payment.transactions?.isActive === false ? t("common.inactive") : t("common.active")}
+                    </StatusBadge>
+                  </td>
                   <td className="num-col">{formatNumber(payment.total)}</td>
+                  <td>
+                    {canVoidTransactions ? (
+                      <button
+                        type="button"
+                        className="button-link-secondary"
+                        disabled={payment.transactions?.isActive === false}
+                        onClick={() => handleVoidPayment(payment)}
+                      >
+                        {t("transactions.voidPayment")}
+                      </button>
+                    ) : null}
+                  </td>
                 </tr>
               ))
             )}

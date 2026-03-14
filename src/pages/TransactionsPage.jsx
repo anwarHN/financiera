@@ -18,7 +18,8 @@ import {
   listPaymentsForTransaction,
   listReturnableSaleDetails,
   listTransactions,
-  TRANSACTION_TYPES
+  TRANSACTION_TYPES,
+  voidPaymentForTransaction
 } from "../services/transactionsService";
 import { formatDate } from "../utils/dateFormat";
 import { formatNumber } from "../utils/numberFormat";
@@ -304,6 +305,26 @@ function TransactionsPage({
       payments: [],
       isLoading: false
     });
+  };
+
+  const handleVoidAppliedPayment = async (payment) => {
+    try {
+      await voidPaymentForTransaction({
+        paymentTransactionId: payment.transactionId,
+        paidTransactionId: paymentsDetailModal.transaction?.id
+      });
+      if (paymentsDetailModal.transaction?.id) {
+        const refreshedPayments = await listPaymentsForTransaction(paymentsDetailModal.transaction.id);
+        setPaymentsDetailModal((prev) => ({
+          ...prev,
+          payments: refreshedPayments
+        }));
+      }
+      await loadData();
+      setError("");
+    } catch (err) {
+      setError(err?.message || t("common.genericSaveError"));
+    }
   };
 
   const openDeliveryHistoryModal = async (transaction) => {
@@ -693,7 +714,9 @@ function TransactionsPage({
                       <th>{t("transactions.description")}</th>
                       <th>{t("transactions.paymentMethod")}</th>
                       <th>{t("transactions.accountPaymentForm")}</th>
+                      <th>{t("transactions.status")}</th>
                       <th className="num-col">{t("transactions.total")}</th>
+                      <th>{t("common.actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -705,7 +728,24 @@ function TransactionsPage({
                         <td>{payment.transactions?.name ?? "-"}</td>
                         <td>{payment.transactions?.payment_methods?.name ?? "-"}</td>
                         <td>{payment.transactions?.account_payment_forms?.name ?? "-"}</td>
+                        <td>
+                          <StatusBadge tone={payment.transactions?.isActive === false ? "muted" : "success"}>
+                            {payment.transactions?.isActive === false ? t("transactions.inactive") : t("transactions.active")}
+                          </StatusBadge>
+                        </td>
                         <td className="num-col">{formatNumber(payment.total)}</td>
+                        <td className="table-actions">
+                          {canVoidTransactions ? (
+                            <button
+                              type="button"
+                              className="button-link-secondary"
+                              disabled={payment.transactions?.isActive === false}
+                              onClick={() => handleVoidAppliedPayment(payment)}
+                            >
+                              {t("transactions.voidPayment")}
+                            </button>
+                          ) : null}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

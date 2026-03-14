@@ -238,10 +238,18 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
   });
 
   const totalsByFormId = new Map();
+  let unassignedCashTotal = 0;
   filteredTransactions.forEach((tx) => {
+    const signedAmount = normalizeSignedTotal(tx);
     const formId = Number(tx.accountPaymentFormId || 0);
-    if (!formId) return;
-    totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + normalizeSignedTotal(tx));
+    if (formId) {
+      totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + signedAmount);
+      return;
+    }
+
+    if (tx.payment_methods?.code === "cash") {
+      unassignedCashTotal += signedAmount;
+    }
   });
 
   const rows = (forms ?? []).map((form) => ({
@@ -252,18 +260,21 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
       kind: form.kind
     }));
 
-  const cashTotal = filteredTransactions.reduce((acc, tx) => {
-    if (tx.payment_methods?.code !== "cash") return acc;
-    return acc + normalizeSignedTotal(tx);
-  }, 0);
-
   const hasCashboxRows = rows.some((row) => row.kind === "cashbox");
-  if (!hasCashboxRows) {
+  if (!hasCashboxRows && unassignedCashTotal !== 0) {
     rows.push({
       id: "cash-summary",
       name: "Efectivo",
       provider: "",
-      balance: cashTotal,
+      balance: unassignedCashTotal,
+      kind: "cashbox"
+    });
+  } else if (unassignedCashTotal !== 0) {
+    rows.push({
+      id: "cash-unassigned",
+      name: "Efectivo sin caja",
+      provider: "",
+      balance: unassignedCashTotal,
       kind: "cashbox"
     });
   }
@@ -607,10 +618,18 @@ export async function getCashboxesBalanceReport(accountId, { dateFrom, dateTo, c
   });
 
   const totalsByFormId = new Map();
+  let unassignedCashTotal = 0;
   filteredTransactions.forEach((tx) => {
+    const signedAmount = normalizeSignedTotal(tx);
     const formId = Number(tx.accountPaymentFormId || 0);
-    if (!formId) return;
-    totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + normalizeSignedTotal(tx));
+    if (formId) {
+      totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + signedAmount);
+      return;
+    }
+
+    if (tx.payment_methods?.code === "cash") {
+      unassignedCashTotal += signedAmount;
+    }
   });
 
   const rows = (forms ?? []).map((form) => ({
@@ -621,18 +640,21 @@ export async function getCashboxesBalanceReport(accountId, { dateFrom, dateTo, c
     balance: Number(totalsByFormId.get(Number(form.id)) || 0)
   }));
 
-  const cashTotal = filteredTransactions.reduce((acc, tx) => {
-    if (tx.payment_methods?.code !== "cash") return acc;
-    return acc + normalizeSignedTotal(tx);
-  }, 0);
-
-  if (rows.length === 0 && cashTotal !== 0) {
+  if (rows.length === 0 && unassignedCashTotal !== 0) {
     rows.push({
       id: "cash-summary",
       name: "Efectivo",
       provider: "",
       reference: "",
-      balance: Number(cashTotal || 0)
+      balance: Number(unassignedCashTotal || 0)
+    });
+  } else if (unassignedCashTotal !== 0) {
+    rows.push({
+      id: "cash-unassigned",
+      name: "Efectivo sin caja",
+      provider: "",
+      reference: "",
+      balance: Number(unassignedCashTotal || 0)
     });
   }
 

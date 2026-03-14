@@ -490,7 +490,7 @@ export async function listPaymentsForTransaction(transactionId) {
   const { data, error } = await supabase
     .from("transactionDetails")
     .select(
-      'id, total, transactionId, transactionPaidId, transactions!transaction_details_transactionId_fkey(id, date, type, name, "referenceNumber", paymentMethodId, accountPaymentFormId, payment_methods(name), account_payment_forms(name))'
+      'id, total, transactionId, transactionPaidId, transactions!transaction_details_transactionId_fkey(id, date, type, name, "referenceNumber", paymentMethodId, accountPaymentFormId, isActive, payment_methods(name), account_payment_forms(name))'
     )
     .eq("transactionPaidId", transactionId)
     .order("id", { ascending: false });
@@ -547,6 +547,58 @@ export async function registerPaymentForTransaction({
   if (updatePaidError) throw updatePaidError;
 
   return createdPaymentTx;
+}
+
+export async function voidPaymentForTransaction({ paymentTransactionId, paidTransactionId }) {
+  const paymentTxId = Number(paymentTransactionId);
+  const sourceTxId = Number(paidTransactionId);
+  if (!Number.isFinite(paymentTxId) || paymentTxId <= 0) throw new Error("Invalid payment transaction id.");
+  if (!Number.isFinite(sourceTxId) || sourceTxId <= 0) throw new Error("Invalid source transaction id.");
+
+  const { data: paymentTx, error: paymentTxError } = await supabase
+    .from("transactions")
+    .select("id, total, isActive")
+    .eq("id", paymentTxId)
+    .single();
+  if (paymentTxError) throw paymentTxError;
+  if (!paymentTx?.isActive) {
+    throw new Error("El pago ya fue anulado.");
+  }
+
+  const { data: paymentDetail, error: paymentDetailError } = await supabase
+    .from("transactionDetails")
+    .select("id, transactionPaidId")
+    .eq("transactionId", paymentTxId)
+    .eq("transactionPaidId", sourceTxId)
+    .maybeSingle();
+  if (paymentDetailError) throw paymentDetailError;
+  if (!paymentDetail) {
+    throw new Error("No se encontró la aplicación del pago para esta transacción.");
+  }
+
+  const { data: paidTransaction, error: paidTxError } = await supabase
+    .from("transactions")
+    .select("id, total, payments")
+    .eq("id", sourceTxId)
+    .single();
+  if (paidTxError) throw paidTxError;
+
+  const paymentAmount = Math.abs(Number(paymentTx.total || 0));
+  const currentPayments = Math.max(Number(paidTransaction.payments || 0), 0);
+  const updatedPayments = Math.max(currentPayments - paymentAmount, 0);
+  const updatedBalance = Math.max(Number(paidTransaction.total || 0) - updatedPayments, 0);
+
+  const { error: voidPaymentError } = await supabase
+    .from("transactions")
+    .update({ isActive: false })
+    .eq("id", paymentTxId);
+  if (voidPaymentError) throw voidPaymentError;
+
+  const { error: updatePaidError } = await supabase
+    .from("transactions")
+    .update({ payments: updatedPayments, balance: updatedBalance })
+    .eq("id", sourceTxId);
+  if (updatePaidError) throw updatePaidError;
 }
 
 export async function listTransactionsByAccountPaymentForm({ accountId, accountPaymentFormId }) {
