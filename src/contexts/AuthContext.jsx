@@ -49,7 +49,7 @@ export function AuthProvider({ children }) {
       sessionRef.current = nextSession;
       if (nextUserId && isFreshLogin) {
         await loadAccountsAndSelection(nextSession.user.id, true, {
-          preferPrimary: true,
+          preferPrimary: false,
           noticeType: "welcome"
         });
       } else if (!nextUserId) {
