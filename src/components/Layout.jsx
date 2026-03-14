@@ -788,99 +788,101 @@ function Layout() {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div className="topbar-left">
-          <Link to="/" className="product-name" aria-label={t("common.appName")}>
-            <span>{t("common.appName")}</span>
-          </Link>
-        </div>
+      <div className="top-shell">
+        <header className="topbar">
+          <div className="topbar-left">
+            <Link to="/" className="product-name" aria-label={t("common.appName")}>
+              <span>{t("common.appName")}</span>
+            </Link>
+          </div>
 
-        <label
-          className="search-wrap"
-          htmlFor="global-search"
-          ref={desktopSearchWrapRef}
-          data-tour="topbar-search"
-          onClick={(event) => {
-            event.stopPropagation();
-            const searchAnchor = isMobile980 ? mobileSearchBtnRef.current : desktopSearchWrapRef.current;
-            setSearchPanelStyle(positionPanelUnderButton(searchAnchor));
-            setOpenPanel("search");
-            setOpenToolbarPanel(null);
-          }}
-        >
-          <span className="search-icon">
-            <FiSearch />
-          </span>
-          <input
-            id="global-search"
-            type="text"
-            placeholder={t("common.searchPlaceholder")}
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            onFocus={(event) => {
+          <label
+            className="search-wrap"
+            htmlFor="global-search"
+            ref={desktopSearchWrapRef}
+            data-tour="topbar-search"
+            onClick={(event) => {
               event.stopPropagation();
               const searchAnchor = isMobile980 ? mobileSearchBtnRef.current : desktopSearchWrapRef.current;
               setSearchPanelStyle(positionPanelUnderButton(searchAnchor));
               setOpenPanel("search");
               setOpenToolbarPanel(null);
             }}
-          />
-        </label>
+          >
+            <span className="search-icon">
+              <FiSearch />
+            </span>
+            <input
+              id="global-search"
+              type="text"
+              placeholder={t("common.searchPlaceholder")}
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              onFocus={(event) => {
+                event.stopPropagation();
+                const searchAnchor = isMobile980 ? mobileSearchBtnRef.current : desktopSearchWrapRef.current;
+                setSearchPanelStyle(positionPanelUnderButton(searchAnchor));
+                setOpenPanel("search");
+                setOpenToolbarPanel(null);
+              }}
+            />
+          </label>
 
-        <div className="topbar-right">
-          <button
-            className="icon-btn mobile-search-btn"
-            ref={mobileSearchBtnRef}
-            data-tour="topbar-search"
-            onClick={(event) => togglePanel("search", event)}
-            aria-label={t("common.searchPlaceholder")}
-          >
-            <FiSearch />
-          </button>
-          <button className="icon-btn" data-tour="topbar-home" onClick={() => navigate(defaultHomePath)} aria-label={t("nav.dashboard")}>
-            <FiHome />
-          </button>
-          <button
-            className="account-switch-btn"
-            ref={accountSwitchBtnRef}
-            data-tour="topbar-account-switch"
-            onClick={(event) => togglePanel("account-switch", event)}
-            aria-label={t("topbar.currentAccount")}
-            title={t("topbar.currentAccount")}
-          >
-            {account?.accountName || t("topbar.currentAccount")}
-          </button>
-          <button
-            className="icon-btn"
-            ref={notificationsBtnRef}
-            data-tour="topbar-notifications"
-            onClick={(event) => togglePanel("notifications", event)}
-            aria-label={t("topbar.notifications")}
-          >
-            <FiBell />
-            {pendingInvitations.length > 0 ? <span className="notification-dot" /> : null}
-          </button>
-          <div className="user-menu-wrap">
+          <div className="topbar-right">
             <button
-              className="avatar-btn"
-              ref={userMenuBtnRef}
-              data-tour="user-menu-button"
-              onClick={(event) => togglePanel("user", event)}
-              aria-label={t("topbar.userMenu")}
+              className="icon-btn mobile-search-btn"
+              ref={mobileSearchBtnRef}
+              data-tour="topbar-search"
+              onClick={(event) => togglePanel("search", event)}
+              aria-label={t("common.searchPlaceholder")}
             >
-              <FiUser />
+              <FiSearch />
             </button>
+            <button className="icon-btn" data-tour="topbar-home" onClick={() => navigate(defaultHomePath)} aria-label={t("nav.dashboard")}>
+              <FiHome />
+            </button>
+            <button
+              className="account-switch-btn"
+              ref={accountSwitchBtnRef}
+              data-tour="topbar-account-switch"
+              onClick={(event) => togglePanel("account-switch", event)}
+              aria-label={t("topbar.currentAccount")}
+              title={t("topbar.currentAccount")}
+            >
+              {account?.accountName || t("topbar.currentAccount")}
+            </button>
+            <button
+              className="icon-btn"
+              ref={notificationsBtnRef}
+              data-tour="topbar-notifications"
+              onClick={(event) => togglePanel("notifications", event)}
+              aria-label={t("topbar.notifications")}
+            >
+              <FiBell />
+              {pendingInvitations.length > 0 ? <span className="notification-dot" /> : null}
+            </button>
+            <div className="user-menu-wrap">
+              <button
+                className="avatar-btn"
+                ref={userMenuBtnRef}
+                data-tour="user-menu-button"
+                onClick={(event) => togglePanel("user", event)}
+                aria-label={t("topbar.userMenu")}
+              >
+                <FiUser />
+              </button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {!account?.isOriginalAccount ? (
-        <div className="related-account-banner">
-          <strong>{t("topbar.relatedAccountBannerTitle")}</strong>
-          <span>{t("topbar.relatedAccountBannerText")}</span>
-          <span className="related-account-banner-name">{account?.accountName || t("topbar.currentAccount")}</span>
-        </div>
-      ) : null}
+        {!account?.isOriginalAccount ? (
+          <div className="related-account-banner">
+            <strong>{t("topbar.relatedAccountBannerTitle")}</strong>
+            <span>{t("topbar.relatedAccountBannerText")}</span>
+            <span className="related-account-banner-name">{account?.accountName || t("topbar.currentAccount")}</span>
+          </div>
+        ) : null}
+      </div>
 
       <div
         className={`floating-panel panel-right panel-anchor search-results-panel ${openPanel === "search" ? "open" : ""}`}
