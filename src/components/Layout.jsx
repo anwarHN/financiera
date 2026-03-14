@@ -400,6 +400,7 @@ function Layout() {
     const firstAccessible = allowedNavGroups.flatMap((group) => group.items)[0];
     return firstAccessible?.path || "/";
   }, [allowedNavGroups, canSeeDashboard]);
+  const accountScopedContentKey = `${account?.accountId || "no-account"}:${pathname}`;
 
   const actionsConfig = useMemo(() => {
     if (pathname.startsWith("/clients")) return { createPath: "/clients?create=1", createLabel: t("actions.newClient") };
@@ -1285,7 +1286,7 @@ function Layout() {
             </div>
           )}
 
-          <div className="workspace-body single-column" data-tour="workspace">
+          <div key={accountScopedContentKey} className="workspace-body single-column" data-tour="workspace">
             {isAccountRoute ? (
               <Outlet />
             ) : (
