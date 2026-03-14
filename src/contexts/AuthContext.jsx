@@ -202,7 +202,7 @@ export function AuthProvider({ children }) {
       register: signUp,
       logout: signOut
     };
-  }, [session, account, accounts, currentProfile, isLoading]);
+  }, [session, account, accounts, currentProfile, accountNotice, isLoading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
