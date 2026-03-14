@@ -502,6 +502,7 @@ export async function listPaymentsForTransaction(transactionId) {
 }
 
 async function getAppliedPaymentsSnapshot(transactionId) {
+  const roundCurrency = (value) => Number(Number(value || 0).toFixed(2));
   const txId = Number(transactionId);
   const { data: transaction, error: transactionError } = await supabase
     .from("transactions")
@@ -537,11 +538,12 @@ async function getAppliedPaymentsSnapshot(transactionId) {
     return acc + Math.abs(Number(row.total || 0));
   }, 0);
 
-  const total = Math.abs(Number(transaction.total || 0));
+  const total = roundCurrency(Math.abs(Number(transaction.total || 0)));
+  const normalizedPayments = roundCurrency(payments);
   return {
     total,
-    payments,
-    balance: Math.max(total - payments, 0)
+    payments: normalizedPayments,
+    balance: roundCurrency(Math.max(total - normalizedPayments, 0))
   };
 }
 
@@ -552,8 +554,9 @@ export async function registerPaymentForTransaction({
 }) {
   const latestPaidTransaction = await getAppliedPaymentsSnapshot(paidTransaction.id);
 
-  const amount = Number(paymentTransaction.total || 0);
-  if (amount <= 0 || amount > Number(latestPaidTransaction.balance || 0)) {
+  const amount = Number(Number(paymentTransaction.total || 0).toFixed(2));
+  const availableBalance = Number(Number(latestPaidTransaction.balance || 0).toFixed(2));
+  if (amount <= 0 || amount > availableBalance) {
     throw new Error("El monto del pago excede el saldo pendiente.");
   }
 
@@ -574,10 +577,10 @@ export async function registerPaymentForTransaction({
     throw detailError;
   }
 
-  const currentPayments = Number(latestPaidTransaction.payments || 0);
-  const paymentAmount = Number(paymentTransaction.total || 0);
-  const updatedPayments = currentPayments + paymentAmount;
-  const updatedBalance = Math.max(Number(latestPaidTransaction.total || 0) - updatedPayments, 0);
+  const currentPayments = Number(Number(latestPaidTransaction.payments || 0).toFixed(2));
+  const paymentAmount = Number(Number(paymentTransaction.total || 0).toFixed(2));
+  const updatedPayments = Number((currentPayments + paymentAmount).toFixed(2));
+  const updatedBalance = Number(Math.max(Number(latestPaidTransaction.total || 0) - updatedPayments, 0).toFixed(2));
 
   const { error: updatePaidError } = await supabase
     .from("transactions")

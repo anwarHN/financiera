@@ -104,8 +104,9 @@ function TransactionPaymentPage({ direction }) {
       return;
     }
 
-    const amount = Number(form.amount || 0);
-    if (amount <= 0 || amount > Number(paidTransaction.balance || 0)) {
+    const amount = Number(Number(form.amount || 0).toFixed(2));
+    const availableBalance = Number(Number(paidTransaction.balance || 0).toFixed(2));
+    if (amount <= 0 || amount > availableBalance) {
       setError(t("transactions.invalidPaymentAmount"));
       return;
     }
@@ -188,7 +189,7 @@ function TransactionPaymentPage({ direction }) {
       </div>
       {error && <p className="error-text">{error}</p>}
       <form className="crud-form" onSubmit={handleSubmit}>
-        <div className="form-grid-4">
+        <div className="form-grid-2">
           <ReadOnlyField label="ID" value={paidTransaction?.id} type="number" numberOptions={{ minimumFractionDigits: 0, maximumFractionDigits: 0 }} />
           <ReadOnlyField label={t("transactions.person")} value={paidTransaction?.persons?.name ?? ""} />
           <ReadOnlyField label={t("transactions.total")} value={paidTransaction?.total || 0} type="currency" />
@@ -206,7 +207,7 @@ function TransactionPaymentPage({ direction }) {
               ))}
           </SelectField>
           <SelectField
-              label={selectedPaymentMethod?.code === "cash" ? "Cajaa" : t("transactions.accountPaymentForm")}
+              label={selectedPaymentMethod?.code === "cash" ? "Caja" : t("transactions.accountPaymentForm")}
               name="accountPaymentFormId"
               value={form.accountPaymentFormId}
               onChange={handleChange}

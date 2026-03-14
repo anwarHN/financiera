@@ -91,8 +91,9 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
       return;
     }
 
-    const amount = Number(form.amount || 0);
-    if (amount <= 0 || amount > Number(transaction.balance || 0)) {
+    const amount = Number(Number(form.amount || 0).toFixed(2));
+    const availableBalance = Number(Number(transaction.balance || 0).toFixed(2));
+    if (amount <= 0 || amount > availableBalance) {
       setError(t("transactions.invalidPaymentAmount"));
       return;
     }
@@ -174,7 +175,7 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
         <h3>{direction === "incoming" ? t("transactions.newIncomingPayment") : t("transactions.newOutgoingPayment")}</h3>
         {error && <p className="error-text">{error}</p>}
         <form className="crud-form" onSubmit={handleSubmit}>
-          <div className="form-grid-4">
+          <div className="form-grid-2">
             <ReadOnlyField label="ID" value={transaction.id} type="number" numberOptions={{ minimumFractionDigits: 0, maximumFractionDigits: 0 }} />
             <ReadOnlyField label={t("transactions.person")} value={transaction.persons?.name ?? ""} />
             <ReadOnlyField label={t("transactions.total")} value={transaction.total} type="currency" />
@@ -201,7 +202,7 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
               </select>
             </label>
             <label className="field-block">
-              <span>{selectedPaymentMethod?.code === "cash" ? "Cajaa" : t("transactions.accountPaymentForm")}</span>
+              <span>{selectedPaymentMethod?.code === "cash" ? "Caja" : t("transactions.accountPaymentForm")}</span>
               <select
                 name="accountPaymentFormId"
                 value={form.accountPaymentFormId}

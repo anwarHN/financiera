@@ -157,7 +157,7 @@ begin
 
   attempted_total := current_paid_amount + coalesce(new.total, 0);
   if attempted_total > paid_transaction_total then
-    raise exception 'Payment amount exceeds remaining balance for transaction %.', new."transactionPaidId";
+    raise exception 'El monto del pago excede el saldo pendiente de la transacción %.', new."transactionPaidId";
   end if;
 
   return new;
