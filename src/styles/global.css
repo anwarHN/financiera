@@ -3146,7 +3146,33 @@ button:disabled,
   margin-bottom: 0.85rem;
 }
 
-.report-summary-span-4 {
+.cashflow-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-bottom: 0.85rem;
+}
+
+.cashflow-summary-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-muted);
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.cashflow-summary-card span {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.cashflow-summary-card strong {
+  font-size: 1.06rem;
+  color: var(--text-strong);
+}
+
+.cashflow-summary-card-wide {
   grid-column: 1 / -1;
 }
 
@@ -3262,6 +3288,10 @@ button:disabled,
   }
 
   .report-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cashflow-summary-grid {
     grid-template-columns: 1fr;
   }
 

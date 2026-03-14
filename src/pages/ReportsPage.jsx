@@ -739,114 +739,107 @@ function ReportsPage() {
       {canReadReportsModule && reportCatalog.length > 0 && hasExecuted && !showSetup && reportConfig && (
         <section className="generic-panel">
           <h3>{t(reportConfig.titleKey)}</h3>
-          {appliedFilters.map((line) => (
-            <p key={line}>{line}</p>
-          ))}
-          <p>
-            {t("reports.totalRecords")}:{" "}
-            {formatNumber(
-              selectedReport === "cashflow"
-                ? cashflowRowCount
-                : selectedReport === "sales_by_employee"
-                  ? salesByEmployeeRowCount
-                  : selectedReport === "pending_deliveries"
-                    ? pendingDeliveriesRowCount
-                    : results.length,
-              {
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0
+          <div className="report-summary-grid">
+            {appliedFilters.map((line, index) => (
+              <ReadOnlyField key={`${line}-${index}`} label={index === 0 ? t("reports.applicableFilters") : " "} value={line} />
+            ))}
+            <ReadOnlyField
+              label={t("reports.totalRecords")}
+              value={
+                selectedReport === "cashflow"
+                  ? cashflowRowCount
+                  : selectedReport === "sales_by_employee"
+                    ? salesByEmployeeRowCount
+                    : selectedReport === "pending_deliveries"
+                      ? pendingDeliveriesRowCount
+                      : results.length
               }
-            )}
-          </p>
+              type="number"
+              numberOptions={{ minimumFractionDigits: 0, maximumFractionDigits: 0 }}
+            />
 
-          {budgetExecutionTotals ? (
-            <p>
-              {t("budgets.totalBudget")}: {formatNumber(budgetExecutionTotals.budgeted)} | {t("reports.executed")}: {formatNumber(budgetExecutionTotals.executed)} | {t("reports.variance")}: {formatNumber(budgetExecutionTotals.variance)}
-            </p>
-          ) : (
-            <>
-              <p>
-                {t("transactions.total")}: {formatNumber(total)}
-              </p>
-              {selectedReport === "sales" ? (
-                <p>
-                  {t("transactions.additionalCharges")}: {formatNumber(salesAdditionalChargesTotal)}
-                </p>
-              ) : null}
-              {selectedReport === "employee_absences" ? (
-                <p>
-                  {t("transactions.total")}: {formatNumber(total, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </p>
-              ) : null}
-              {selectedReport === "sales_by_employee" ? (
-                <p>
-                  {t("transactions.total")}: {formatNumber(total)}
-                </p>
-              ) : null}
-              {selectedReport === "employee_loans" ? (
-                <p>
-                  {t("transactions.balance")}: {formatNumber(balance)}
-                </p>
-              ) : null}
-              {selectedReport === "employee_payroll" ? (
-                <p>
-                  {t("reports.payrollTotal")}: {formatNumber(total)}
-                </p>
-              ) : null}
-              {selectedReport === "cashboxes_balance" ? (
-                <p>
-                  {t("reports.cashboxesBalancesTotal")}: {formatNumber(total)}
-                </p>
-              ) : null}
-              {selectedReport === "pending_deliveries" ? (
-                <p>
-                  {t("inventory.deliveries.pendingUnits")}:{" "}
-                  {formatNumber(total, { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                </p>
-              ) : null}
-              {(selectedReport === "receivable" ||
-                selectedReport === "payable" ||
-                selectedReport === "internal_obligations") && (
-                <p>
-                  {t("transactions.balance")}: {formatNumber(balance)}
-                </p>
-              )}
-            </>
-          )}
+            {budgetExecutionTotals ? (
+              <>
+                <ReadOnlyField label={t("budgets.totalBudget")} value={budgetExecutionTotals.budgeted} type="currency" />
+                <ReadOnlyField label={t("reports.executed")} value={budgetExecutionTotals.executed} type="currency" />
+                <ReadOnlyField label={t("reports.variance")} value={budgetExecutionTotals.variance} type="currency" />
+              </>
+            ) : (
+              <>
+                <ReadOnlyField
+                  label={selectedReport === "employee_payroll" ? t("reports.payrollTotal") : selectedReport === "cashboxes_balance" ? t("reports.cashboxesBalancesTotal") : selectedReport === "pending_deliveries" ? t("inventory.deliveries.pendingUnits") : t("transactions.total")}
+                  value={total}
+                  type={selectedReport === "employee_absences" || selectedReport === "pending_deliveries" ? "number" : "currency"}
+                  numberOptions={
+                    selectedReport === "employee_absences"
+                      ? { minimumFractionDigits: 0, maximumFractionDigits: 0 }
+                      : selectedReport === "pending_deliveries"
+                        ? { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 }
+                        : undefined
+                  }
+                />
+                {selectedReport === "sales" ? (
+                  <ReadOnlyField label={t("transactions.additionalCharges")} value={salesAdditionalChargesTotal} type="currency" />
+                ) : null}
+                {(selectedReport === "employee_loans" ||
+                  selectedReport === "receivable" ||
+                  selectedReport === "payable" ||
+                  selectedReport === "internal_obligations") ? (
+                  <ReadOnlyField label={t("transactions.balance")} value={balance} type="currency" />
+                ) : null}
+              </>
+            )}
+          </div>
 
           {selectedReport === "cashflow" ? (
             <>
-              <div className="report-summary-grid">
-                <ReadOnlyField label={t("reconciliation.previousBalance")} value={cashflowSummary.previousBalance} type="currency" />
-                <ReadOnlyField label={t("reconciliation.periodMovementsSum")} value={cashflowSummary.periodMovements} type="currency" />
-                <ReadOnlyField label={t("reconciliation.currentBalance")} value={cashflowSummary.newBalance} type="currency" />
-                <ReadOnlyField
-                  label={`${t("reports.accountsReceivable")} (${t("common.balance")})`}
-                  value={cashflowSummary.receivableOutstanding || 0}
-                  type="currency"
-                />
-                <ReadOnlyField
-                  label={`${t("reports.accountsPayable")} (${t("common.balance")})`}
-                  value={cashflowSummary.payableOutstanding || 0}
-                  type="currency"
-                />
-                <ReadOnlyField label={t("reports.bankBalancesTotal")} value={cashflowBanksTotal} type="currency" />
-                <ReadOnlyField label={t("reports.incomeExpenseNet")} value={cashflowSummary.newBalance} type="currency" />
-                <ReadOnlyField label={t("reports.bankVsNetDifference")} value={cashflowDifferenceVsNet} type="currency" />
+              <div className="cashflow-summary-grid">
+                <div className="cashflow-summary-card">
+                  <span>{t("reconciliation.previousBalance")}</span>
+                  <strong>{formatNumber(cashflowSummary.previousBalance)}</strong>
+                </div>
+                <div className="cashflow-summary-card">
+                  <span>{t("reconciliation.periodMovementsSum")}</span>
+                  <strong>{formatNumber(cashflowSummary.periodMovements)}</strong>
+                </div>
+                <div className="cashflow-summary-card">
+                  <span>{t("reconciliation.currentBalance")}</span>
+                  <strong>{formatNumber(cashflowSummary.newBalance)}</strong>
+                </div>
+                <div className="cashflow-summary-card">
+                  <span>{`${t("reports.accountsReceivable")} (${t("common.balance")})`}</span>
+                  <strong>{formatNumber(cashflowSummary.receivableOutstanding || 0)}</strong>
+                </div>
+                <div className="cashflow-summary-card">
+                  <span>{`${t("reports.accountsPayable")} (${t("common.balance")})`}</span>
+                  <strong>{formatNumber(cashflowSummary.payableOutstanding || 0)}</strong>
+                </div>
               </div>
-              <div className="report-summary-grid">
-                {cashflowBankBalances.length === 0 ? (
-                  <ReadOnlyField label={t("reports.bankBalancesByAccount")} value={t("common.empty")} className="report-summary-span-4" />
-                ) : (
-                  cashflowBankBalances.map((item) => (
-                    <ReadOnlyField
-                      key={`cashflow-bank-balance-${item.id}`}
-                      label={`${item.name}${item.provider ? ` (${item.provider})` : ""}`}
-                      value={item.balance || 0}
-                      type="currency"
-                    />
-                  ))
-                )}
+              <div className="cashflow-summary-grid">
+                <div className="cashflow-summary-card cashflow-summary-card-wide">
+                  <span>{t("reports.bankBalancesByAccount")}</span>
+                  <div className="cashflow-bank-balance-lines">
+                    {cashflowBankBalances.length === 0 ? (
+                      <p>{t("common.empty")}</p>
+                    ) : (
+                      cashflowBankBalances.map((item) => (
+                        <p key={`cashflow-bank-balance-${item.id}`}>
+                          {item.name}
+                          {item.provider ? ` (${item.provider})` : ""}: <strong>{formatNumber(item.balance || 0)}</strong>
+                        </p>
+                      ))
+                    )}
+                  </div>
+                  <p>
+                    {t("reports.bankBalancesTotal")}: <strong>{formatNumber(cashflowBanksTotal)}</strong>
+                  </p>
+                  <p>
+                    {t("reports.incomeExpenseNet")}: <strong>{formatNumber(cashflowSummary.newBalance)}</strong>
+                  </p>
+                  <p>
+                    {t("reports.bankVsNetDifference")}: <strong>{formatNumber(cashflowDifferenceVsNet)}</strong>
+                  </p>
+                </div>
               </div>
             </>
           ) : null}
