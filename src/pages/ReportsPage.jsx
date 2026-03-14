@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { FiChevronRight } from "react-icons/fi";
+import ReadOnlyField from "../components/form/ReadOnlyField";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { getBudgetExecutionReport, getProjectExecutionReport, listBudgets } from "../services/budgetsService";
@@ -815,53 +816,37 @@ function ReportsPage() {
 
           {selectedReport === "cashflow" ? (
             <>
-              <div className="cashflow-summary-grid">
-                <div className="cashflow-summary-card">
-                  <span>{t("reconciliation.previousBalance")}</span>
-                  <strong>{formatNumber(cashflowSummary.previousBalance)}</strong>
-                </div>
-                <div className="cashflow-summary-card">
-                  <span>{t("reconciliation.periodMovementsSum")}</span>
-                  <strong>{formatNumber(cashflowSummary.periodMovements)}</strong>
-                </div>
-                <div className="cashflow-summary-card">
-                  <span>{t("reconciliation.currentBalance")}</span>
-                  <strong>{formatNumber(cashflowSummary.newBalance)}</strong>
-                </div>
-                <div className="cashflow-summary-card">
-                  <span>{`${t("reports.accountsReceivable")} (${t("common.balance")})`}</span>
-                  <strong>{formatNumber(cashflowSummary.receivableOutstanding || 0)}</strong>
-                </div>
-                <div className="cashflow-summary-card">
-                  <span>{`${t("reports.accountsPayable")} (${t("common.balance")})`}</span>
-                  <strong>{formatNumber(cashflowSummary.payableOutstanding || 0)}</strong>
-                </div>
+              <div className="report-summary-grid">
+                <ReadOnlyField label={t("reconciliation.previousBalance")} value={cashflowSummary.previousBalance} type="currency" />
+                <ReadOnlyField label={t("reconciliation.periodMovementsSum")} value={cashflowSummary.periodMovements} type="currency" />
+                <ReadOnlyField label={t("reconciliation.currentBalance")} value={cashflowSummary.newBalance} type="currency" />
+                <ReadOnlyField
+                  label={`${t("reports.accountsReceivable")} (${t("common.balance")})`}
+                  value={cashflowSummary.receivableOutstanding || 0}
+                  type="currency"
+                />
+                <ReadOnlyField
+                  label={`${t("reports.accountsPayable")} (${t("common.balance")})`}
+                  value={cashflowSummary.payableOutstanding || 0}
+                  type="currency"
+                />
+                <ReadOnlyField label={t("reports.bankBalancesTotal")} value={cashflowBanksTotal} type="currency" />
+                <ReadOnlyField label={t("reports.incomeExpenseNet")} value={cashflowSummary.newBalance} type="currency" />
+                <ReadOnlyField label={t("reports.bankVsNetDifference")} value={cashflowDifferenceVsNet} type="currency" />
               </div>
-              <div className="cashflow-summary-grid">
-                <div className="cashflow-summary-card cashflow-summary-card-wide">
-                  <span>{t("reports.bankBalancesByAccount")}</span>
-                  <div className="cashflow-bank-balance-lines">
-                    {cashflowBankBalances.length === 0 ? (
-                      <p>{t("common.empty")}</p>
-                    ) : (
-                      cashflowBankBalances.map((item) => (
-                        <p key={`cashflow-bank-balance-${item.id}`}>
-                          {item.name}
-                          {item.provider ? ` (${item.provider})` : ""}: <strong>{formatNumber(item.balance || 0)}</strong>
-                        </p>
-                      ))
-                    )}
-                  </div>
-                  <p>
-                    {t("reports.bankBalancesTotal")}: <strong>{formatNumber(cashflowBanksTotal)}</strong>
-                  </p>
-                  <p>
-                    {t("reports.incomeExpenseNet")}: <strong>{formatNumber(cashflowSummary.newBalance)}</strong>
-                  </p>
-                  <p>
-                    {t("reports.bankVsNetDifference")}: <strong>{formatNumber(cashflowDifferenceVsNet)}</strong>
-                  </p>
-                </div>
+              <div className="report-summary-grid">
+                {cashflowBankBalances.length === 0 ? (
+                  <ReadOnlyField label={t("reports.bankBalancesByAccount")} value={t("common.empty")} className="report-summary-span-4" />
+                ) : (
+                  cashflowBankBalances.map((item) => (
+                    <ReadOnlyField
+                      key={`cashflow-bank-balance-${item.id}`}
+                      label={`${item.name}${item.provider ? ` (${item.provider})` : ""}`}
+                      value={item.balance || 0}
+                      type="currency"
+                    />
+                  ))
+                )}
               </div>
             </>
           ) : null}
