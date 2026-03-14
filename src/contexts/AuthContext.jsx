@@ -15,6 +15,7 @@ export function AuthProvider({ children }) {
   const [accountNotice, setAccountNotice] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const sessionRef = useRef(null);
+  const hasInitializedSessionRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -30,11 +31,13 @@ export function AuthProvider({ children }) {
       if (activeSession?.user?.id) {
         await loadAccountsAndSelection(activeSession.user.id, isMounted, { preferPrimary: false, noticeType: null });
       }
+      hasInitializedSessionRef.current = true;
       setIsLoading(false);
     }
 
     loadSession().catch(() => {
       if (isMounted) {
+        hasInitializedSessionRef.current = true;
         setIsLoading(false);
       }
     });
@@ -42,6 +45,19 @@ export function AuthProvider({ children }) {
     let subscription;
 
     onAuthStateChange(async (event, nextSession) => {
+      if (!hasInitializedSessionRef.current) {
+        setSession(nextSession);
+        sessionRef.current = nextSession;
+        if (!nextSession?.user?.id) {
+          setAccount(null);
+          setAccounts([]);
+          setCurrentProfile(null);
+          setAccountNotice(null);
+          localStorage.removeItem("activeAccountId");
+        }
+        return;
+      }
+
       const previousUserId = sessionRef.current?.user?.id ?? null;
       const nextUserId = nextSession?.user?.id ?? null;
       const isFreshLogin = event === "SIGNED_IN" && Boolean(nextUserId) && previousUserId !== nextUserId;
