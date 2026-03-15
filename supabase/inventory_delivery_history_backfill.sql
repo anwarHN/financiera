@@ -55,6 +55,7 @@ from public."transactionDetails" td
 inner join public.transactions t
   on t.id = td."transactionId"
 where t."isActive" = true
+  and t.type = 1
   and greatest(coalesce(td."historicalQuantityDelivered", 0), 0) > 0
   and not exists (
     select 1
@@ -90,6 +91,7 @@ inner join public.transactions t
 left join history_by_detail h
   on h."transactionDetailId" = td.id
 where t."isActive" = true
+  and t.type = 1
   and (
     greatest(coalesce(td."historicalQuantityDelivered", 0), 0) > 0
     or greatest(coalesce(td."quantityDelivered", 0), 0) > 0
@@ -120,6 +122,7 @@ left join public.concepts c
 left join history_by_detail h
   on h."transactionDetailId" = td.id
 where t."isActive" = true
+  and t.type = 1
 group by td."conceptId"
 having sum(coalesce(h.delivered_in_history, 0))
   <> sum(greatest(coalesce(td."historicalQuantityDelivered", 0), 0) + greatest(coalesce(td."quantityDelivered", 0), 0))

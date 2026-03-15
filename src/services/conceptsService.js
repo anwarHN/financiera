@@ -1,7 +1,6 @@
 import { supabase } from "../lib/supabase";
 import { TRANSACTION_TYPES } from "./transactionsService";
 
-const PRIOR_BALANCE_TAG = "__prior_balance__";
 const selectColumns =
   "id, name, parentConceptId, isGroup, isIncome, isExpense, isProduct, productType, isPaymentForm, isAccountPayableConcept, isIncomingPaymentConcept, isOutgoingPaymentConcept, isLoanConcept, isLoanPaymentConcept, isCashWithdrawalConcept, isSystem, taxPercentage, price, additionalCharges";
 
@@ -53,18 +52,25 @@ async function attachProductStock(rows) {
     .in("conceptId", productIds);
   if (detailsError) throw detailsError;
 
-  const txIds = Array.from(new Set((details ?? []).map((row) => Number(row.transactionId)).filter((id) => Number.isFinite(id) && id > 0)));
+  const detailIds = Array.from(new Set((details ?? []).map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0)));
+  const { data: productHistoryRows, error: productHistoryError } = await supabase
+    .from("inventory_delivery_history")
+    .select('id, transactionId, "transactionDetailId", conceptId, quantity')
+    .in("conceptId", productIds);
+  if (productHistoryError) throw productHistoryError;
+
+  const txIds = Array.from(
+    new Set(
+      [...(details ?? []), ...(productHistoryRows ?? [])]
+        .map((row) => Number(row.transactionId))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    )
+  );
   if (!txIds.length) return source.map((row) => ({ ...row, stock: 0, pendingDelivery: 0, stockFinal: 0 }));
 
-  const detailIds = Array.from(new Set((details ?? []).map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0)));
   const deliveredHistoryByDetailId = new Map();
   if (detailIds.length > 0) {
-    const { data: historyRows, error: historyError } = await supabase
-      .from("inventory_delivery_history")
-      .select('transactionDetailId, quantity')
-      .in("transactionDetailId", detailIds);
-    if (historyError) throw historyError;
-    (historyRows ?? []).forEach((row) => {
+    (productHistoryRows ?? []).forEach((row) => {
       const detailId = Number(row.transactionDetailId || 0);
       if (!detailId) return;
       deliveredHistoryByDetailId.set(detailId, Number(deliveredHistoryByDetailId.get(detailId) || 0) + Math.max(Number(row.quantity || 0), 0));
@@ -98,14 +104,10 @@ async function attachProductStock(rows) {
       Math.max(Number.isFinite(deliveredFromHistory) ? deliveredFromHistory : deliveredFromFields, 0),
       normalizedQty
     );
-    const isPriorBalanceSale = Number(tx.type) === TRANSACTION_TYPES.sale && Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG);
     let delta = 0;
     if (Number(tx.type) === 4) {
       delta = normalizedQty;
     } else if (Number(tx.type) === 1) {
-      if (!isPriorBalanceSale) {
-        delta = -delivered;
-      }
       const pending = Math.max(normalizedQty - delivered, 0);
       if (pending > 0) {
         pendingByProductId.set(productId, Number(pendingByProductId.get(productId) || 0) + pending);
@@ -117,6 +119,16 @@ async function attachProductStock(rows) {
     if (delta !== 0) {
       currentInventoryByProductId.set(productId, Number(currentInventoryByProductId.get(productId) || 0) + delta);
     }
+  }
+
+  for (const row of productHistoryRows ?? []) {
+    const tx = txById.get(Number(row.transactionId));
+    if (!tx || Number(tx.type) !== TRANSACTION_TYPES.sale) continue;
+    const productId = Number(row.conceptId);
+    if (!Number.isFinite(productId) || productId <= 0) continue;
+    const delivered = Math.max(Number(row.quantity || 0), 0);
+    if (!delivered) continue;
+    currentInventoryByProductId.set(productId, Number(currentInventoryByProductId.get(productId) || 0) - delivered);
   }
 
   return source.map((row) => ({

@@ -422,12 +422,16 @@ export async function registerInventoryDelivery({ transactionId, deliveryDate, d
   const detailIds = toDeliverRows.map((row) => row.detailId);
   const { data: currentDetails, error: currentError } = await supabase
     .from("transactionDetails")
-    .select('id, transactionId, conceptId, quantity, quantityDelivered, transactions!transaction_details_transactionId_fkey(accountId)')
+    .select('id, transactionId, conceptId, quantity, quantityDelivered, transactions!transaction_details_transactionId_fkey(accountId, type, isActive)')
     .in("id", detailIds)
     .eq("transactionId", txId);
   if (currentError) throw currentError;
   if (!currentDetails?.length) {
     throw new Error("No se encontraron líneas válidas para registrar la entrega.");
+  }
+  const parentTransaction = currentDetails[0]?.transactions;
+  if (!parentTransaction || !parentTransaction.isActive || Number(parentTransaction.type) !== TRANSACTION_TYPES.sale) {
+    throw new Error("Solo se pueden registrar entregas para facturas activas.");
   }
 
   const currentById = new Map((currentDetails ?? []).map((row) => [Number(row.id), row]));
