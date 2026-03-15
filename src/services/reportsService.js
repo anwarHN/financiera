@@ -680,9 +680,24 @@ export async function getPendingDeliveriesReport(accountId, { dateFrom, dateTo, 
 
   const { data: detailRows, error: detailError } = await supabase
     .from("transactionDetails")
-    .select("transactionId, conceptId, quantity, quantityDelivered, concepts(name)")
+    .select('id, transactionId, conceptId, quantity, quantityDelivered, "historicalQuantityDelivered", concepts(name)')
     .in("transactionId", txIds);
   if (detailError) throw detailError;
+
+  const detailIds = (detailRows ?? []).map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
+  const deliveredHistoryByDetailId = new Map();
+  if (detailIds.length > 0) {
+    const { data: historyRows, error: historyError } = await supabase
+      .from("inventory_delivery_history")
+      .select('transactionDetailId, quantity')
+      .in("transactionDetailId", detailIds);
+    if (historyError) throw historyError;
+    (historyRows ?? []).forEach((row) => {
+      const detailId = Number(row.transactionDetailId || 0);
+      if (!detailId) return;
+      deliveredHistoryByDetailId.set(detailId, Number(deliveredHistoryByDetailId.get(detailId) || 0) + Math.max(Number(row.quantity || 0), 0));
+    });
+  }
 
   const txById = new Map((txRows ?? []).map((row) => [Number(row.id), row]));
   const rows = [];
@@ -690,7 +705,13 @@ export async function getPendingDeliveriesReport(accountId, { dateFrom, dateTo, 
     const tx = txById.get(Number(row.transactionId));
     if (!tx) return;
     const quantity = Math.max(Number(row.quantity || 0), 0);
-    const delivered = Math.max(Number(row.quantityDelivered || 0), 0);
+    const deliveredFromFields =
+      Math.max(Number(row.historicalQuantityDelivered || 0), 0) + Math.max(Number(row.quantityDelivered || 0), 0);
+    const deliveredFromHistory = deliveredHistoryByDetailId.get(Number(row.id));
+    const delivered = Math.min(
+      Math.max(Number.isFinite(deliveredFromHistory) ? deliveredFromHistory : deliveredFromFields, 0),
+      quantity
+    );
     const pending = Math.max(quantity - delivered, 0);
     if (pending <= 0) return;
     rows.push({

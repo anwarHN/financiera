@@ -49,12 +49,27 @@ async function attachProductStock(rows) {
 
   const { data: details, error: detailsError } = await supabase
     .from("transactionDetails")
-    .select('transactionId, conceptId, quantity, quantityDelivered, "historicalQuantityDelivered"')
+    .select('id, transactionId, conceptId, quantity, quantityDelivered, "historicalQuantityDelivered"')
     .in("conceptId", productIds);
   if (detailsError) throw detailsError;
 
   const txIds = Array.from(new Set((details ?? []).map((row) => Number(row.transactionId)).filter((id) => Number.isFinite(id) && id > 0)));
   if (!txIds.length) return source.map((row) => ({ ...row, stock: 0, pendingDelivery: 0, stockFinal: 0 }));
+
+  const detailIds = Array.from(new Set((details ?? []).map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0)));
+  const deliveredHistoryByDetailId = new Map();
+  if (detailIds.length > 0) {
+    const { data: historyRows, error: historyError } = await supabase
+      .from("inventory_delivery_history")
+      .select('transactionDetailId, quantity')
+      .in("transactionDetailId", detailIds);
+    if (historyError) throw historyError;
+    (historyRows ?? []).forEach((row) => {
+      const detailId = Number(row.transactionDetailId || 0);
+      if (!detailId) return;
+      deliveredHistoryByDetailId.set(detailId, Number(deliveredHistoryByDetailId.get(detailId) || 0) + Math.max(Number(row.quantity || 0), 0));
+    });
+  }
 
   const { data: txRows, error: txError } = await supabase
     .from("transactions")
@@ -76,8 +91,11 @@ async function attachProductStock(rows) {
     if (!Number.isFinite(qty) || qty === 0) continue;
 
     const normalizedQty = Math.abs(qty);
+    const deliveredFromFields =
+      Math.max(Number(detail.historicalQuantityDelivered || 0), 0) + Math.max(Number(detail.quantityDelivered || 0), 0);
+    const deliveredFromHistory = deliveredHistoryByDetailId.get(Number(detail.id));
     const delivered = Math.min(
-      Math.max(Number(detail.historicalQuantityDelivered || 0), 0) + Math.max(Number(detail.quantityDelivered || 0), 0),
+      Math.max(Number.isFinite(deliveredFromHistory) ? deliveredFromHistory : deliveredFromFields, 0),
       normalizedQty
     );
     const isPriorBalanceSale = Number(tx.type) === TRANSACTION_TYPES.sale && Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG);
@@ -116,12 +134,23 @@ export async function getProductKardex(accountId, conceptId, { dateFrom, dateTo 
 
   const { data: detailRows, error: detailsError } = await supabase
     .from("transactionDetails")
-    .select('id, transactionId, conceptId, quantity, quantityDelivered, "historicalQuantityDelivered"')
+    .select("id, transactionId, conceptId, quantity")
     .eq("conceptId", productId);
   if (detailsError) throw detailsError;
 
+  const { data: historyRows, error: historyError } = await supabase
+    .from("inventory_delivery_history")
+    .select('id, transactionId, "transactionDetailId", "deliveryDate", quantity')
+    .eq("accountId", accountId)
+    .eq("conceptId", productId);
+  if (historyError) throw historyError;
+
   const txIds = Array.from(
-    new Set((detailRows ?? []).map((row) => Number(row.transactionId)).filter((id) => Number.isFinite(id) && id > 0))
+    new Set(
+      [...(detailRows ?? []), ...(historyRows ?? [])]
+        .map((row) => Number(row.transactionId))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    )
   );
   if (!txIds.length) return { previousBalance: 0, movements: [], totalBalance: 0 };
 
@@ -136,29 +165,39 @@ export async function getProductKardex(accountId, conceptId, { dateFrom, dateTo 
   const txById = new Map((txRows ?? []).map((row) => [Number(row.id), row]));
   const movements = [];
   let previousBalance = 0;
+  const pushMovement = ({ movementId, transactionId, date, type, name, referenceNumber, movementQuantity }) => {
+    if (!movementQuantity) return;
+    if (dateFrom && date < dateFrom) {
+      previousBalance += movementQuantity;
+      return;
+    }
+    if (dateTo && date > dateTo) {
+      return;
+    }
+    movements.push({
+      id: movementId,
+      transactionId,
+      date,
+      type,
+      name,
+      referenceNumber,
+      quantityIn: movementQuantity > 0 ? movementQuantity : 0,
+      quantityOut: movementQuantity < 0 ? Math.abs(movementQuantity) : 0,
+      movementQuantity
+    });
+  };
 
   for (const detail of detailRows ?? []) {
     const tx = txById.get(Number(detail.transactionId));
     if (!tx) continue;
 
     const quantity = Math.abs(Number(detail.quantity || 0));
-    const delivered = Math.min(
-      Math.max(Number(detail.historicalQuantityDelivered || 0), 0) + Math.max(Number(detail.quantityDelivered || 0), 0),
-      quantity
-    );
-
     let movementQuantity = 0;
     let movementType = null;
 
     if (Number(tx.type) === TRANSACTION_TYPES.purchase) {
       movementQuantity = quantity;
       movementType = "purchase";
-    } else if (Number(tx.type) === TRANSACTION_TYPES.sale) {
-      if (Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG)) {
-        continue;
-      }
-      movementQuantity = -delivered;
-      movementType = "sale";
     } else if (Number(tx.type) === TRANSACTION_TYPES.expense && Array.isArray(tx.tags) && tx.tags.includes("__inventory_adjustment__")) {
       movementQuantity = Number(detail.quantity || 0);
       movementType = "adjustment";
@@ -166,27 +205,32 @@ export async function getProductKardex(accountId, conceptId, { dateFrom, dateTo 
       continue;
     }
 
-    if (!movementQuantity) continue;
-
-    const txDate = String(tx.date || "");
-    if (dateFrom && txDate < dateFrom) {
-      previousBalance += movementQuantity;
-      continue;
-    }
-    if (dateTo && txDate > dateTo) {
-      continue;
-    }
-
-    movements.push({
-      id: Number(detail.id),
+    pushMovement({
+      movementId: Number(detail.id),
       transactionId: Number(tx.id),
-      date: txDate,
+      date: String(tx.date || ""),
       type: movementType,
       name: tx.name || "",
       referenceNumber: tx.referenceNumber || "",
-      quantityIn: movementQuantity > 0 ? movementQuantity : 0,
-      quantityOut: movementQuantity < 0 ? Math.abs(movementQuantity) : 0,
       movementQuantity
+    });
+  }
+
+  for (const row of historyRows ?? []) {
+    const tx = txById.get(Number(row.transactionId));
+    if (!tx) continue;
+
+    const delivered = Math.max(Number(row.quantity || 0), 0);
+    if (!delivered) continue;
+
+    pushMovement({
+      movementId: Number(row.id),
+      transactionId: Number(tx.id),
+      date: String(row.deliveryDate || tx.date || ""),
+      type: "sale",
+      name: tx.name || "",
+      referenceNumber: tx.referenceNumber || "",
+      movementQuantity: -delivered
     });
   }
 

@@ -31,6 +31,8 @@
 - Inventario usa cantidad facturada y cantidad entregada por separado.
 - Existe historial de entregas en `inventory_delivery_history`.
 - Ajustes de inventario y compras de mercadería afectan inventario.
+- El objetivo es migrar Kardex y salidas reales a `inventory_delivery_history` como fuente principal.
+- Si se migra entregado histórico a `inventory_delivery_history`, debe marcarse como inferido usando la fecha de factura.
 
 ## Transacciones especiales
 - Facturas y compras de saldo anterior existen como flujos separados.

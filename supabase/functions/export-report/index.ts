@@ -159,9 +159,11 @@ type PendingDeliveryTxRow = {
 };
 
 type PendingDeliveryDetailRow = {
+  id: number;
   transactionId: number;
   quantity: number;
   quantityDelivered: number | null;
+  historicalQuantityDelivered?: number | null;
   concepts: { name: string } | null;
 };
 
@@ -1139,9 +1141,29 @@ async function buildPendingDeliveriesReport(
 
   const { data: details, error: detailsError } = await supabaseAdmin
     .from("transactionDetails")
-    .select("transactionId, quantity, quantityDelivered, concepts(name)")
+    .select('id, transactionId, quantity, quantityDelivered, historicalQuantityDelivered, concepts(name)')
     .in("transactionId", txIds);
   if (detailsError) throw detailsError;
+
+  const detailIds = ((details ?? []) as PendingDeliveryDetailRow[])
+    .map((row) => Number(row.id))
+    .filter((id) => Number.isFinite(id) && id > 0);
+  const deliveredHistoryByDetailId = new Map<number, number>();
+  if (detailIds.length > 0) {
+    const { data: historyRows, error: historyError } = await supabaseAdmin
+      .from("inventory_delivery_history")
+      .select('transactionDetailId, quantity')
+      .in("transactionDetailId", detailIds);
+    if (historyError) throw historyError;
+    (historyRows ?? []).forEach((row) => {
+      const detailId = Number(row.transactionDetailId || 0);
+      if (!detailId) return;
+      deliveredHistoryByDetailId.set(
+        detailId,
+        Number(deliveredHistoryByDetailId.get(detailId) || 0) + Math.max(Number(row.quantity || 0), 0)
+      );
+    });
+  }
 
   const txById = new Map(saleRows.map((row) => [Number(row.id), row]));
   const rawRows: Array<{
@@ -1159,7 +1181,13 @@ async function buildPendingDeliveriesReport(
     const tx = txById.get(Number(row.transactionId));
     if (!tx) return;
     const quantity = Math.max(Number(row.quantity || 0), 0);
-    const delivered = Math.max(Number(row.quantityDelivered || 0), 0);
+    const deliveredFromFields =
+      Math.max(Number(row.historicalQuantityDelivered || 0), 0) + Math.max(Number(row.quantityDelivered || 0), 0);
+    const deliveredFromHistory = deliveredHistoryByDetailId.get(Number(row.id));
+    const delivered = Math.min(
+      Math.max(Number.isFinite(deliveredFromHistory) ? deliveredFromHistory : deliveredFromFields, 0),
+      quantity
+    );
     const pending = Math.max(quantity - delivered, 0);
     if (pending <= 0) return;
     totalPending += pending;

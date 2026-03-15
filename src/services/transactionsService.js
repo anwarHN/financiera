@@ -199,16 +199,37 @@ export async function listPendingDeliveryInvoices(accountId, { dateFrom, dateTo,
 
   const { data: detailRows, error: detailError } = await supabase
     .from("transactionDetails")
-    .select("id, transactionId, conceptId, quantity, quantityDelivered, pendingDelivery, concepts(name)")
+    .select('id, transactionId, conceptId, quantity, quantityDelivered, "historicalQuantityDelivered", pendingDelivery, concepts(name)')
     .in("transactionId", txIds)
     .order("id", { ascending: true });
   if (detailError) throw detailError;
 
+  const detailIds = (detailRows ?? []).map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
+  const deliveredHistoryByDetailId = new Map();
+  if (detailIds.length > 0) {
+    const { data: historyRows, error: historyError } = await supabase
+      .from("inventory_delivery_history")
+      .select('transactionDetailId, quantity')
+      .in("transactionDetailId", detailIds);
+    if (historyError) throw historyError;
+    (historyRows ?? []).forEach((row) => {
+      const detailId = Number(row.transactionDetailId || 0);
+      if (!detailId) return;
+      deliveredHistoryByDetailId.set(detailId, Number(deliveredHistoryByDetailId.get(detailId) || 0) + Math.max(Number(row.quantity || 0), 0));
+    });
+  }
+
   const byTxId = new Map();
   (detailRows ?? []).forEach((row) => {
     const txId = Number(row.transactionId);
-    const quantity = Number(row.quantity || 0);
-    const delivered = Number(row.quantityDelivered || 0);
+    const quantity = Math.max(Number(row.quantity || 0), 0);
+    const deliveredFromFields =
+      Math.max(Number(row.historicalQuantityDelivered || 0), 0) + Math.max(Number(row.quantityDelivered || 0), 0);
+    const deliveredFromHistory = deliveredHistoryByDetailId.get(Number(row.id));
+    const delivered = Math.min(
+      Math.max(Number.isFinite(deliveredFromHistory) ? deliveredFromHistory : deliveredFromFields, 0),
+      quantity
+    );
     const pending = Math.max(quantity - delivered, 0);
     if (pending <= 0) return;
     const list = byTxId.get(txId) || [];

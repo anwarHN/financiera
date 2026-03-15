@@ -13,8 +13,12 @@
   - retiros de efectivo
 
 ## Inventario
-- Kardex usa fecha de factura para salidas cuando la entrega no se guarda como movimiento de inventario independiente.
-- Si se requiere kardex exacto por fecha de entrega, falta un modelo de movimientos de inventario por evento.
+- Kardex todavía no consume `inventory_delivery_history` como fuente principal de salidas.
+- Falta ejecutar y validar la migración de `historicalQuantityDelivered` hacia `inventory_delivery_history`.
+- Después del backfill, alinear:
+  - Kardex
+  - pendientes de entrega operativos
+  - inventario actual/disponible
 
 ## Reportes
 - Validar con datos reales:
