@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import InventoryDeliveryHistoryModal from "../components/InventoryDeliveryHistoryModal";
 import PaymentRegisterModal from "../components/PaymentRegisterModal";
 import StatusBadge from "../components/StatusBadge";
 import LoadingSkeleton from "../components/LoadingSkeleton";
@@ -8,6 +9,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import {
   getTransactionById,
+  listInventoryDeliveryHistory,
   listPaymentsForTransaction,
   listTransactionDetails,
   voidPaymentForTransaction
@@ -23,6 +25,11 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
   const [details, setDetails] = useState([]);
   const [payments, setPayments] = useState([]);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [deliveryHistoryModal, setDeliveryHistoryModal] = useState({
+    open: false,
+    history: [],
+    isLoading: false
+  });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const showTaxDiscountDetail = moduleType === "sale";
@@ -65,6 +72,30 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
     }
   };
 
+  const openDeliveryHistoryModal = async () => {
+    try {
+      setDeliveryHistoryModal({
+        open: true,
+        history: [],
+        isLoading: true
+      });
+      const history = await listInventoryDeliveryHistory(id);
+      setDeliveryHistoryModal({
+        open: true,
+        history,
+        isLoading: false
+      });
+      setError("");
+    } catch {
+      setError(t("common.genericLoadError"));
+      setDeliveryHistoryModal({
+        open: false,
+        history: [],
+        isLoading: false
+      });
+    }
+  };
+
   if (isLoading) return <LoadingSkeleton lines={5} />;
 
   const taxesTotal = details.reduce((acc, line) => acc + Number(line.tax || 0), 0);
@@ -78,6 +109,11 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
           <Link to={backPath} className="button-link-secondary">
             {t("common.backToList")}
           </Link>
+          {moduleType === "sale" ? (
+            <button type="button" className="button-link-secondary" onClick={openDeliveryHistoryModal}>
+              {t("inventory.deliveries.viewHistory")}
+            </button>
+          ) : null}
           {Number(transaction?.balance || 0) > 0 && (
             <button type="button" className="button-link-primary" onClick={() => setIsPaymentModalOpen(true)}>
               {moduleType === "sale" ? t("transactions.newIncomingPayment") : t("transactions.newOutgoingPayment")}
@@ -207,6 +243,19 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
         direction={moduleType === "sale" ? "incoming" : "outgoing"}
         onClose={() => setIsPaymentModalOpen(false)}
         onSaved={loadData}
+      />
+      <InventoryDeliveryHistoryModal
+        isOpen={deliveryHistoryModal.open}
+        onClose={() =>
+          setDeliveryHistoryModal({
+            open: false,
+            history: [],
+            isLoading: false
+          })
+        }
+        transaction={transaction}
+        history={deliveryHistoryModal.history}
+        isLoading={deliveryHistoryModal.isLoading}
       />
     </div>
   );
