@@ -49,7 +49,7 @@ async function attachProductStock(rows) {
 
   const { data: details, error: detailsError } = await supabase
     .from("transactionDetails")
-    .select("transactionId, conceptId, quantity, quantityDelivered")
+    .select('transactionId, conceptId, quantity, quantityDelivered, "historicalQuantityDelivered"')
     .in("conceptId", productIds);
   if (detailsError) throw detailsError;
 
@@ -76,12 +76,18 @@ async function attachProductStock(rows) {
     if (!Number.isFinite(qty) || qty === 0) continue;
 
     const normalizedQty = Math.abs(qty);
-    const delivered = Math.min(Math.max(Number(detail.quantityDelivered || 0), 0), normalizedQty);
+    const delivered = Math.min(
+      Math.max(Number(detail.historicalQuantityDelivered || 0), 0) + Math.max(Number(detail.quantityDelivered || 0), 0),
+      normalizedQty
+    );
+    const isPriorBalanceSale = Number(tx.type) === TRANSACTION_TYPES.sale && Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG);
     let delta = 0;
     if (Number(tx.type) === 4) {
       delta = normalizedQty;
     } else if (Number(tx.type) === 1) {
-      delta = -delivered;
+      if (!isPriorBalanceSale) {
+        delta = -delivered;
+      }
       const pending = Math.max(normalizedQty - delivered, 0);
       if (pending > 0) {
         pendingByProductId.set(productId, Number(pendingByProductId.get(productId) || 0) + pending);
@@ -110,7 +116,7 @@ export async function getProductKardex(accountId, conceptId, { dateFrom, dateTo 
 
   const { data: detailRows, error: detailsError } = await supabase
     .from("transactionDetails")
-    .select("id, transactionId, conceptId, quantity, quantityDelivered")
+    .select('id, transactionId, conceptId, quantity, quantityDelivered, "historicalQuantityDelivered"')
     .eq("conceptId", productId);
   if (detailsError) throw detailsError;
 
@@ -136,7 +142,10 @@ export async function getProductKardex(accountId, conceptId, { dateFrom, dateTo 
     if (!tx) continue;
 
     const quantity = Math.abs(Number(detail.quantity || 0));
-    const delivered = Math.min(Math.max(Number(detail.quantityDelivered || 0), 0), quantity);
+    const delivered = Math.min(
+      Math.max(Number(detail.historicalQuantityDelivered || 0), 0) + Math.max(Number(detail.quantityDelivered || 0), 0),
+      quantity
+    );
 
     let movementQuantity = 0;
     let movementType = null;

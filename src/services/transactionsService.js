@@ -453,6 +453,74 @@ export async function registerInventoryDelivery({ transactionId, deliveryDate, d
   }
 }
 
+export async function syncInitialInvoiceDeliveryHistory(transactionId) {
+  const txId = Number(transactionId);
+  if (!Number.isFinite(txId) || txId <= 0) throw new Error("Invalid transaction id");
+
+  const { data: transaction, error: txError } = await supabase
+    .from("transactions")
+    .select("id, accountId, date, type, isActive")
+    .eq("id", txId)
+    .single();
+  if (txError) throw txError;
+  if (!transaction || !transaction.isActive || Number(transaction.type) !== TRANSACTION_TYPES.sale) return;
+
+  const { data: details, error: detailsError } = await supabase
+    .from("transactionDetails")
+    .select("id, conceptId, quantity, quantityDelivered")
+    .eq("transactionId", txId);
+  if (detailsError) throw detailsError;
+
+  const deliveryBatchKey = `invoice-delivery-${txId}`;
+  const { data: existingHistoryRows, error: existingHistoryError } = await supabase
+    .from("inventory_delivery_history")
+    .select('transactionDetailId, quantity, "deliveryBatchKey"')
+    .eq("transactionId", txId);
+  if (existingHistoryError) throw existingHistoryError;
+
+  const trackedDeliveredByDetailId = new Map();
+  (existingHistoryRows ?? []).forEach((row) => {
+    if (row.deliveryBatchKey === deliveryBatchKey) return;
+    const detailId = Number(row.transactionDetailId || 0);
+    if (!detailId) return;
+    trackedDeliveredByDetailId.set(
+      detailId,
+      Number(trackedDeliveredByDetailId.get(detailId) || 0) + Math.max(Number(row.quantity || 0), 0)
+    );
+  });
+
+  const { error: deleteError } = await supabase
+    .from("inventory_delivery_history")
+    .delete()
+    .eq("transactionId", txId)
+    .eq("deliveryBatchKey", deliveryBatchKey);
+  if (deleteError) throw deleteError;
+
+  const historyRows = (details ?? [])
+    .map((detail) => {
+      const quantity = Math.max(Number(detail.quantity || 0), 0);
+      const currentDelivered = Math.min(Math.max(Number(detail.quantityDelivered || 0), 0), quantity);
+      const trackedDelivered = Math.min(Math.max(Number(trackedDeliveredByDetailId.get(Number(detail.id)) || 0), 0), quantity);
+      const delivered = Math.max(Math.min(currentDelivered - trackedDelivered, quantity), 0);
+      if (delivered <= 0) return null;
+      return {
+        accountId: Number(transaction.accountId),
+        transactionId: txId,
+        transactionDetailId: Number(detail.id),
+        conceptId: detail.conceptId ? Number(detail.conceptId) : null,
+        deliveryBatchKey,
+        deliveryDate: transaction.date,
+        quantity: delivered
+      };
+    })
+    .filter(Boolean);
+
+  if (!historyRows.length) return;
+
+  const { error: insertError } = await supabase.from("inventory_delivery_history").insert(historyRows);
+  if (insertError) throw insertError;
+}
+
 export async function listInventoryDeliveryHistory(transactionId) {
   const txId = Number(transactionId);
   if (!Number.isFinite(txId) || txId <= 0) return [];

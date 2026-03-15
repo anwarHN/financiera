@@ -25,6 +25,7 @@ import {
   getTransactionById,
   listUsedTransactionTags,
   listTransactionDetails,
+  syncInitialInvoiceDeliveryHistory,
   TRANSACTION_TYPES,
   updateTransactionWithDetails
 } from "../services/transactionsService";
@@ -1042,13 +1043,15 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
             }))
           : saleLines.map((line) => {
               const amounts = calculateLineAmounts(line);
+              const safeQuantity = Math.max(Number(amounts.quantity || 0), 0);
+              const safeDelivered = invoicePendingDelivery
+                ? Math.min(Math.max(Number(line.quantityDelivered || 0), 0), safeQuantity)
+                : safeQuantity;
               return {
                 conceptId: Number(line.conceptId),
                 quantity: amounts.quantity,
-                quantityDelivered: Boolean(line.pendingDelivery)
-                  ? Math.min(Math.max(Number(line.quantityDelivered || 0), 0), Math.max(Number(amounts.quantity || 0), 0))
-                  : Math.max(Number(amounts.quantity || 0), 0),
-                pendingDelivery: Boolean(line.pendingDelivery),
+                quantityDelivered: safeDelivered,
+                pendingDelivery: invoicePendingDelivery && safeDelivered < safeQuantity,
                 price: amounts.price,
                 net: amounts.net,
                 taxPercentage: amounts.taxPercentage,
@@ -1074,6 +1077,9 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         });
       } else {
         saved = await createTransactionWithDetails({ transaction: transactionPayload, details: detailPayloads });
+      }
+      if (moduleType === "sale" && saved?.id) {
+        await syncInitialInvoiceDeliveryHistory(saved.id);
       }
       if (embedded) {
         onCreated?.(saved);
@@ -1924,14 +1930,13 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                 )}
                 {moduleType === "sale" ? <th>{t("transactions.seller")}</th> : null}
                 {moduleType === "sale" && invoicePendingDelivery ? <th>{t("inventory.deliveries.deliveredQuantity")}</th> : null}
-                {moduleType === "sale" ? <th>{t("transactions.pendingDeliveryProducts")}</th> : null}
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
               {saleLines.length === 0 ? (
                 <tr>
-                  <td colSpan={moduleType === "sale" ? (invoicePendingDelivery ? 11 : 10) : moduleType === "inventoryAdjustment" ? 5 : 8}>
+                  <td colSpan={moduleType === "sale" ? (invoicePendingDelivery ? 10 : 9) : moduleType === "inventoryAdjustment" ? 5 : 8}>
                     {t("transactions.noLines")}
                   </td>
                 </tr>
@@ -2006,28 +2011,15 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                           </select>
                         </td>
                       ) : null}
-                      {moduleType === "sale" ? (
+                      {moduleType === "sale" && invoicePendingDelivery ? (
                         <td>
                           <input
                             type="number"
                             min="0"
                             step="0.01"
-                            disabled={!Boolean(line.pendingDelivery)}
                             value={line.quantityDelivered}
                             onChange={(event) => updateSaleLine(line.rowId, "quantityDelivered", event.target.value)}
                           />
-                        </td>
-                      ) : null}
-                      {moduleType === "sale" ? (
-                        <td>
-                          <label className="checkbox-field">
-                            <input
-                              type="checkbox"
-                              checked={Boolean(line.pendingDelivery)}
-                              onChange={(event) => updateSaleLine(line.rowId, "pendingDelivery", event.target.checked)}
-                            />
-                            {t("common.yes")}
-                          </label>
                         </td>
                       ) : null}
                       <td>
