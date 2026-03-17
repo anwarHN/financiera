@@ -594,7 +594,6 @@ async function fetchCashflowBankBalances(
   };
 
   const filteredTransactions = (transactions ?? []).filter((tx) => {
-    if (Boolean(tx.isInternalTransfer) && !Boolean(tx.isCashWithdrawal) && !Boolean(tx.isDeposit)) return false;
     if (Boolean(tx.isAccountReceivable) || Boolean(tx.isAccountPayable)) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG)) return false;
