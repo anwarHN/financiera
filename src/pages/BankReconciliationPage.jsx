@@ -13,7 +13,23 @@ import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
 import { formatNumber } from "../utils/numberFormat";
 
 function transactionAmount(transaction) {
-  return Number(transaction.total || 0);
+  const raw = Number(transaction.total || 0);
+  const abs = Math.abs(raw);
+  if (transaction.isIncomingPayment) return abs;
+  if (transaction.isOutcomingPayment) return -abs;
+  const type = Number(transaction.type || 0);
+  if (type === 1 || type === 3) return abs;
+  if (type === 2 || type === 4) return -abs;
+  return raw;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function BankReconciliationPage() {
@@ -26,6 +42,7 @@ function BankReconciliationPage() {
   const [reconcileDate, setReconcileDate] = useState(new Date().toISOString().slice(0, 10));
   const [transactions, setTransactions] = useState([]);
   const [error, setError] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (!account?.accountId) return;
@@ -106,6 +123,85 @@ function BankReconciliationPage() {
     if (isReconcileDateInRange) return true;
     setError(t("reconciliation.reconcileDateOutOfRange"));
     return false;
+  };
+
+  const selectedForm = useMemo(
+    () => forms.find((row) => String(row.id) === String(selectedFormId)) ?? null,
+    [forms, selectedFormId]
+  );
+
+  const handleExport = async () => {
+    if (!selectedForm || transactionsInRange.length === 0) return;
+    try {
+      setIsExporting(true);
+      const currencySymbol = localStorage.getItem("activeCurrencySymbol") || "$";
+      const numericValue = (value) => Number(Number(value || 0).toFixed(2)).toString();
+      const title = `${t("reconciliation.title")} - ${formatPaymentFormLabel(selectedForm)}`;
+      const rowsHtml = transactionsInRange
+        .map(
+          (row) => `
+            <tr>
+              <td>${escapeHtml(row.id)}</td>
+              <td>${escapeHtml(formatDate(row.date, language))}</td>
+              <td>${escapeHtml(row.name || "-")}</td>
+              <td>${escapeHtml(row.persons?.name || "-")}</td>
+              <td>${escapeHtml(row.referenceNumber || "-")}</td>
+              <td>${escapeHtml(currencySymbol)}</td>
+              <td>${escapeHtml(numericValue(transactionAmount(row)))}</td>
+              <td>${escapeHtml(row.isReconciled ? formatDate(row.reconciledAt, language) : "-")}</td>
+            </tr>`
+        )
+        .join("");
+
+      const documentHtml = `
+        <html>
+          <head>
+            <meta charset="utf-8" />
+          </head>
+          <body>
+            <table>
+              <tr><td colspan="3"><strong>${escapeHtml(title)}</strong></td></tr>
+              <tr><td>${escapeHtml(t("reconciliation.bankAccount"))}</td><td colspan="2">${escapeHtml(formatPaymentFormLabel(selectedForm))}</td></tr>
+              <tr><td>${escapeHtml(t("reports.dateFrom"))}</td><td colspan="2">${escapeHtml(dateFrom)}</td></tr>
+              <tr><td>${escapeHtml(t("reports.dateTo"))}</td><td colspan="2">${escapeHtml(dateTo)}</td></tr>
+              <tr><td>${escapeHtml(t("reconciliation.previousBalance"))}</td><td>${escapeHtml(currencySymbol)}</td><td>${escapeHtml(numericValue(previousBalance))}</td></tr>
+              <tr><td>${escapeHtml(t("reconciliation.periodMovementsSum"))}</td><td>${escapeHtml(currencySymbol)}</td><td>${escapeHtml(numericValue(periodMovementsSum))}</td></tr>
+              <tr><td>${escapeHtml(t("reconciliation.currentBalance"))}</td><td>${escapeHtml(currencySymbol)}</td><td>${escapeHtml(numericValue(currentBalance))}</td></tr>
+            </table>
+            <br />
+            <table border="1">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>${escapeHtml(t("transactions.date"))}</th>
+                  <th>${escapeHtml(t("transactions.description"))}</th>
+                  <th>${escapeHtml(t("transactions.client"))}</th>
+                  <th>${escapeHtml(t("transactions.referenceNumber"))}</th>
+                  <th>${escapeHtml(t("transactions.currency"))}</th>
+                  <th>${escapeHtml(t("transactions.total"))}</th>
+                  <th>${escapeHtml(t("reconciliation.reconciled"))}</th>
+                </tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </body>
+        </html>`;
+
+      const blob = new Blob([documentHtml], { type: "application/vnd.ms-excel;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `conciliacion-bancaria-${selectedForm.id}-${dateFrom}-${dateTo}.xls`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      setError("");
+    } catch {
+      setError(t("common.genericLoadError"));
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleReconcile = async (transactionId) => {
@@ -194,6 +290,16 @@ function BankReconciliationPage() {
             <small>{t("reconciliation.reconcileDateHelp")}</small>
           </label>
         </div>
+        <div className="form-actions">
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={handleExport}
+            disabled={!selectedForm || transactionsInRange.length === 0 || isExporting}
+          >
+            {isExporting ? t("common.loading") : t("reports.exportExcel")}
+          </button>
+        </div>
       </section>
 
       <table className="crud-table">
@@ -222,7 +328,7 @@ function BankReconciliationPage() {
                 <td>{row.name || "-"}</td>
                 <td>{row.persons?.name || "-"}</td>
                 <td>{row.referenceNumber || "-"}</td>
-                <td className="num-col">{formatNumber(row.total)}</td>
+                <td className="num-col">{formatNumber(transactionAmount(row))}</td>
                 <td>{row.isReconciled ? formatDate(row.reconciledAt, language) : "-"}</td>
                 <td className="table-actions reconciliation-actions">
                   {!row.isReconciled ? (

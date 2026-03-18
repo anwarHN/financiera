@@ -121,6 +121,10 @@ function TransactionPaymentPage({ direction }) {
     }
 
     const paymentType = direction === "incoming" ? TRANSACTION_TYPES.incomingPayment : TRANSACTION_TYPES.outgoingPayment;
+    const selectedAccountPaymentForm = form.accountPaymentFormId
+      ? accountPaymentForms.find((item) => Number(item.id) === Number(form.accountPaymentFormId)) ?? null
+      : null;
+    const shouldAutoReconcile = selectedAccountPaymentForm?.kind === "bank_account";
     const paymentTransaction = {
       accountId: account.accountId,
       personId: paidTransaction.personId,
@@ -145,7 +149,9 @@ function TransactionPaymentPage({ direction }) {
       isActive: true,
       currencyId: paidTransaction.currencyId ?? null,
       paymentMethodId: Number(form.paymentMethodId),
-      accountPaymentFormId: form.accountPaymentFormId ? Number(form.accountPaymentFormId) : null
+      accountPaymentFormId: form.accountPaymentFormId ? Number(form.accountPaymentFormId) : null,
+      isReconciled: Boolean(shouldAutoReconcile),
+      reconciledAt: shouldAutoReconcile ? form.date : null
     };
 
     const paymentDetail = {

@@ -677,7 +677,10 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     affectsPayroll = false
   }) => {
     const parsedAccountPaymentFormId = accountPaymentFormId ? Number(accountPaymentFormId) : null;
-    const shouldAutoReconcile = Boolean(parsedAccountPaymentFormId);
+    const selectedAccountPaymentForm = parsedAccountPaymentFormId
+      ? accountPaymentForms.find((item) => Number(item.id) === parsedAccountPaymentFormId) ?? null
+      : null;
+    const shouldAutoReconcile = selectedAccountPaymentForm?.kind === "bank_account";
 
     return {
       accountId: account.accountId,
@@ -713,7 +716,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         : [],
       paymentMethodId: paymentMethodId ? Number(paymentMethodId) : null,
       accountPaymentFormId: parsedAccountPaymentFormId,
-      isReconciled: shouldAutoReconcile,
+      isReconciled: Boolean(shouldAutoReconcile),
       reconciledAt: shouldAutoReconcile ? date : null
     };
   };
