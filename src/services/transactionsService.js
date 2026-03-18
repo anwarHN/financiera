@@ -730,7 +730,7 @@ export async function listTransactionsByAccountPaymentForm({ accountId, accountP
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      'id, date, type, total, isIncomingPayment, isOutcomingPayment, "accountPaymentFormId", "isReconciled", "reconciledAt", "referenceNumber", "isInternalObligation", "sourceTransactionId", "isInternalTransfer", "isDeposit", isActive, name'
+      'id, date, type, total, isIncomingPayment, isOutcomingPayment, "accountPaymentFormId", "isReconciled", "reconciledAt", "referenceNumber", "isInternalObligation", "sourceTransactionId", "isInternalTransfer", "isDeposit", isActive, name, persons(name)'
     )
     .eq("accountId", accountId)
     .eq("accountPaymentFormId", accountPaymentFormId)

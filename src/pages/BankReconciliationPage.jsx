@@ -201,6 +201,8 @@ function BankReconciliationPage() {
           <tr>
             <th className="num-col">ID</th>
             <th>{t("transactions.date")}</th>
+            <th>{t("transactions.description")}</th>
+            <th>{t("transactions.client")}</th>
             <th>{t("transactions.referenceNumber")}</th>
             <th className="num-col">{t("transactions.total")}</th>
             <th>{t("reconciliation.reconciled")}</th>
@@ -210,13 +212,15 @@ function BankReconciliationPage() {
         <tbody>
           {transactionsInRange.length === 0 ? (
             <tr>
-              <td colSpan={6}>{t("common.empty")}</td>
+              <td colSpan={8}>{t("common.empty")}</td>
             </tr>
           ) : (
             transactionsInRange.map((row) => (
               <tr key={row.id}>
                 <td className="num-col">{row.id}</td>
                 <td>{formatDate(row.date, language)}</td>
+                <td>{row.name || "-"}</td>
+                <td>{row.persons?.name || "-"}</td>
                 <td>{row.referenceNumber || "-"}</td>
                 <td className="num-col">{formatNumber(row.total)}</td>
                 <td>{row.isReconciled ? formatDate(row.reconciledAt, language) : "-"}</td>
