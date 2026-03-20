@@ -1971,7 +1971,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                             <input type="number" min="0" step="0.01" value={line.quantity} onChange={(event) => updateSaleLine(line.rowId, "quantity", event.target.value)} />
                           </td>
                           <td>
-                            <input type="number" min="0" step="0.01" value={line.price} onChange={(event) => updateSaleLine(line.rowId, "price", event.target.value)} />
+                            <input type="number" min="0" step="0.000001" value={line.price} onChange={(event) => updateSaleLine(line.rowId, "price", event.target.value)} />
                           </td>
                           <td>
                             <input
