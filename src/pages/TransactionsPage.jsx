@@ -609,7 +609,7 @@ function TransactionsPage({
                                 : [])
                             ]
                           : []),
-                        ...(Boolean(item.isAccountPayable) && Number(item.balance || 0) > 0
+                        ...(Boolean(item.isActive) && Boolean(item.isAccountPayable) && Number(item.balance || 0) > 0
                           ? [
                               {
                                 key: "pay",
@@ -618,7 +618,7 @@ function TransactionsPage({
                               }
                             ]
                           : []),
-                        ...(Boolean(item.isAccountReceivable) && Number(item.balance || 0) > 0
+                        ...(Boolean(item.isActive) && Boolean(item.isAccountReceivable) && Number(item.balance || 0) > 0
                           ? [
                               {
                                 key: "collect",

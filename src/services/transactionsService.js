@@ -599,7 +599,7 @@ async function getAppliedPaymentsSnapshot(transactionId) {
   const txId = Number(transactionId);
   const { data: transaction, error: transactionError } = await supabase
     .from("transactions")
-    .select("id, total")
+    .select("id, total, isActive")
     .eq("id", txId)
     .single();
   if (transactionError) throw transactionError;
@@ -634,6 +634,7 @@ async function getAppliedPaymentsSnapshot(transactionId) {
   const total = roundCurrency(Math.abs(Number(transaction.total || 0)));
   const normalizedPayments = roundCurrency(payments);
   return {
+    isActive: Boolean(transaction.isActive),
     total,
     payments: normalizedPayments,
     balance: roundCurrency(Math.max(total - normalizedPayments, 0))
@@ -646,6 +647,10 @@ export async function registerPaymentForTransaction({
   paymentDetail
 }) {
   const latestPaidTransaction = await getAppliedPaymentsSnapshot(paidTransaction.id);
+
+  if (!latestPaidTransaction.isActive) {
+    throw new Error("No se pueden registrar pagos sobre una transacción anulada.");
+  }
 
   const amount = Number(Number(paymentTransaction.total || 0).toFixed(2));
   const availableBalance = Number(Number(latestPaidTransaction.balance || 0).toFixed(2));

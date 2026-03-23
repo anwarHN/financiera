@@ -1,5 +1,17 @@
 # Handoff
 
+## Propósito de este archivo
+Resumen corto para retomar rápido. El detalle completo ahora vive en:
+- `docs/index.md`
+- `docs/overview.md`
+- `docs/frontend-map.md`
+- `docs/services-map.md`
+- `docs/supabase-map.md`
+- `docs/glossary.md`
+- `docs/transactions-and-reports.md`
+- `docs/sql-runbook.md`
+- `docs/release-checklist.md`
+
 ## Estado actual
 Sistema operativo y funcional en React + Supabase con módulos principales:
 - Dashboard
@@ -27,26 +39,19 @@ Sistema operativo y funcional en React + Supabase con módulos principales:
 - Registro y anulación de pagos aplicados.
 - Reportes de CxC/CxP al corte.
 - Reporte de planilla.
-- Reporte kardex.
+- Reporte Kardex en migración hacia historial de entregas.
 - Flujo de caja alineado con saldos bancarios/cajas y depósitos bancarios.
 - Edición de depósitos bancarios.
+- Conciliación bancaria con exportación compatible con Excel.
 
 ## Cambios técnicos relevantes ya implementados
-- `ReadOnlyField` reutilizable con soporte para:
-  - text
-  - number
-  - currency
-  - date
-  - datetime
-  - boolean
-  - email
-  - phone
-  - multiline
+- `ReadOnlyField` reutilizable.
 - `ToggleSwitch` reutilizable.
 - Protección de rutas y menús por permisos.
 - Modal de bienvenida de cuenta y modal de cambio de cuenta.
 - Alerta de cuenta relacionada.
 - Remonte del contenido al cambiar de cuenta para refrescar estado local.
+- Documentación interna ampliada para migración de entorno.
 
 ## Riesgos / puntos sensibles
 - Cualquier cambio en reportes suele requerir tocar también `export-report`.
@@ -74,15 +79,24 @@ Sistema operativo y funcional en React + Supabase con módulos principales:
 - `supabase/rls.sql`
 
 ## Últimas correcciones relevantes
-- Modal de bienvenida de cuenta sólo debe aparecer en login real, no en refresh.
-- Cambio de cuenta debe refrescar formularios/picklists al remontar contenido por `accountId`.
-- Depósitos bancarios ya pueden editarse.
-- El shell del layout se reestructuró para evitar espacio fantasma entre banner y contenido.
-- Lista de reportes ajustada visualmente.
+- Conciliación bancaria usa signo normalizado y exporta Excel compatible.
+- Auto-conciliación sólo cuando la forma de pago es `bank_account`.
+- Flujo de caja y dashboard incluyen transferencias bancarias en el saldo por cuenta.
+- Kardex y stock se vienen alineando con `inventory_delivery_history`.
+- Precio unitario en factura/compra permite múltiples decimales.
 
 ## Recomendación operativa
-- Antes de tocar módulos financieros, leer:
-  - `AGENTS.md`
-  - `docs/decisions.md`
-  - `docs/domain-rules.md`
-  - `docs/pending.md`
+Antes de tocar módulos financieros, leer:
+- `AGENTS.md`
+- `docs/index.md`
+- `docs/overview.md`
+- `docs/frontend-map.md`
+- `docs/services-map.md`
+- `docs/supabase-map.md`
+- `docs/glossary.md`
+- `docs/transactions-and-reports.md`
+- `docs/sql-runbook.md`
+- `docs/release-checklist.md`
+- `docs/decisions.md`
+- `docs/domain-rules.md`
+- `docs/pending.md`

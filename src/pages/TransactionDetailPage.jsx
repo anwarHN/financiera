@@ -114,7 +114,7 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
               {t("inventory.deliveries.viewHistory")}
             </button>
           ) : null}
-          {Number(transaction?.balance || 0) > 0 && (
+          {Boolean(transaction?.isActive) && Number(transaction?.balance || 0) > 0 && (
             <button type="button" className="button-link-primary" onClick={() => setIsPaymentModalOpen(true)}>
               {moduleType === "sale" ? t("transactions.newIncomingPayment") : t("transactions.newOutgoingPayment")}
             </button>

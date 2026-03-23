@@ -1,7 +1,22 @@
 # AGENTS.md
 
 ## Objetivo
-Aplicación web financiera multiempresa construida en React + Vite + Supabase. El sistema maneja ventas, compras, inventario, entregas, cuentas por cobrar/pagar, bancos, cajas, reportes y perfiles con permisos.
+Aplicación web financiera multiempresa construida en React + Vite + Supabase. El sistema maneja ventas, compras, inventario, entregas, cuentas por cobrar/pagar, bancos, cajas, reportes, billing, perfiles con permisos y cuentas compartidas.
+
+## Qué leer primero al retomar el proyecto
+1. `docs/index.md`
+2. `handoff.md`
+3. `docs/overview.md`
+4. `docs/frontend-map.md`
+5. `docs/services-map.md`
+6. `docs/supabase-map.md`
+7. `docs/glossary.md`
+8. `docs/transactions-and-reports.md`
+9. `docs/sql-runbook.md`
+10. `docs/release-checklist.md`
+11. `docs/decisions.md`
+12. `docs/domain-rules.md`
+13. `docs/pending.md`
 
 ## Reglas de trabajo
 - Mantener consistencia entre frontend y exportación/reportes de Supabase.
