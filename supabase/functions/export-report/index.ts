@@ -52,6 +52,7 @@ type InternalObligationRow = {
 type CashflowTxRow = {
   id: number;
   date: string;
+  name?: string | null;
   type: number;
   total: number;
   currencyId: number | null;
@@ -463,7 +464,7 @@ async function fetchCashflowConceptTotals(
   let txQuery = supabaseAdmin
     .from("transactions")
     .select(
-      "id, type, total, currencyId, tags, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isCashWithdrawal"
+      "id, name, type, total, currencyId, tags, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isCashWithdrawal"
     )
     .eq("accountId", payload.accountId)
     .eq("isActive", true);
@@ -550,6 +551,29 @@ async function fetchCashflowConceptTotals(
       total: Number(grouped.get(key)?.total || 0) + amount
     });
   }
+
+  const detailedTxIds = new Set(detailRows.map((row) => Number(row.transactionId || 0)));
+  validTransactions.forEach((tx) => {
+    const txId = Number(tx.id || 0);
+    if (!txId || detailedTxIds.has(txId)) return;
+    const txMeta = txMetaById.get(txId);
+    if (!txMeta) return;
+
+    const isIncome = txMeta.type === 1 || txMeta.type === 3 || txMeta.isIncomingPayment || txMeta.isPayableCashIn;
+    const section = isIncome ? "Ingresos" : "Gastos";
+    const group = isIncome ? "Sin grupo (ingresos)" : "Sin grupo (gastos)";
+    const conceptName = String(tx.name || `Tx #${txId}`);
+    const rawAmount = Number(tx.total || 0);
+    const amount = isIncome ? Math.abs(rawAmount) : -Math.abs(rawAmount);
+    const key = `${section}::${group}::${conceptName}`;
+
+    grouped.set(key, {
+      section,
+      group,
+      concept: conceptName,
+      total: Number(grouped.get(key)?.total || 0) + amount
+    });
+  });
 
   return Array.from(grouped.values());
 }

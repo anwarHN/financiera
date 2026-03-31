@@ -3254,6 +3254,9 @@ button:disabled,
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
+    min-height: calc(3.65rem * var(--density-scale));
+    padding-top: calc(0.35rem * var(--density-scale));
+    padding-bottom: calc(0.35rem * var(--density-scale));
   }
 
   .app-menu-primary {
@@ -3263,6 +3266,13 @@ button:disabled,
     -webkit-overflow-scrolling: touch;
     min-width: max-content;
     flex: 0 0 auto;
+    min-height: calc(2.75rem * var(--density-scale));
+  }
+
+  .app-menu-entry {
+    min-height: calc(2.8rem * var(--density-scale));
+    padding: calc(0.82rem * var(--density-scale)) calc(0.8rem * var(--density-scale))
+      calc(0.62rem * var(--density-scale));
   }
 
   .actions-primary {
@@ -3535,11 +3545,13 @@ button:disabled,
 
   .app-menu {
     margin: 0.5rem 0.5rem 0;
-    padding: 0 0.3rem;
+    padding: 0.2rem 0.35rem 0.3rem;
+    min-height: calc(3.9rem * var(--density-scale));
   }
 
   .app-menu-entry {
-    padding: 0.55rem 0.45rem 0.45rem;
+    min-height: calc(3rem * var(--density-scale));
+    padding: 0.72rem 0.55rem 0.56rem;
     font-size: 0.86rem;
   }
 

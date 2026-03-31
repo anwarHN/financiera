@@ -110,7 +110,7 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
   let txQuery = supabase
     .from("transactions")
     .select(
-      "id, type, currencyId, isActive, tags, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isCashWithdrawal"
+      "id, name, total, type, currencyId, isActive, tags, isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isCashWithdrawal"
     )
     .eq("accountId", accountId)
     .eq("isActive", true);
@@ -192,6 +192,28 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
       total: Number(grouped.get(key)?.total || 0) + normalizedAmount
     });
   }
+
+  const detailedTxIds = new Set((details ?? []).map((detail) => Number(detail.transactionId || 0)));
+  validTransactions.forEach((tx) => {
+    const txId = Number(tx.id || 0);
+    if (!txId || detailedTxIds.has(txId)) return;
+    const txMeta = txMetaById.get(txId);
+    if (!txMeta) return;
+
+    const flowType = txMeta.type === 3 || txMeta.type === 1 || txMeta.isIncomingPayment || txMeta.isPayableCashIn ? "income" : "expense";
+    const groupName = tbdGroupName(flowType);
+    const conceptName = String(tx.name || `Tx #${txId}`);
+    const rawAmount = Number(tx.total || 0);
+    const normalizedAmount = flowType === "income" ? Math.abs(rawAmount) : -Math.abs(rawAmount);
+    const key = `${flowType}::${groupName}::${conceptName}`;
+
+    grouped.set(key, {
+      flowType,
+      groupName,
+      conceptName,
+      total: Number(grouped.get(key)?.total || 0) + normalizedAmount
+    });
+  });
 
   return Array.from(grouped.values());
 }
