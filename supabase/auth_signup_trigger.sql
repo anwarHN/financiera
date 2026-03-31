@@ -155,6 +155,35 @@ begin
           is_active = true;
   end if;
 
+  if to_regclass('public.correlatives_control') is not null then
+    insert into public.correlatives_control (
+      "accountId",
+      "transactionType",
+      "lastNumber",
+      "numberFrom",
+      "numberTo",
+      "limitDate",
+      "isActive",
+      "printPattern",
+      "reference1",
+      "reference2",
+      "createdById"
+    )
+    values (
+      new_account_id,
+      1,
+      0,
+      1,
+      null,
+      null,
+      true,
+      'FAC-{0}',
+      'Inicial',
+      null,
+      new.id
+    );
+  end if;
+
   if to_regclass('public.concepts') is not null
      and exists (
        select 1

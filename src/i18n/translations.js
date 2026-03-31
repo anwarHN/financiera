@@ -136,7 +136,8 @@ export const translations = {
       newPayableConcept: "Nuevo concepto de cuentas por pagar",
       newProject: "Nuevo proyecto",
       newBudget: "Nuevo presupuesto",
-      newCurrency: "Nueva moneda"
+      newCurrency: "Nueva moneda",
+      newInvoiceNumbering: "Nueva numeración de factura"
     },
     auth: {
       loginTitle: "Iniciar sesión",
@@ -203,6 +204,7 @@ export const translations = {
       bankTransfers: "Traslados bancarios",
       cashWithdrawals: "Retiros de efectivo",
       bankReconciliation: "Conciliación bancaria",
+      invoiceNumbering: "Numeración de facturas",
       currencies: "Monedas",
       payableConcepts: "Conceptos CxP",
       reports: "Reportes",
@@ -373,6 +375,23 @@ export const translations = {
       edit: "Editar moneda",
       symbol: "Símbolo",
       isLocal: "Es moneda local"
+    },
+    invoiceNumbering: {
+      title: "Numeración de facturas",
+      new: "Nuevo correlativo",
+      edit: "Editar correlativo",
+      transactionType: "Tipo de transacción",
+      lastNumber: "Último número",
+      numberFrom: "Numeración desde",
+      numberTo: "Numeración hasta",
+      limitDate: "Fecha límite",
+      isActive: "Activo",
+      printPattern: "Patrón de impresión",
+      reference1: "Referencia 1",
+      reference2: "Referencia 2",
+      invalidRange: "El rango del correlativo no es válido.",
+      lastNumberTooLow: "El último número debe ser al menos numeración desde - 1.",
+      patternPlaceholderRequired: "El patrón debe incluir el comodín {0}."
     },
     internalObligations: {
       title: "Obligaciones internas",
@@ -644,10 +663,14 @@ export const translations = {
       selectAccountPaymentForm: "Seleccionar cuenta o tarjeta",
       paymentMethodRequired: "Selecciona método de pago.",
       accountPaymentFormRequired: "Selecciona la cuenta bancaria o tarjeta utilizada.",
+      registerCashIn: "Registrar como un ingreso de efectivo",
+      registerCashInHelp: "Activa esta opción para indicar la forma de pago con la que esta cuenta por pagar ingresa a caja o banco y se incluya en flujo de caja y saldos.",
       sectionGeneral: "Datos generales",
       sectionPayment: "Pago",
       sectionAmounts: "Montos",
       sectionDetail: "Detalle",
+      number: "Número",
+      printNumber: "Número de impresión",
       referenceNumber: "Número de referencia",
       viewDetail: "Ver detalle",
       viewPayments: "Consultar pagos",
@@ -833,7 +856,8 @@ export const translations = {
       newPayableConcept: "New accounts payable concept",
       newProject: "New project",
       newBudget: "New budget",
-      newCurrency: "New currency"
+      newCurrency: "New currency",
+      newInvoiceNumbering: "New invoice numbering"
     },
     auth: {
       loginTitle: "Sign in",
@@ -899,6 +923,7 @@ export const translations = {
       bankTransfers: "Bank transfers",
       cashWithdrawals: "Cash withdrawals",
       bankReconciliation: "Bank reconciliation",
+      invoiceNumbering: "Invoice numbering",
       currencies: "Currencies",
       payableConcepts: "AP concepts",
       reports: "Reports",
@@ -1069,6 +1094,23 @@ export const translations = {
       edit: "Edit currency",
       symbol: "Symbol",
       isLocal: "Is local currency"
+    },
+    invoiceNumbering: {
+      title: "Invoice numbering",
+      new: "New correlative",
+      edit: "Edit correlative",
+      transactionType: "Transaction type",
+      lastNumber: "Last number",
+      numberFrom: "Numbering from",
+      numberTo: "Numbering to",
+      limitDate: "Limit date",
+      isActive: "Active",
+      printPattern: "Print pattern",
+      reference1: "Reference 1",
+      reference2: "Reference 2",
+      invalidRange: "The correlative range is invalid.",
+      lastNumberTooLow: "Last number must be at least numbering from - 1.",
+      patternPlaceholderRequired: "The pattern must include the {0} placeholder."
     },
     internalObligations: {
       title: "Internal obligations",
@@ -1340,10 +1382,14 @@ export const translations = {
       selectAccountPaymentForm: "Select bank account or card",
       paymentMethodRequired: "Select a payment method.",
       accountPaymentFormRequired: "Select the bank account or card used.",
+      registerCashIn: "Register as a cash inflow",
+      registerCashInHelp: "Enable this option to capture the payment form used for this accounts payable entry to enter cash or bank and include it in cashflow and balances.",
       sectionGeneral: "General data",
       sectionPayment: "Payment",
       sectionAmounts: "Amounts",
       sectionDetail: "Detail",
+      number: "Number",
+      printNumber: "Print number",
       referenceNumber: "Reference number",
       viewDetail: "View detail",
       viewPayments: "View payments",

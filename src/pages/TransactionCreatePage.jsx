@@ -15,6 +15,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { listAccountPaymentForms } from "../services/accountPaymentFormsService";
 import { listConcepts } from "../services/conceptsService";
+import { reserveTransactionCorrelative } from "../services/correlativesControlService";
 import { listCurrencies } from "../services/currenciesService";
 import { listEmployees } from "../services/employeesService";
 import { createPaymentMethod, listPaymentMethods } from "../services/paymentMethodsService";
@@ -36,6 +37,7 @@ const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
 const PRIOR_BALANCE_TAG = "__prior_balance__";
 const MANUAL_RECEIVABLE_TAG = "__manual_receivable__";
 const MANUAL_PAYABLE_TAG = "__manual_payable__";
+const PAYABLE_CASH_IN_TAG = "__payable_cash_in__";
 
 const moduleConfig = {
   sale: {
@@ -83,8 +85,11 @@ const initialSimpleForm = {
   amount: 0,
   additionalCharges: 0,
   currencyId: "",
+  number: "",
+  printNumber: "",
   referenceNumber: "",
   paymentMode: "cash",
+  registerCashIn: false,
   paymentMethodId: "",
   accountPaymentFormId: "",
   projectId: "",
@@ -99,6 +104,8 @@ const initialSaleHeader = {
   paymentMode: "cash",
   description: "",
   currencyId: "",
+  number: "",
+  printNumber: "",
   referenceNumber: "",
   paymentMethodId: "",
   accountPaymentFormId: "",
@@ -264,6 +271,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     () => paymentMethods.find((item) => item.id === Number(saleHeader.paymentMethodId)) ?? null,
     [paymentMethods, saleHeader.paymentMethodId]
   );
+  const manualPayableCashIn = isManualPayableMode && Boolean(simpleForm.registerCashIn);
   const localCurrencyId = useMemo(() => currencies.find((currency) => currency.isLocal)?.id ?? "", [currencies]);
   const simpleFilteredAccountPaymentForms = useMemo(() => {
     if (!selectedSimplePaymentMethod) return accountPaymentForms;
@@ -281,12 +289,12 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   }, [accountPaymentForms, selectedSalePaymentMethod]);
 
   const simpleRequiresAccountPaymentForm = useMemo(() => {
-    if (isManualBalanceMode) return false;
-    const asksPayment = moduleType === "income" || moduleType === "expense";
+    if (isManualBalanceMode && !manualPayableCashIn) return false;
+    const asksPayment = moduleType === "income" || moduleType === "expense" || manualPayableCashIn;
     const purchaseCash = moduleType === "purchase" && simpleForm.paymentMode === "cash";
     if (!asksPayment && !purchaseCash) return false;
     return selectedSimplePaymentMethod?.code === "card" || selectedSimplePaymentMethod?.code === "bank_transfer";
-  }, [isManualBalanceMode, moduleType, simpleForm.paymentMode, selectedSimplePaymentMethod]);
+  }, [isManualBalanceMode, manualPayableCashIn, moduleType, simpleForm.paymentMode, selectedSimplePaymentMethod]);
 
   const saleRequiresAccountPaymentForm = useMemo(() => {
     if (saleHeader.paymentMode !== "cash") return false;
@@ -294,6 +302,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   }, [saleHeader.paymentMode, selectedSalePaymentMethod]);
 
   const saleTotals = useMemo(() => aggregateLines(saleLines), [saleLines]);
+  const shouldAssignInvoiceNumber = moduleType === "sale" && !isManualReceivableMode && !isPriorBalanceMode;
 
   useEffect(() => {
     if (!account?.accountId) return;
@@ -415,6 +424,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
           paymentMode: tx.isAccountReceivable || tx.isAccountPayable ? "credit" : "cash",
           description: tx.name || "",
           currencyId: tx.currencyId ? String(tx.currencyId) : "",
+          number: tx.number == null ? "" : String(tx.number),
+          printNumber: tx.printNumber || "",
           referenceNumber: tx.referenceNumber || "",
           paymentMethodId: tx.paymentMethodId ? String(tx.paymentMethodId) : "",
           accountPaymentFormId: tx.accountPaymentFormId ? String(tx.accountPaymentFormId) : "",
@@ -471,8 +482,11 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
           amount: isExpenseFlow ? Math.abs(amountValue) : amountValue,
           additionalCharges: isExpenseFlow ? Math.abs(txAdditional) : txAdditional,
           currencyId: tx.currencyId ? String(tx.currencyId) : "",
+          number: tx.number == null ? "" : String(tx.number),
+          printNumber: tx.printNumber || "",
           referenceNumber: tx.referenceNumber || "",
           paymentMode: moduleType === "purchase" && tx.isAccountPayable ? "credit" : "cash",
+          registerCashIn: Array.isArray(tx.tags) ? tx.tags.includes(PAYABLE_CASH_IN_TAG) : false,
           paymentMethodId: tx.paymentMethodId ? String(tx.paymentMethodId) : "",
           accountPaymentFormId: tx.accountPaymentFormId ? String(tx.accountPaymentFormId) : "",
           projectId: tx.projectId ? String(tx.projectId) : "",
@@ -523,6 +537,15 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     }
     if (name === "paymentMethodId") {
       setSimpleForm((prev) => ({ ...prev, paymentMethodId: value, accountPaymentFormId: "" }));
+      return;
+    }
+    if (name === "registerCashIn") {
+      setSimpleForm((prev) => ({
+        ...prev,
+        registerCashIn: event.target.checked,
+        paymentMethodId: event.target.checked ? prev.paymentMethodId : "",
+        accountPaymentFormId: event.target.checked ? prev.accountPaymentFormId : ""
+      }));
       return;
     }
     if (name === "affectsPayroll") {
@@ -666,6 +689,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     date,
     totals,
     currencyId,
+    number,
+    printNumber,
     referenceNumber,
     paymentMethodId,
     accountPaymentFormId,
@@ -688,6 +713,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       date,
       type: config.type,
       name: description?.trim() || null,
+      number: number === "" || number == null ? null : Number(number),
+      printNumber: printNumber?.trim() || null,
       referenceNumber: referenceNumber?.trim() || null,
       deliverTo: null,
       deliveryAddress: null,
@@ -721,6 +748,24 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     };
   };
 
+  const attachInvoiceCorrelative = async (transactionPayload) => {
+    if (isEdit || !shouldAssignInvoiceNumber) {
+      return transactionPayload;
+    }
+
+    const reserved = await reserveTransactionCorrelative({
+      accountId: account.accountId,
+      transactionType: config.type,
+      transactionDate: transactionPayload.date
+    });
+
+    return {
+      ...transactionPayload,
+      number: reserved.number,
+      printNumber: reserved.printNumber
+    };
+  };
+
   const handleSubmitSimple = async (event) => {
     event.preventDefault();
     setSimpleSubmitAttempted(true);
@@ -740,7 +785,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     }
 
     const purchaseCash = moduleType === "purchase" && simpleForm.paymentMode === "cash";
-    const needsPaymentMethod = !isManualBalanceMode && (moduleType === "income" || moduleType === "expense" || purchaseCash);
+    const needsPaymentMethod =
+      (!isManualBalanceMode && (moduleType === "income" || moduleType === "expense" || purchaseCash)) || manualPayableCashIn;
     if (needsPaymentMethod && !simpleForm.paymentMethodId) {
       setError(t("transactions.paymentMethodRequired"));
       return;
@@ -761,7 +807,18 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     const additionalCharges = isExpenseFlow ? -Math.abs(additionalChargesRaw) : additionalChargesRaw;
     const totalAmount = baseAmount + additionalCharges;
     const isCredit = isManualBalanceMode ? true : moduleType === "purchase" ? simpleForm.paymentMode === "credit" : false;
-    const shouldPersistPayment = moduleType !== "purchase" || simpleForm.paymentMode === "cash";
+    const shouldPersistPayment = (moduleType !== "purchase" || simpleForm.paymentMode === "cash") || manualPayableCashIn;
+    const normalizedTags = isManualReceivableMode
+      ? Array.from(new Set([MANUAL_RECEIVABLE_TAG, ...(simpleForm.tags || [])]))
+      : isManualPayableMode
+        ? Array.from(
+            new Set([
+              MANUAL_PAYABLE_TAG,
+              ...(manualPayableCashIn ? [PAYABLE_CASH_IN_TAG] : []),
+              ...(simpleForm.tags || []).filter((tag) => tag !== PAYABLE_CASH_IN_TAG)
+            ])
+          )
+        : simpleForm.tags;
 
     const transactionPayload = buildTransactionPayload({
       isCredit,
@@ -776,17 +833,15 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       date: simpleForm.date,
       totals: { net: baseAmount, tax: 0, discount: 0, additionalCharges, total: totalAmount },
       currencyId: simpleForm.currencyId,
+      number: simpleForm.number,
+      printNumber: simpleForm.printNumber,
       referenceNumber: simpleForm.referenceNumber,
-      paymentMethodId: shouldPersistPayment && !isManualBalanceMode ? simpleForm.paymentMethodId : null,
-      accountPaymentFormId: shouldPersistPayment && !isManualBalanceMode ? simpleForm.accountPaymentFormId : null,
+      paymentMethodId: shouldPersistPayment ? simpleForm.paymentMethodId : null,
+      accountPaymentFormId: shouldPersistPayment ? simpleForm.accountPaymentFormId : null,
       projectId: simpleForm.projectId,
       employeeId: moduleType === "income" || moduleType === "expense" ? simpleForm.employeeId : null,
       affectsPayroll: moduleType === "income" || moduleType === "expense" ? simpleForm.affectsPayroll : false,
-      tags: isManualReceivableMode
-        ? Array.from(new Set([MANUAL_RECEIVABLE_TAG, ...(simpleForm.tags || [])]))
-        : isManualPayableMode
-          ? Array.from(new Set([MANUAL_PAYABLE_TAG, ...(simpleForm.tags || [])]))
-          : simpleForm.tags,
+      tags: normalizedTags,
       incomingPayment: moduleType === "income",
       includeCreatedById: !isEdit
     });
@@ -864,7 +919,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       return;
     }
 
-    const transactionPayload = buildTransactionPayload({
+    const transactionPayloadBase = buildTransactionPayload({
       isCredit: true,
       personId: Number(simpleForm.personId),
       description:
@@ -873,6 +928,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       date: simpleForm.date,
       totals: { net: totalAmount, tax: 0, discount: 0, additionalCharges: 0, total: totalAmount },
       currencyId: simpleForm.currencyId,
+      number: simpleForm.number,
+      printNumber: simpleForm.printNumber,
       referenceNumber: simpleForm.referenceNumber,
       paymentMethodId: null,
       accountPaymentFormId: null,
@@ -916,6 +973,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
 
     try {
       setIsSaving(true);
+      const transactionPayload = await attachInvoiceCorrelative(transactionPayloadBase);
       const saved = isEdit
         ? await updateTransactionWithDetails({
             transactionId: Number(itemId),
@@ -931,8 +989,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       } else {
         navigate(config.backPath);
       }
-    } catch {
-      setError(t("common.genericSaveError"));
+    } catch (err) {
+      setError(err?.message || t("common.genericSaveError"));
     } finally {
       setIsSaving(false);
     }
@@ -979,7 +1037,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
 
     const lineBasedTotal = Number(saleTotals.total || 0);
     const normalizedTotal = isInventoryAdjustment ? 0 : lineBasedTotal;
-    const transactionPayload = buildTransactionPayload({
+    const transactionPayloadBase = buildTransactionPayload({
       isCredit,
       personId: selectedClient?.id || null,
       description: saleHeader.description,
@@ -1071,6 +1129,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
 
     try {
       setIsSaving(true);
+      const transactionPayload = await attachInvoiceCorrelative(transactionPayloadBase);
       let saved;
       if (isEdit) {
         saved = await updateTransactionWithDetails({
@@ -1089,8 +1148,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       } else {
         navigate(config.backPath);
       }
-    } catch {
-      setError(t("common.genericSaveError"));
+    } catch (err) {
+      setError(err?.message || t("common.genericSaveError"));
     } finally {
       setIsSaving(false);
     }
@@ -1450,6 +1509,18 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                 <span>{t("transactions.referenceNumber")}</span>
                 <input name="referenceNumber" value={simpleForm.referenceNumber} onChange={handleSimpleChange} />
               </label>
+              {moduleType === "sale" ? (
+                <>
+                  <label className="field-block">
+                    <span>{t("transactions.number")}</span>
+                    <input name="number" type="number" min="1" step="1" value={simpleForm.number} onChange={handleSimpleChange} />
+                  </label>
+                  <label className="field-block">
+                    <span>{t("transactions.printNumber")}</span>
+                    <input name="printNumber" value={simpleForm.printNumber} onChange={handleSimpleChange} />
+                  </label>
+                </>
+              ) : null}
               <LookupCombobox
                 label={t("projects.project")}
                 value={simpleProjectLookup}
@@ -1532,7 +1603,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
             </div>
           </section>
 
-          {!isManualBalanceMode && (moduleType === "purchase" || moduleType === "income" || moduleType === "expense") && (
+          {(moduleType === "purchase" || moduleType === "income" || moduleType === "expense") && (
             <section className="crud-form-section">
               <h2 className="crud-form-section-title">{t("transactions.sectionPayment")}</h2>
               <div className="form-grid-2">
@@ -1545,7 +1616,18 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                     </select>
                   </label>
                 )}
-                {!isManualBalanceMode && (moduleType !== "purchase" || simpleForm.paymentMode === "cash") && (
+                {isManualPayableMode ? (
+                  <div className="form-span-2">
+                    <ToggleSwitch
+                      label={t("transactions.registerCashIn")}
+                      name="registerCashIn"
+                      checked={Boolean(simpleForm.registerCashIn)}
+                      onChange={handleSimpleChange}
+                      helpText={t("transactions.registerCashInHelp")}
+                    />
+                  </div>
+                ) : null}
+                {((!isManualBalanceMode && (moduleType !== "purchase" || simpleForm.paymentMode === "cash")) || manualPayableCashIn) && (
                   <>
                     <div className="field-block required">
                       <span>{t("transactions.paymentMethod")}</span>
@@ -1592,7 +1674,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                           name="paymentMethodId"
                           value={simpleForm.paymentMethodId}
                           onChange={handleSimpleChange}
-                          required={moduleType !== "purchase" || simpleForm.paymentMode === "cash"}
+                          required={manualPayableCashIn || moduleType !== "purchase" || simpleForm.paymentMode === "cash"}
                         >
                           <option value="">{`-- ${t("transactions.selectPaymentMethod")} --`}</option>
                           {paymentMethods.map((method) => (

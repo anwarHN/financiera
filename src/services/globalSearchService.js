@@ -1,7 +1,7 @@
 import { supabase } from "../lib/supabase";
 
 function buildTextSearchFilter(term) {
-  return `name.ilike.%${term}%,referenceNumber.ilike.%${term}%,deliverTo.ilike.%${term}%,deliveryAddress.ilike.%${term}%`;
+  return `name.ilike.%${term}%,referenceNumber.ilike.%${term}%,printNumber.ilike.%${term}%,deliverTo.ilike.%${term}%,deliveryAddress.ilike.%${term}%`;
 }
 
 function buildTransactionSearchFilter(term) {
@@ -40,7 +40,7 @@ export async function searchGlobalByAccount({ accountId, term, limit = 8 }) {
   ] = await Promise.allSettled([
     supabase
       .from("transactions")
-      .select('id, type, date, name, "referenceNumber", "isDeposit"')
+      .select('id, type, date, name, "referenceNumber", "printNumber", "isDeposit"')
       .eq("accountId", accountId)
       .eq("isActive", true)
       .eq("isDeposit", false)
@@ -82,7 +82,7 @@ export async function searchGlobalByAccount({ accountId, term, limit = 8 }) {
       .limit(limit),
     supabase
       .from("transactions")
-      .select('id, date, name, "referenceNumber", total')
+      .select('id, date, name, "referenceNumber", "printNumber", total')
       .eq("accountId", accountId)
       .eq("isActive", true)
       .eq("isDeposit", true)

@@ -18,6 +18,7 @@ import TransactionCreatePage from "./pages/TransactionCreatePage";
 import TransactionDetailPage from "./pages/TransactionDetailPage";
 import ReportsPage from "./pages/ReportsPage";
 import CurrenciesPage from "./pages/CurrenciesPage";
+import InvoiceNumberingPage from "./pages/InvoiceNumberingPage";
 import ProfilesPage from "./pages/ProfilesPage";
 import AdminPage from "./pages/AdminPage";
 import AccountManagePage from "./pages/AccountManagePage";
@@ -252,6 +253,7 @@ function App() {
         <Route path="budgets/:id/edit" element={<BudgetFormPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="currencies" element={<CurrenciesPage />} />
+        <Route path="invoice-numbering" element={<InvoiceNumberingPage />} />
         <Route path="account" element={<AccountManagePage />}>
           <Route index element={<Navigate to="/account/users" replace />} />
           <Route path="billing" element={<AccountBillingPage />} />

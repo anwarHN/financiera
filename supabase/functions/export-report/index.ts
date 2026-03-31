@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
 const PRIOR_BALANCE_TAG = "__prior_balance__";
+const PAYABLE_CASH_IN_TAG = "__payable_cash_in__";
 
 interface ExportPayload {
   accountId: number;
@@ -63,6 +64,10 @@ type CashflowTxRow = {
   isDeposit: boolean;
   isCashWithdrawal: boolean;
 };
+
+function isPayableCashIn(tx: { isAccountPayable?: boolean | null; tags?: string[] | null }) {
+  return Boolean(tx?.isAccountPayable) && Array.isArray(tx?.tags) && tx.tags.includes(PAYABLE_CASH_IN_TAG);
+}
 
 type CashflowConceptDetail = {
   transactionId: number;
@@ -472,7 +477,8 @@ async function fetchCashflowConceptTotals(
 
   const validTransactions = ((transactions ?? []) as CashflowTxRow[]).filter((tx) => {
     if (tx.isInternalTransfer && !Boolean(tx.isCashWithdrawal)) return false;
-    if (tx.isAccountReceivable || tx.isAccountPayable) return false;
+    if (tx.isAccountReceivable) return false;
+    if (tx.isAccountPayable && !isPayableCashIn(tx)) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
     const isCashSale = Number(tx.type) === 1 && !Boolean(tx.isAccountReceivable);
     return (
@@ -481,7 +487,8 @@ async function fetchCashflowConceptTotals(
       Number(tx.type) === 4 ||
       isCashSale ||
       tx.isIncomingPayment ||
-      tx.isOutcomingPayment
+      tx.isOutcomingPayment ||
+      isPayableCashIn(tx)
     );
   });
 
@@ -493,7 +500,8 @@ async function fetchCashflowConceptTotals(
       {
         type: Number(tx.type),
         isIncomingPayment: Boolean(tx.isIncomingPayment),
-        isOutcomingPayment: Boolean(tx.isOutcomingPayment)
+        isOutcomingPayment: Boolean(tx.isOutcomingPayment),
+        isPayableCashIn: isPayableCashIn(tx)
       }
     ])
   );
@@ -526,7 +534,7 @@ async function fetchCashflowConceptTotals(
     const txMeta = txMetaById.get(Number(detail.transactionId));
     if (!txMeta) continue;
 
-    const isIncome = txMeta.type === 1 || txMeta.type === 3 || txMeta.isIncomingPayment;
+    const isIncome = txMeta.type === 1 || txMeta.type === 3 || txMeta.isIncomingPayment || txMeta.isPayableCashIn;
     const section = isIncome ? "Ingresos" : "Gastos";
     const conceptName = detail.concepts?.name || "-";
     const parentId = Number(detail.concepts?.parentConceptId || 0);
@@ -580,9 +588,12 @@ async function fetchCashflowBankBalances(
     isIncomingPayment: boolean | null;
     isOutcomingPayment: boolean | null;
     type: number | string | null;
+    isAccountPayable?: boolean | null;
+    tags?: string[] | null;
   }) => {
     const raw = Number(tx.total || 0);
     const abs = Math.abs(raw);
+    if (isPayableCashIn(tx)) return abs;
     if (Boolean(tx.isIncomingPayment)) return abs;
     if (Boolean(tx.isOutcomingPayment)) return -abs;
 
@@ -594,7 +605,8 @@ async function fetchCashflowBankBalances(
   };
 
   const filteredTransactions = (transactions ?? []).filter((tx) => {
-    if (Boolean(tx.isAccountReceivable) || Boolean(tx.isAccountPayable)) return false;
+    if (Boolean(tx.isAccountReceivable)) return false;
+    if (Boolean(tx.isAccountPayable) && !isPayableCashIn(tx)) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
     if (Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG)) return false;
     return true;
@@ -1052,9 +1064,12 @@ async function buildCashboxesBalanceReport(
     type: number;
     isIncomingPayment: boolean;
     isOutcomingPayment: boolean;
+    isAccountPayable?: boolean | null;
+    tags?: string[] | null;
   }) => {
     const raw = Number(tx.total || 0);
     const abs = Math.abs(raw);
+    if (isPayableCashIn(tx)) return abs;
     if (tx.isIncomingPayment) return abs;
     if (tx.isOutcomingPayment) return -abs;
     const type = Number(tx.type);
@@ -1065,7 +1080,8 @@ async function buildCashboxesBalanceReport(
 
   const filteredTransactions = (txRows ?? []).filter((row) => {
     if (Boolean(row.isInternalTransfer) && !Boolean(row.isCashWithdrawal) && !Boolean(row.isDeposit)) return false;
-    if (Boolean(row.isAccountReceivable) || Boolean(row.isAccountPayable)) return false;
+    if (Boolean(row.isAccountReceivable)) return false;
+    if (Boolean(row.isAccountPayable) && !isPayableCashIn(row)) return false;
     if (Array.isArray(row.tags) && row.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
     if (Array.isArray(row.tags) && row.tags.includes(PRIOR_BALANCE_TAG)) return false;
     return true;

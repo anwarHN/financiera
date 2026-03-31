@@ -152,6 +152,7 @@ const navGroups = [
       { path: "/income-concepts", key: "nav.incomeConcepts", icon: FiTrendingUp },
       { path: "/expense-concepts", key: "nav.expenseConcepts", icon: FiTrendingDown },
       { path: "/concept-groups", key: "nav.conceptGroups", icon: FiLayers },
+      { path: "/invoice-numbering", key: "nav.invoiceNumbering", icon: FiFileText },
       { path: "/currencies", key: "nav.currencies", icon: FiDollarSign }
     ]
   },
@@ -215,6 +216,7 @@ function resolveCreateModuleByPath(pathname) {
   if (pathname.startsWith("/projects")) return "planning";
   if (pathname.startsWith("/budgets")) return "planning";
   if (pathname.startsWith("/currencies")) return "catalogs";
+  if (pathname.startsWith("/invoice-numbering")) return "catalogs";
   return null;
 }
 
@@ -486,6 +488,9 @@ function Layout() {
     if (pathname.startsWith("/projects")) return { createPath: "/projects?create=1", createLabel: t("actions.newProject") };
     if (pathname.startsWith("/budgets")) return { createPath: "/budgets?create=1", createLabel: t("actions.newBudget") };
     if (pathname.startsWith("/currencies")) return { createPath: "/currencies?create=1", createLabel: t("actions.newCurrency") };
+    if (pathname.startsWith("/invoice-numbering")) {
+      return { createPath: "/invoice-numbering?create=1", createLabel: t("actions.newInvoiceNumbering") };
+    }
     if (pathname.startsWith("/account")) return { createPath: null, createLabel: null, extraCreateItems: [] };
     if (pathname.startsWith("/reports")) return { createPath: null, createLabel: null, extraCreateItems: [] };
 
@@ -555,7 +560,7 @@ function Layout() {
           .map((row) => ({
             id: `tx-${row.id}`,
             title: row.name || `${t("sidebar.transactions")} #${row.id}`,
-            subtitle: `${formatDate(row.date, language)} · ${row.referenceNumber || "-"}`,
+            subtitle: `${formatDate(row.date, language)} · ${row.printNumber || row.referenceNumber || "-"}`,
             to: resolveTransactionSearchTarget(row)
           }))
           .filter((row) => hasPathAccess(row.to))
@@ -615,7 +620,7 @@ function Layout() {
           .map((row) => ({
             id: `deposit-${row.id}`,
             title: row.name || `${t("nav.bankDeposits")} #${row.id}`,
-            subtitle: `${formatDate(row.date, language)} · ${row.referenceNumber || "-"}`,
+            subtitle: `${formatDate(row.date, language)} · ${row.printNumber || row.referenceNumber || "-"}`,
             to: "/bank-deposits"
           }))
           .filter((row) => hasPathAccess(row.to))

@@ -539,6 +539,8 @@ function TransactionsPage({
                 <th>{t("projects.project")}</th>
                 <th className="num-col">{t("transactions.total")}</th>
                 <th className="num-col">{t("transactions.balance")}</th>
+                {moduleType === "sale" && <th>{t("transactions.number")}</th>}
+                {moduleType === "sale" && <th>{t("transactions.printNumber")}</th>}
                 <th>{t("transactions.referenceNumber")}</th>
                 <th>{t("transactions.status")}</th>
                 <th>{t("common.actions")}</th>
@@ -581,6 +583,8 @@ function TransactionsPage({
                   <td>{item.projects?.name ?? "-"}</td>
                   <td className="num-col">{formatNumber(item.total)}</td>
                   <td className="num-col">{formatNumber(item.balance)}</td>
+                  {moduleType === "sale" && <td>{item.number ?? "-"}</td>}
+                  {moduleType === "sale" && <td>{item.printNumber ?? "-"}</td>}
                   <td>{item.referenceNumber ?? "-"}</td>
                   <td>
                     <StatusBadge tone={item.isActive ? "success" : "muted"}>

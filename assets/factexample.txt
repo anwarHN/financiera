@@ -1,0 +1,63 @@
+p0            Empresa de prueba           
+               Principal               
+                                        
+               Direccion               
+          Telefonos: Telefono          
+   Correo: aggarcia@mih-software.com   
+                C.A.I.:                 
+
+Factura: 00000182
+Cliente: Miguel Martinez
+Dir. Cliente: 
+RTN cliente: 123132156
+Moneda: Lempira
+Tipo de compra: Contado
+Fecha: 11/03/2026 04:40:47 PM
+Estado: Valido
+----------------------------------------
+Producto o Servicio     Cant.      Total
+----------------------------------------
+1059                    2         L30.00
+Jugo de naranja-Unidad
+Descuento      L0.00
+1060                    3      L4,500.00
+Renta de habitación-Unidad
+Descuento      L0.00
+----------------------------------------
+                Importe exonerado: L0.00
+                  Importe extento: L0.00
+          Importe gravado 15%: L3,939.13
+                     I.S.V. 15%: L590.87
+   Descuentos y Rebajas Otorgados: L0.00
+                        Total: L4,530.00
+No. De Registro Exonerado: **
+No. De Constancia Registro Exonerado: **
+No. De Orden de compra Exenta: **
+No. De Identificacion SAG: **
+Son:  Cuatro  Mil  QuinientosQuinientos
+TreintaTreinta  y  CeroCero Lempiras con
+00/100  ctvos.
+
+
+Fecha limite emision: 
+
+Rango autorizado: 
+Observaciones: ****
+
+Original: Cliente 
+Copia: Obligado Tributario Emisor
+         Gracias por su visita!         
+  La factura es un beneficio de todos,  
+                exijala!                
+
+       Factura realizada en Unico       
+   http://www.mih-software.com/unico   
+
+
+
+
+
+
+
+
+V1

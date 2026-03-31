@@ -18,7 +18,7 @@ export async function listTransactions({
   let query = supabase
     .from("transactions")
     .select(
-      'id, personId, "employeeId", date, type, status, total, balance, payments, name, tags, currencyId, "projectId", "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "isEmployeeLoan", "sourceTransactionId", "isInternalTransfer", "isDeposit", "isAccountReceivable", "isAccountPayable", "affectsPayroll", isActive, persons(name), employes(name), projects(name), account_payment_forms(name)'
+      'id, personId, "employeeId", date, type, status, total, balance, payments, name, tags, currencyId, "projectId", "referenceNumber", "number", "printNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "isEmployeeLoan", "sourceTransactionId", "isInternalTransfer", "isDeposit", "isAccountReceivable", "isAccountPayable", "affectsPayroll", isActive, persons(name), employes(name), projects(name), account_payment_forms(name)'
     )
     .eq("accountId", accountId)
     .eq("type", type);
@@ -159,7 +159,7 @@ export async function getTransactionById(id) {
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      'id, accountId, personId, "employeeId", date, type, name, tags, total, balance, payments, "projectId", "referenceNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "isEmployeeLoan", "sourceTransactionId", "isInternalTransfer", "isDeposit", "affectsPayroll", "deliveryAddress", isActive, currencyId, persons(name), employes(name), projects(name), account_payment_forms(name)'
+      'id, accountId, personId, "employeeId", date, type, name, tags, total, balance, payments, "projectId", "referenceNumber", "number", "printNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "isEmployeeLoan", "sourceTransactionId", "isInternalTransfer", "isDeposit", "affectsPayroll", "deliveryAddress", isActive, currencyId, persons(name), employes(name), projects(name), account_payment_forms(name)'
     )
     .eq("id", id)
     .single();
@@ -735,7 +735,7 @@ export async function listTransactionsByAccountPaymentForm({ accountId, accountP
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      'id, date, type, total, isIncomingPayment, isOutcomingPayment, "accountPaymentFormId", "isReconciled", "reconciledAt", "referenceNumber", "isInternalObligation", "sourceTransactionId", "isInternalTransfer", "isDeposit", isActive, name, persons(name)'
+      'id, date, type, total, tags, isIncomingPayment, isOutcomingPayment, isAccountPayable, "accountPaymentFormId", "isReconciled", "reconciledAt", "referenceNumber", "isInternalObligation", "sourceTransactionId", "isInternalTransfer", "isDeposit", isActive, name, persons(name)'
     )
     .eq("accountId", accountId)
     .eq("accountPaymentFormId", accountPaymentFormId)

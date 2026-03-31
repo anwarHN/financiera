@@ -12,9 +12,16 @@ import { formatDate } from "../utils/dateFormat";
 import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
 import { formatNumber } from "../utils/numberFormat";
 
+const PAYABLE_CASH_IN_TAG = "__payable_cash_in__";
+
+function isPayableCashIn(transaction) {
+  return Boolean(transaction?.isAccountPayable) && Array.isArray(transaction?.tags) && transaction.tags.includes(PAYABLE_CASH_IN_TAG);
+}
+
 function transactionAmount(transaction) {
   const raw = Number(transaction.total || 0);
   const abs = Math.abs(raw);
+  if (isPayableCashIn(transaction)) return abs;
   if (transaction.isIncomingPayment) return abs;
   if (transaction.isOutcomingPayment) return -abs;
   const type = Number(transaction.type || 0);

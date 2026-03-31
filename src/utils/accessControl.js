@@ -28,6 +28,7 @@ export function resolveReadModuleByPath(pathname) {
   if (pathname.startsWith("/projects")) return "planning";
   if (pathname.startsWith("/budgets")) return "planning";
   if (pathname.startsWith("/currencies")) return "catalogs";
+  if (pathname.startsWith("/invoice-numbering")) return "catalogs";
   if (pathname.startsWith("/reports")) return "reports";
   return null;
 }

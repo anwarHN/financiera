@@ -131,6 +131,8 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
             <ReadOnlyField label={t("transactions.total")} value={transaction.total} type="currency" />
             <ReadOnlyField label={t("transactions.balance")} value={transaction.balance} type="currency" />
             <ReadOnlyField label={t("transactions.date")} value={transaction.date} type="date" />
+            {moduleType === "sale" ? <ReadOnlyField label={t("transactions.number")} value={transaction.number || ""} /> : null}
+            {moduleType === "sale" ? <ReadOnlyField label={t("transactions.printNumber")} value={transaction.printNumber || ""} /> : null}
             <ReadOnlyField label={t("transactions.referenceNumber")} value={transaction.referenceNumber || ""} />
             {showTaxDiscountDetail ? (
               <>
