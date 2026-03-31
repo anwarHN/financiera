@@ -161,7 +161,21 @@ export const translations = {
       registrationSuccess:
         "Cuenta creada. Si tu proyecto requiere confirmación por correo, revisa tu bandeja antes de iniciar sesión.",
       invalidCredentials: "Credenciales inválidas",
-      genericError: "Ocurrió un error, intenta nuevamente"
+      genericError: "Ocurrió un error, intenta nuevamente",
+      forgotPasswordLink: "Olvidé mi contraseña",
+      forgotPasswordTitle: "Recuperar contraseña",
+      forgotPasswordText: "Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.",
+      sendResetLink: "Enviar enlace",
+      resetPasswordEmailSent: "Si el correo existe, recibirás un enlace para cambiar tu contraseña.",
+      resetPasswordTitle: "Restablecer contraseña",
+      resetPasswordText: "Define una nueva contraseña para volver a entrar a tu cuenta.",
+      newPassword: "Nueva contraseña",
+      confirmPassword: "Confirmar contraseña",
+      saveNewPassword: "Guardar nueva contraseña",
+      passwordMismatch: "Las contraseñas no coinciden.",
+      passwordMinLength: "La contraseña debe tener al menos 6 caracteres.",
+      passwordResetSuccess: "Contraseña actualizada correctamente.",
+      passwordResetInvalidLink: "El enlace no es válido o ya expiró."
     },
     nav: {
       dashboard: "Dashboard",
@@ -882,7 +896,21 @@ export const translations = {
       and: "and",
       registrationSuccess: "Account created. If email confirmation is enabled, confirm your email first.",
       invalidCredentials: "Invalid credentials",
-      genericError: "Something went wrong, please try again"
+      genericError: "Something went wrong, please try again",
+      forgotPasswordLink: "Forgot my password",
+      forgotPasswordTitle: "Recover password",
+      forgotPasswordText: "Enter your email and we will send you a link to reset your password.",
+      sendResetLink: "Send link",
+      resetPasswordEmailSent: "If the email exists, you will receive a link to change your password.",
+      resetPasswordTitle: "Reset password",
+      resetPasswordText: "Set a new password to access your account again.",
+      newPassword: "New password",
+      confirmPassword: "Confirm password",
+      saveNewPassword: "Save new password",
+      passwordMismatch: "Passwords do not match.",
+      passwordMinLength: "Password must be at least 6 characters long.",
+      passwordResetSuccess: "Password updated successfully.",
+      passwordResetInvalidLink: "The link is invalid or has expired."
     },
     nav: {
       dashboard: "Dashboard",

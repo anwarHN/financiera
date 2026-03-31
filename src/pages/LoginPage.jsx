@@ -71,6 +71,8 @@ function LoginPage() {
               required
             />
 
+            <Link to="/forgot-password">{t("auth.forgotPasswordLink")}</Link>
+
             {error && <p className="error-text">{error}</p>}
 
             <button type="submit" disabled={isSubmitting}>
