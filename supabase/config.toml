@@ -7,6 +7,9 @@ verify_jwt = false
 [functions.export-report]
 verify_jwt = false
 
+[functions.generate-invoice-print-txt]
+verify_jwt = false
+
 [functions.create-billing-checkout]
 verify_jwt = false
 
