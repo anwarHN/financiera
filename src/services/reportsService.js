@@ -309,7 +309,7 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
     });
   }
 
-  if (accountId === 8 && dateTo === "2026-06-01") {
+  if (accountId === 8) {
     const cashbox17Transactions = filteredTransactions
       .filter((tx) => Number(tx.accountPaymentFormId || 0) === 17)
       .map((tx) => ({
@@ -335,13 +335,19 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
       });
 
     const cashbox17Row = rows.find((row) => Number(row.id || 0) === 17) || null;
-    console.debug("[cashflow-debug]", {
+    const payload = {
       accountId,
-      dateTo,
+      dateTo: dateTo || null,
       currencyId: currencyId || null,
       cashbox17Balance: Number(cashbox17Row?.balance || 0),
       cashbox17Transactions
-    });
+    };
+
+    if (typeof window !== "undefined") {
+      window.__cashflowDebug = payload;
+    }
+
+    console.log("[cashflow-debug]", payload);
   }
 
   return rows;
