@@ -1,0 +1,25 @@
+{
+  "version": "5",
+  "redirects": {
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.105.4"
+  },
+  "remote": {
+    "https://esm.sh/@supabase/supabase-js@2.105.4": "92cda3ff3af2e241766bc1d53b87167b4d6376d43a0e2f31ddcd6d41a58d09f9",
+    "https://esm.sh/xlsx@0.18.5": "feaad96c2697fd87d8d2cbf00030869f6f3cb87afc6f58c92602f1e33309dc03"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@supabase/supabase-js@^2.49.1",
+        "npm:@vitejs/plugin-react@^4.6.0",
+        "npm:chart.js@^4.5.1",
+        "npm:react-dom@^18.3.1",
+        "npm:react-icons@^5.5.0",
+        "npm:react-router-dom@^6.30.1",
+        "npm:react@^18.3.1",
+        "npm:supabase@^2.84.4",
+        "npm:vite@^7.3.1"
+      ]
+    }
+  }
+}

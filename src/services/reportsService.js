@@ -43,13 +43,7 @@ export async function getTransactionsForReports(accountId, { dateFrom, dateTo } 
     query = query.lte("date", dateTo);
   }
 
-  const { data, error } = await query.order("date", { ascending: false });
-
-  if (error) {
-    throw error;
-  }
-
-  return data ?? [];
+  return fetchAllPages((from, to) => query.order("date", { ascending: false }).range(from, to));
 }
 
 export async function getOutstandingTransactionsForReports(accountId, { reportId, dateFrom, dateTo, currencyId } = {}) {
@@ -68,8 +62,7 @@ export async function getOutstandingTransactionsForReports(accountId, { reportId
     sourceQuery = sourceQuery.eq("currencyId", Number(currencyId));
   }
 
-  const { data: sourceRows, error: sourceError } = await sourceQuery;
-  if (sourceError) throw sourceError;
+  const sourceRows = await fetchAllPages((from, to) => sourceQuery.range(from, to));
 
   const txRows = (sourceRows ?? []).map((row) => ({
     ...row,
@@ -80,11 +73,13 @@ export async function getOutstandingTransactionsForReports(accountId, { reportId
   if (txRows.length === 0) return [];
 
   const txIds = txRows.map((row) => row.id).filter((id) => Number.isFinite(id) && id > 0);
-  const { data: paymentRows, error: paymentRowsError } = await supabase
-    .from("transactionDetails")
-    .select("transactionId, transactionPaidId, total")
-    .in("transactionPaidId", txIds);
-  if (paymentRowsError) throw paymentRowsError;
+  const paymentRows = await fetchAllPages((from, to) =>
+    supabase
+      .from("transactionDetails")
+      .select("transactionId, transactionPaidId, total")
+      .in("transactionPaidId", txIds)
+      .range(from, to)
+  );
 
   const paymentTxIds = Array.from(
     new Set((paymentRows ?? []).map((row) => Number(row.transactionId || 0)).filter((id) => Number.isFinite(id) && id > 0))
@@ -104,8 +99,7 @@ export async function getOutstandingTransactionsForReports(accountId, { reportId
       paymentTxQuery = paymentTxQuery.eq("currencyId", Number(currencyId));
     }
 
-    const { data: paidTransactions, error: paidTxError } = await paymentTxQuery;
-    if (paidTxError) throw paidTxError;
+    const paidTransactions = await fetchAllPages((from, to) => paymentTxQuery.range(from, to));
     validPaymentTxIds = new Set((paidTransactions ?? []).map((tx) => Number(tx.id)));
   }
 
@@ -182,11 +176,13 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
 
   let groupNameById = new Map();
   if (parentConceptIds.length > 0) {
-    const { data: groupConcepts, error: groupsError } = await supabase
-      .from("concepts")
-      .select("id, name")
-      .in("id", parentConceptIds);
-    if (groupsError) throw groupsError;
+    const groupConcepts = await fetchAllPages((from, to) =>
+      supabase
+        .from("concepts")
+        .select("id, name")
+        .in("id", parentConceptIds)
+        .range(from, to)
+    );
     groupNameById = new Map((groupConcepts ?? []).map((row) => [Number(row.id), row.name || "-"]));
   }
 
@@ -242,14 +238,16 @@ function tbdGroupName(flowType) {
 }
 
 export async function getCashflowBankBalances(accountId, { dateTo, currencyId } = {}) {
-  const { data: forms, error: formsError } = await supabase
-    .from("account_payment_forms")
-    .select("id, name, provider, kind, isActive")
-    .eq("accountId", accountId)
-    .eq("isActive", true)
-    .in("kind", ["bank_account", "cashbox"])
-    .order("name", { ascending: true });
-  if (formsError) throw formsError;
+  const forms = await fetchAllPages((from, to) =>
+    supabase
+      .from("account_payment_forms")
+      .select("id, name, provider, kind, isActive")
+      .eq("accountId", accountId)
+      .eq("isActive", true)
+      .in("kind", ["bank_account", "cashbox"])
+      .order("name", { ascending: true })
+      .range(from, to)
+  );
 
   let txQuery = supabase
     .from("transactions")
@@ -414,8 +412,7 @@ export async function getEmployeeAbsenceTotals(accountId, { dateFrom, dateTo } =
   if (dateFrom) query = query.gte("dateTo", dateFrom);
   if (dateTo) query = query.lte("dateFrom", dateTo);
 
-  const { data, error } = await query;
-  if (error) throw error;
+  const data = await fetchAllPages((from, to) => query.range(from, to));
 
   const grouped = new Map();
   (data ?? []).forEach((row) => {
@@ -446,17 +443,18 @@ export async function getSalesByEmployeeTotals(accountId, { dateFrom, dateTo, cu
   if (dateTo) txQuery = txQuery.lte("date", dateTo);
   if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
 
-  const { data: transactions, error: txError } = await txQuery;
-  if (txError) throw txError;
+  const transactions = await fetchAllPages((from, to) => txQuery.range(from, to));
 
   const txIds = (transactions ?? []).map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
   if (txIds.length === 0) return [];
 
-  const { data: details, error: detailsError } = await supabase
-    .from("transactionDetails")
-    .select("transactionId, quantity, total, sellerId, concepts(name), employes(name)")
-    .in("transactionId", txIds);
-  if (detailsError) throw detailsError;
+  const details = await fetchAllPages((from, to) =>
+    supabase
+      .from("transactionDetails")
+      .select("transactionId, quantity, total, sellerId, concepts(name), employes(name)")
+      .in("transactionId", txIds)
+      .range(from, to)
+  );
 
   const bySeller = new Map();
   (details ?? []).forEach((row) => {
@@ -511,8 +509,7 @@ export async function getExpensesByTagAndPaymentForm(accountId, { dateFrom, date
   if (dateTo) query = query.lte("date", dateTo);
   if (currencyId) query = query.eq("currencyId", Number(currencyId));
 
-  const { data, error } = await query;
-  if (error) throw error;
+  const data = await fetchAllPages((from, to) => query.range(from, to));
 
   const grouped = new Map();
   (data ?? []).forEach((row) => {
@@ -548,9 +545,7 @@ export async function getEmployeeLoansReport(accountId, { dateFrom, dateTo, curr
   if (dateTo) query = query.lte("date", dateTo);
   if (currencyId) query = query.eq("currencyId", Number(currencyId));
 
-  const { data, error } = await query.order("date", { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  return fetchAllPages((from, to) => query.order("date", { ascending: false }).range(from, to));
 }
 
 export async function getEmployeePayrollReport(accountId, { dateFrom, dateTo, currencyId } = {}) {
@@ -561,8 +556,7 @@ export async function getEmployeePayrollReport(accountId, { dateFrom, dateTo, cu
     .eq("isActive", true)
     .order("name", { ascending: true });
 
-  const { data: employeeRows, error: employeeError } = await employeesQuery;
-  if (employeeError) throw employeeError;
+  const employeeRows = await fetchAllPages((from, to) => employeesQuery.range(from, to));
 
   let txQuery = supabase
     .from("transactions")
@@ -576,8 +570,7 @@ export async function getEmployeePayrollReport(accountId, { dateFrom, dateTo, cu
   if (dateTo) txQuery = txQuery.lte("date", dateTo);
   if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
 
-  const { data: txRows, error: txError } = await txQuery.order("date", { ascending: true }).order("id", { ascending: true });
-  if (txError) throw txError;
+  const txRows = await fetchAllPages((from, to) => txQuery.order("date", { ascending: true }).order("id", { ascending: true }).range(from, to));
 
   const grouped = new Map();
   (employeeRows ?? []).forEach((employee) => {
@@ -623,15 +616,16 @@ export async function getEmployeePayrollReport(accountId, { dateFrom, dateTo, cu
 }
 
 export async function getCashboxesBalanceReport(accountId, { dateFrom, dateTo, currencyId } = {}) {
-  const { data: forms, error: formsError } = await supabase
-    .from("account_payment_forms")
-    .select("id, name, provider, reference, kind, isActive")
-    .eq("accountId", accountId)
-    .eq("isActive", true)
-    .eq("kind", "cashbox")
-    .order("name", { ascending: true });
-
-  if (formsError) throw formsError;
+  const forms = await fetchAllPages((from, to) =>
+    supabase
+      .from("account_payment_forms")
+      .select("id, name, provider, reference, kind, isActive")
+      .eq("accountId", accountId)
+      .eq("isActive", true)
+      .eq("kind", "cashbox")
+      .order("name", { ascending: true })
+      .range(from, to)
+  );
 
   let txQuery = supabase
     .from("transactions")
@@ -645,8 +639,7 @@ export async function getCashboxesBalanceReport(accountId, { dateFrom, dateTo, c
   if (dateTo) txQuery = txQuery.lte("date", dateTo);
   if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
 
-  const { data: transactions, error: txError } = await txQuery;
-  if (txError) throw txError;
+  const transactions = await fetchAllPages((from, to) => txQuery.range(from, to));
 
   const normalizeSignedTotal = (tx) => {
     const raw = Number(tx.total || 0);
@@ -724,26 +717,29 @@ export async function getPendingDeliveriesReport(accountId, { dateFrom, dateTo, 
   if (dateTo) txQuery = txQuery.lte("date", dateTo);
   if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
 
-  const { data: txRows, error: txError } = await txQuery.order("date", { ascending: false });
-  if (txError) throw txError;
+  const txRows = await fetchAllPages((from, to) => txQuery.order("date", { ascending: false }).range(from, to));
 
   const txIds = (txRows ?? []).map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
   if (!txIds.length) return [];
 
-  const { data: detailRows, error: detailError } = await supabase
-    .from("transactionDetails")
-    .select('id, transactionId, conceptId, quantity, quantityDelivered, "historicalQuantityDelivered", concepts(name)')
-    .in("transactionId", txIds);
-  if (detailError) throw detailError;
+  const detailRows = await fetchAllPages((from, to) =>
+    supabase
+      .from("transactionDetails")
+      .select('id, transactionId, conceptId, quantity, quantityDelivered, "historicalQuantityDelivered", concepts(name)')
+      .in("transactionId", txIds)
+      .range(from, to)
+  );
 
   const detailIds = (detailRows ?? []).map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
   const deliveredHistoryByDetailId = new Map();
   if (detailIds.length > 0) {
-    const { data: historyRows, error: historyError } = await supabase
-      .from("inventory_delivery_history")
-      .select('transactionDetailId, quantity')
-      .in("transactionDetailId", detailIds);
-    if (historyError) throw historyError;
+    const historyRows = await fetchAllPages((from, to) =>
+      supabase
+        .from("inventory_delivery_history")
+        .select('transactionDetailId, quantity')
+        .in("transactionDetailId", detailIds)
+        .range(from, to)
+    );
     (historyRows ?? []).forEach((row) => {
       const detailId = Number(row.transactionDetailId || 0);
       if (!detailId) return;

@@ -84,6 +84,44 @@ Sistema operativo y funcional en React + Supabase con módulos principales:
 - Flujo de caja y dashboard incluyen transferencias bancarias en el saldo por cuenta.
 - Kardex y stock se vienen alineando con `inventory_delivery_history`.
 - Precio unitario en factura/compra permite múltiples decimales.
+- Reportes con alto volumen ahora deben paginar lecturas de Supabase para evitar truncamiento en 1000 filas.
+
+## Handoff técnico: paginación de reportes
+### Problema encontrado
+- Supabase/PostgREST devuelve resultados paginados por defecto.
+- En el reporte de flujo de caja de `accountId = 8`, el saldo de `Caja chica` quedaba mal porque la consulta solo estaba leyendo las primeras `1000` filas.
+- Las transacciones `1591`, `1592` y `1593` quedaban fuera del dataset y el saldo mostraba `25090` en vez de `21251`.
+
+### Qué se hizo
+- En `src/services/reportsService.js` se agregó el helper `fetchAllPages(...)`.
+- Ese helper ya se usa para que los reportes del frontend lean todas las páginas necesarias en consultas que pueden crecer:
+  - flujo de caja
+  - saldos de caja
+  - CxC/CxP al corte
+  - ventas por empleado
+  - gastos por etiqueta y forma de pago
+  - planilla
+  - pendientes de entrega
+  - y listados base de reportes que dependan de transacciones o detalles
+- En `supabase/functions/export-report/index.ts` se agregó el mismo patrón `fetchAllPages(...)` para mantener la exportación alineada con pantalla.
+
+### Regla para cualquier reporte nuevo
+- Si el reporte consulta `transactions`, `transactionDetails`, `inventory_delivery_history`, `employee_absences`, `employes` o cualquier tabla que pueda superar `1000` filas, no usar una sola lectura directa.
+- Usar siempre un helper de paginación con `.range(from, to)` y acumular páginas hasta recibir un lote menor al tamaño configurado.
+- Aplicar esta regla tanto en:
+  - `src/services/reportsService.js`
+  - `supabase/functions/export-report/index.ts`
+- No asumir que “por cuenta no habrá tantos registros”; este incidente ya probó que sí ocurre en producción.
+
+### Checklist para futuros reportes
+- Confirmar si la consulta principal puede superar `1000` filas.
+- Confirmar si las consultas secundarias también pueden crecer:
+  - detalles
+  - pagos aplicados
+  - historial de entregas
+  - agrupaciones por empleado / cliente / producto
+- Si el reporte existe en pantalla y exportación, aplicar el mismo patrón en ambas.
+- Validar un caso real con más de `1000` filas antes de cerrar.
 
 ## Recomendación operativa
 Antes de tocar módulos financieros, leer:
