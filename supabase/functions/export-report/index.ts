@@ -3,6 +3,7 @@ import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
 const PRIOR_BALANCE_TAG = "__prior_balance__";
 const PAYABLE_CASH_IN_TAG = "__payable_cash_in__";
+const REPORT_PAGE_SIZE = 1000;
 
 interface ExportPayload {
   accountId: number;
@@ -68,6 +69,26 @@ type CashflowTxRow = {
 
 function isPayableCashIn(tx: { isAccountPayable?: boolean | null; tags?: string[] | null }) {
   return Boolean(tx?.isAccountPayable) && Array.isArray(tx?.tags) && tx.tags.includes(PAYABLE_CASH_IN_TAG);
+}
+
+async function fetchAllPages<T>(
+  buildPageQuery: (from: number, to: number) => Promise<{ data: T[] | null; error: { message?: string } | null }>
+): Promise<T[]> {
+  const rows: T[] = [];
+  let from = 0;
+
+  while (true) {
+    const to = from + REPORT_PAGE_SIZE - 1;
+    const { data, error } = await buildPageQuery(from, to);
+    if (error) throw new Error(error.message || "Failed to fetch paginated rows");
+
+    const batch = data ?? [];
+    rows.push(...batch);
+    if (batch.length < REPORT_PAGE_SIZE) break;
+    from += REPORT_PAGE_SIZE;
+  }
+
+  return rows;
 }
 
 type CashflowConceptDetail = {
@@ -473,8 +494,7 @@ async function fetchCashflowConceptTotals(
   if (payload.dateTo) txQuery = txQuery.lte("date", payload.dateTo);
   if (payload.currencyId != null) txQuery = txQuery.eq("currencyId", payload.currencyId);
 
-  const { data: transactions, error: txError } = await txQuery;
-  if (txError) throw txError;
+  const transactions = await fetchAllPages<CashflowTxRow>((from, to) => txQuery.range(from, to));
 
   const validTransactions = ((transactions ?? []) as CashflowTxRow[]).filter((tx) => {
     if (tx.isInternalTransfer && !Boolean(tx.isCashWithdrawal)) return false;
@@ -508,13 +528,13 @@ async function fetchCashflowConceptTotals(
   );
   const txIds = validTransactions.map((tx) => Number(tx.id));
 
-  const { data: details, error: detailsError } = await supabaseAdmin
-    .from("transactionDetails")
-    .select("transactionId, total, conceptId, concepts(id, name, parentConceptId)")
-    .in("transactionId", txIds);
-  if (detailsError) throw detailsError;
-
-  const detailRows = (details ?? []) as CashflowConceptDetail[];
+  const detailRows = await fetchAllPages<CashflowConceptDetail>((from, to) =>
+    supabaseAdmin
+      .from("transactionDetails")
+      .select("transactionId, total, conceptId, concepts(id, name, parentConceptId)")
+      .in("transactionId", txIds)
+      .range(from, to)
+  );
   const parentConceptIds = Array.from(
     new Set(
       detailRows
@@ -604,8 +624,7 @@ async function fetchCashflowBankBalances(
   if (payload.dateTo) txQuery = txQuery.lte("date", payload.dateTo);
   if (payload.currencyId != null) txQuery = txQuery.eq("currencyId", payload.currencyId);
 
-  const { data: transactions, error: txError } = await txQuery;
-  if (txError) throw txError;
+  const transactions = await fetchAllPages<any>((from, to) => txQuery.range(from, to));
 
   const normalizeSignedTotal = (tx: {
     total: number | null;
@@ -711,9 +730,7 @@ async function fetchReceivablePayableBalanceSummary(
       baseQuery = baseQuery.eq("currencyId", payload.currencyId);
     }
 
-    const { data: txRows, error: txError } = await baseQuery;
-    if (txError) throw txError;
-    const txItems = (txRows ?? []) as { id: number; total: number }[];
+    const txItems = await fetchAllPages<{ id: number; total: number }>((from, to) => baseQuery.range(from, to));
     if (txItems.length === 0) return 0;
 
     const txIds = txItems.map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
@@ -724,11 +741,12 @@ async function fetchReceivablePayableBalanceSummary(
       .eq("transactions.isActive", true)
       .lte("transactions.date", asOfDate);
 
-    const { data: paymentRows, error: paymentError } = await paymentQuery;
-    if (paymentError) throw paymentError;
+    const paymentRows = await fetchAllPages<{ transactionPaidId: number; total: number }>((from, to) =>
+      paymentQuery.range(from, to)
+    );
 
     const paidBySource = new Map<number, number>();
-    ((paymentRows ?? []) as Array<{ transactionPaidId: number; total: number }>).forEach((row) => {
+    paymentRows.forEach((row) => {
       const sourceId = Number(row.transactionPaidId || 0);
       if (!Number.isFinite(sourceId) || sourceId <= 0) return;
       paidBySource.set(sourceId, Number(paidBySource.get(sourceId) || 0) + Math.abs(Number(row.total || 0)));

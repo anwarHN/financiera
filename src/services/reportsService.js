@@ -3,9 +3,28 @@ import { supabase } from "../lib/supabase";
 const PRIOR_BALANCE_TAG = "__prior_balance__";
 const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
 const PAYABLE_CASH_IN_TAG = "__payable_cash_in__";
+const REPORT_PAGE_SIZE = 1000;
 
 function isPayableCashIn(tx) {
   return Boolean(tx?.isAccountPayable) && Array.isArray(tx?.tags) && tx.tags.includes(PAYABLE_CASH_IN_TAG);
+}
+
+async function fetchAllPages(buildPageQuery, pageSize = REPORT_PAGE_SIZE) {
+  const rows = [];
+  let from = 0;
+
+  while (true) {
+    const to = from + pageSize - 1;
+    const { data, error } = await buildPageQuery(from, to);
+    if (error) throw error;
+
+    const batch = data ?? [];
+    rows.push(...batch);
+    if (batch.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return rows;
 }
 
 export async function getTransactionsForReports(accountId, { dateFrom, dateTo } = {}) {
@@ -119,8 +138,7 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
   if (dateTo) txQuery = txQuery.lte("date", dateTo);
   if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
 
-  const { data: transactions, error: txError } = await txQuery;
-  if (txError) throw txError;
+  const transactions = await fetchAllPages((from, to) => txQuery.range(from, to));
 
   const validTransactions = (transactions ?? []).filter((tx) => {
     const type = Number(tx.type);
@@ -146,12 +164,13 @@ export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, cu
   );
   const txIds = validTransactions.map((tx) => Number(tx.id));
 
-  const { data: details, error: detailsError } = await supabase
-    .from("transactionDetails")
-    .select("transactionId, total, conceptId, concepts(id, name, parentConceptId)")
-    .in("transactionId", txIds);
-
-  if (detailsError) throw detailsError;
+  const details = await fetchAllPages((from, to) =>
+    supabase
+      .from("transactionDetails")
+      .select("transactionId, total, conceptId, concepts(id, name, parentConceptId)")
+      .in("transactionId", txIds)
+      .range(from, to)
+  );
 
   const parentConceptIds = Array.from(
     new Set(
@@ -244,8 +263,7 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
   if (dateTo) txQuery = txQuery.lte("date", dateTo);
   if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
 
-  const { data: transactions, error: txError } = await txQuery;
-  if (txError) throw txError;
+  const transactions = await fetchAllPages((from, to) => txQuery.range(from, to));
 
   const normalizeSignedTotal = (tx) => {
     const raw = Number(tx.total || 0);
@@ -309,47 +327,6 @@ export async function getCashflowBankBalances(accountId, { dateTo, currencyId } 
     });
   }
 
-  if (accountId === 8) {
-    const cashbox17Transactions = filteredTransactions
-      .filter((tx) => Number(tx.accountPaymentFormId || 0) === 17)
-      .map((tx) => ({
-        id: Number(tx.id || 0),
-        date: tx.date || null,
-        name: tx.name || null,
-        type: Number(tx.type || 0),
-        total: Number(tx.total || 0),
-        signedTotal: normalizeSignedTotal(tx),
-        isIncomingPayment: Boolean(tx.isIncomingPayment),
-        isOutcomingPayment: Boolean(tx.isOutcomingPayment),
-        isAccountPayable: Boolean(tx.isAccountPayable),
-        isInternalTransfer: Boolean(tx.isInternalTransfer),
-        isDeposit: Boolean(tx.isDeposit),
-        isCashWithdrawal: Boolean(tx.isCashWithdrawal),
-        tags: Array.isArray(tx.tags) ? tx.tags : []
-      }))
-      .sort((a, b) => {
-        if (String(a.date || "") !== String(b.date || "")) {
-          return String(a.date || "").localeCompare(String(b.date || ""));
-        }
-        return Number(a.id || 0) - Number(b.id || 0);
-      });
-
-    const cashbox17Row = rows.find((row) => Number(row.id || 0) === 17) || null;
-    const payload = {
-      accountId,
-      dateTo: dateTo || null,
-      currencyId: currencyId || null,
-      cashbox17Balance: Number(cashbox17Row?.balance || 0),
-      cashbox17Transactions
-    };
-
-    if (typeof window !== "undefined") {
-      window.__cashflowDebug = payload;
-    }
-
-    console.log("[cashflow-debug]", payload);
-  }
-
   return rows;
 }
 
@@ -370,8 +347,7 @@ export async function getCashflowOutstandingBalanceSummary(accountId, { asOfDate
       sourceQuery = sourceQuery.eq("currencyId", Number(currencyId));
     }
 
-    const { data: sourceRows, error: sourceError } = await sourceQuery;
-    if (sourceError) throw sourceError;
+    const sourceRows = await fetchAllPages((from, to) => sourceQuery.range(from, to));
 
     const txRows = (sourceRows ?? []).map((row) => ({ id: Number(row.id), total: Number(row.total || 0) }));
     if (txRows.length === 0) return 0;
@@ -379,11 +355,13 @@ export async function getCashflowOutstandingBalanceSummary(accountId, { asOfDate
     const txIds = txRows.map((row) => row.id).filter((id) => Number.isFinite(id) && id > 0);
     if (!txIds.length) return 0;
 
-    const { data: paymentRows, error: paymentRowsError } = await supabase
-      .from("transactionDetails")
-      .select("transactionId, transactionPaidId, total")
-      .in("transactionPaidId", txIds);
-    if (paymentRowsError) throw paymentRowsError;
+    const paymentRows = await fetchAllPages((from, to) =>
+      supabase
+        .from("transactionDetails")
+        .select("transactionId, transactionPaidId, total")
+        .in("transactionPaidId", txIds)
+        .range(from, to)
+    );
 
     const paymentTxIds = (paymentRows ?? [])
       .map((row) => Number(row.transactionId || 0))
@@ -391,15 +369,16 @@ export async function getCashflowOutstandingBalanceSummary(accountId, { asOfDate
 
     if (!paymentTxIds.length) return 0;
 
-    const { data: paidTransactions, error: paidTxError } = await supabase
-      .from("transactions")
-      .select("id")
-      .eq("accountId", accountId)
-      .eq("isActive", true)
-      .lte("date", resolvedDate)
-      .in("id", paymentTxIds);
-
-    if (paidTxError) throw paidTxError;
+    const paidTransactions = await fetchAllPages((from, to) =>
+      supabase
+        .from("transactions")
+        .select("id")
+        .eq("accountId", accountId)
+        .eq("isActive", true)
+        .lte("date", resolvedDate)
+        .in("id", paymentTxIds)
+        .range(from, to)
+    );
 
     const validPaymentTxIds = new Set((paidTransactions ?? []).map((tx) => Number(tx.id)));
     const paidBySource = new Map();
