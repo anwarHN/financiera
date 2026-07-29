@@ -115,6 +115,7 @@ function TransactionsPage({
     dateFrom: "",
     dateTo: "",
     person: "",
+    concept: "",
     employeeId: "",
     minAmount: "",
     maxAmount: ""
@@ -136,6 +137,7 @@ function TransactionsPage({
 
   const filteredItems = useMemo(() => {
     const personQuery = filters.person.trim().toLowerCase();
+    const conceptQuery = filters.concept.trim().toLowerCase();
     const minAmount = filters.minAmount === "" ? null : Number(filters.minAmount);
     const maxAmount = filters.maxAmount === "" ? null : Number(filters.maxAmount);
 
@@ -149,6 +151,10 @@ function TransactionsPage({
       if (personQuery) {
         const personName = (item.persons?.name || "").toLowerCase();
         if (!personName.includes(personQuery)) return false;
+      }
+      if (moduleType === "expense" && conceptQuery) {
+        const conceptName = String(item.conceptName || "").toLowerCase();
+        if (!conceptName.includes(conceptQuery)) return false;
       }
       if ((moduleType === "income" || moduleType === "expense") && filters.employeeId) {
         if (String(item.employeeId ?? "") !== filters.employeeId) return false;
@@ -258,6 +264,7 @@ function TransactionsPage({
       dateFrom: "",
       dateTo: "",
       person: "",
+      concept: "",
       employeeId: "",
       minAmount: "",
       maxAmount: ""
@@ -470,6 +477,18 @@ function TransactionsPage({
                   placeholder={`-- ${t("transactions.person")} --`}
                 />
               </label>
+              {moduleType === "expense" && (
+                <label className="field-block">
+                  <span>{t("transactions.concept")}</span>
+                  <input
+                    type="text"
+                    name="concept"
+                    value={filters.concept}
+                    onChange={handleFilterChange}
+                    placeholder={`-- ${t("transactions.concept")} --`}
+                  />
+                </label>
+              )}
               {(moduleType === "income" || moduleType === "expense") && (
                 <label className="field-block">
                   <span>{t("transactions.employee")}</span>
