@@ -39,6 +39,7 @@ const initialForm = {
       employee_loans: true,
       employee_payroll: true,
       cashboxes_balance: true,
+      cashbox_movements: true,
       pending_deliveries: true
     }
   }
@@ -95,6 +96,7 @@ function ProfilesPage() {
     { id: "employee_loans", titleKey: "reports.employeeLoans" },
     { id: "employee_payroll", titleKey: "reports.employeePayroll" },
     { id: "cashboxes_balance", titleKey: "reports.cashboxesBalance" },
+    { id: "cashbox_movements", titleKey: "reports.cashboxMovements" },
     { id: "pending_deliveries", titleKey: "reports.pendingDeliveries" }
   ];
 

@@ -234,6 +234,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   const [isSaving, setIsSaving] = useState(false);
   const [simpleSubmitAttempted, setSimpleSubmitAttempted] = useState(false);
   const [saleSubmitAttempted, setSaleSubmitAttempted] = useState(false);
+  const [editingTransactionSnapshot, setEditingTransactionSnapshot] = useState(null);
   const isEdit = Boolean(itemId);
 
   const conceptOptions = useMemo(() => concepts.filter(config.conceptFilter), [concepts, config.conceptFilter]);
@@ -417,6 +418,14 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     try {
       setIsLoading(true);
       const [tx, details] = await Promise.all([getTransactionById(itemId), listTransactionDetails(itemId)]);
+      setEditingTransactionSnapshot({
+        id: Number(tx.id),
+        total: Number(tx.total || 0),
+        payments: Number(tx.payments || 0),
+        balance: Number(tx.balance || 0),
+        isAccountReceivable: Boolean(tx.isAccountReceivable),
+        isAccountPayable: Boolean(tx.isAccountPayable)
+      });
 
       if (isLineBasedTransaction) {
         setSaleHeader({
@@ -699,6 +708,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     tags = [],
     incomingPayment = false,
     includeCreatedById = true,
+    existingPayments = null,
     affectsPayroll = false
   }) => {
     const parsedAccountPaymentFormId = accountPaymentFormId ? Number(accountPaymentFormId) : null;
@@ -706,6 +716,11 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       ? accountPaymentForms.find((item) => Number(item.id) === parsedAccountPaymentFormId) ?? null
       : null;
     const shouldAutoReconcile = selectedAccountPaymentForm?.kind === "bank_account";
+    const normalizedTotal = Number(totals.total || 0);
+    const normalizedExistingPayments = Math.max(Number(existingPayments || 0), 0);
+    const shouldPreserveAppliedPayments = !includeCreatedById && isCredit;
+    const nextPayments = shouldPreserveAppliedPayments ? normalizedExistingPayments : isCredit ? 0 : normalizedTotal;
+    const nextBalance = isCredit ? Math.max(normalizedTotal - nextPayments, 0) : 0;
 
     return {
       accountId: account.accountId,
@@ -724,13 +739,13 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       discounts: totals.discount,
       taxes: totals.tax,
       additionalCharges: totals.additionalCharges,
-      total: totals.total,
+      total: normalizedTotal,
       isAccountPayable: moduleType === "purchase" ? isCredit : false,
       isAccountReceivable: moduleType === "sale" ? isCredit : false,
       isIncomingPayment: incomingPayment,
       isOutcomingPayment: false,
-      balance: isCredit ? totals.total : 0,
-      payments: isCredit ? 0 : totals.total,
+      balance: nextBalance,
+      payments: nextPayments,
       isActive: true,
       currencyId: currencyId ? Number(currencyId) : null,
       projectId: projectId ? Number(projectId) : null,
@@ -843,7 +858,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       affectsPayroll: moduleType === "income" || moduleType === "expense" ? simpleForm.affectsPayroll : false,
       tags: normalizedTags,
       incomingPayment: moduleType === "income",
-      includeCreatedById: !isEdit
+      includeCreatedById: !isEdit,
+      existingPayments: editingTransactionSnapshot?.payments
     });
     transactionPayload.deliveryAddress = simpleForm.comments?.trim() || null;
 
@@ -936,7 +952,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       projectId: null,
       tags: [PRIOR_BALANCE_TAG],
       incomingPayment: false,
-      includeCreatedById: !isEdit
+      includeCreatedById: !isEdit,
+      existingPayments: editingTransactionSnapshot?.payments
     });
 
     const shouldAddPendingProducts = moduleType === "sale" && priorBalanceAddPendingProducts;
@@ -1059,7 +1076,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         ? Array.from(new Set([...(saleHeader.tags || []), INVENTORY_ADJUSTMENT_TAG]))
         : saleHeader.tags,
       incomingPayment: false,
-      includeCreatedById: !isEdit
+      includeCreatedById: !isEdit,
+      existingPayments: editingTransactionSnapshot?.payments
     });
 
     const detailPayloads =

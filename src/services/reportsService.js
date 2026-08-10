@@ -9,6 +9,42 @@ function isPayableCashIn(tx) {
   return Boolean(tx?.isAccountPayable) && Array.isArray(tx?.tags) && tx.tags.includes(PAYABLE_CASH_IN_TAG);
 }
 
+function normalizeCashMovementTotal(tx) {
+  const raw = Number(tx.total || 0);
+  const abs = Math.abs(raw);
+  if (isPayableCashIn(tx)) return abs;
+  if (tx.isIncomingPayment) return abs;
+  if (tx.isOutcomingPayment) return -abs;
+  const type = Number(tx.type);
+  if (type === 1 || type === 3) return abs;
+  if (type === 2 || type === 4) return -abs;
+  return raw;
+}
+
+function isCashMovementIncluded(tx) {
+  if (Boolean(tx.isInternalTransfer) && !Boolean(tx.isCashWithdrawal) && !Boolean(tx.isDeposit)) return false;
+  if (Boolean(tx.isAccountReceivable)) return false;
+  if (Boolean(tx.isAccountPayable) && !isPayableCashIn(tx)) return false;
+  if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
+  if (Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG)) return false;
+  return true;
+}
+
+function getCashMovementTypeLabel(tx) {
+  if (Boolean(tx.isDeposit)) return "Depósito bancario";
+  if (Boolean(tx.isCashWithdrawal)) return "Retiro de efectivo";
+  if (Boolean(tx.isInternalTransfer)) return "Traslado interno";
+  if (isPayableCashIn(tx)) return "Ingreso por cuenta por pagar";
+  if (Boolean(tx.isIncomingPayment)) return "Pago entrante";
+  if (Boolean(tx.isOutcomingPayment)) return "Pago saliente";
+  const type = Number(tx.type);
+  if (type === 1) return "Venta";
+  if (type === 2) return "Gasto";
+  if (type === 3) return "Ingreso";
+  if (type === 4) return "Compra";
+  return "Transacción";
+}
+
 async function fetchAllPages(buildPageQuery, pageSize = REPORT_PAGE_SIZE) {
   const rows = [];
   let from = 0;
@@ -640,32 +676,12 @@ export async function getCashboxesBalanceReport(accountId, { dateFrom, dateTo, c
   if (currencyId) txQuery = txQuery.eq("currencyId", Number(currencyId));
 
   const transactions = await fetchAllPages((from, to) => txQuery.range(from, to));
-
-  const normalizeSignedTotal = (tx) => {
-    const raw = Number(tx.total || 0);
-    const abs = Math.abs(raw);
-    if (isPayableCashIn(tx)) return abs;
-    if (tx.isIncomingPayment) return abs;
-    if (tx.isOutcomingPayment) return -abs;
-    const type = Number(tx.type);
-    if (type === 1 || type === 3) return abs;
-    if (type === 2 || type === 4) return -abs;
-    return raw;
-  };
-
-  const filteredTransactions = (transactions ?? []).filter((tx) => {
-    if (Boolean(tx.isInternalTransfer) && !Boolean(tx.isCashWithdrawal) && !Boolean(tx.isDeposit)) return false;
-    if (Boolean(tx.isAccountReceivable)) return false;
-    if (Boolean(tx.isAccountPayable) && !isPayableCashIn(tx)) return false;
-    if (Array.isArray(tx.tags) && tx.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
-    if (Array.isArray(tx.tags) && tx.tags.includes(PRIOR_BALANCE_TAG)) return false;
-    return true;
-  });
+  const filteredTransactions = (transactions ?? []).filter(isCashMovementIncluded);
 
   const totalsByFormId = new Map();
   let unassignedCashTotal = 0;
   filteredTransactions.forEach((tx) => {
-    const signedAmount = normalizeSignedTotal(tx);
+    const signedAmount = normalizeCashMovementTotal(tx);
     const formId = Number(tx.accountPaymentFormId || 0);
     if (formId) {
       totalsByFormId.set(formId, Number(totalsByFormId.get(formId) || 0) + signedAmount);
@@ -704,6 +720,35 @@ export async function getCashboxesBalanceReport(accountId, { dateFrom, dateTo, c
   }
 
   return rows;
+}
+
+export async function getCashboxMovementsReport(accountId, { cashboxId, dateFrom, dateTo, currencyId } = {}) {
+  const resolvedCashboxId = Number(cashboxId || 0);
+  if (!resolvedCashboxId) return [];
+
+  let query = supabase
+    .from("transactions")
+    .select(
+      'id, date, type, total, name, "referenceNumber", currencyId, "accountPaymentFormId", "paymentMethodId", isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isDeposit, isCashWithdrawal, tags, persons(name), payment_methods(code)'
+    )
+    .eq("accountId", accountId)
+    .eq("isActive", true)
+    .eq("accountPaymentFormId", resolvedCashboxId);
+
+  if (dateFrom) query = query.gte("date", dateFrom);
+  if (dateTo) query = query.lte("date", dateTo);
+  if (currencyId) query = query.eq("currencyId", Number(currencyId));
+
+  const rows = await fetchAllPages((from, to) => query.order("date", { ascending: false }).order("id", { ascending: false }).range(from, to));
+
+  return (rows ?? [])
+    .filter(isCashMovementIncluded)
+    .map((row) => ({
+      ...row,
+      personName: row.persons?.name || "-",
+      typeLabel: getCashMovementTypeLabel(row),
+      total: normalizeCashMovementTotal(row)
+    }));
 }
 
 export async function getPendingDeliveriesReport(accountId, { dateFrom, dateTo, currencyId } = {}) {
@@ -787,7 +832,8 @@ export async function exportReportXlsx({
   dateTo,
   currencyId,
   budgetId,
-  projectId
+  projectId,
+  cashboxId
 }) {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -826,7 +872,7 @@ export async function exportReportXlsx({
         apikey: supabaseAnonKey,
         Authorization: `Bearer ${accessToken}`
       },
-      body: JSON.stringify({ accountId, reportId, dateFrom, dateTo, currencyId, budgetId, projectId })
+      body: JSON.stringify({ accountId, reportId, dateFrom, dateTo, currencyId, budgetId, projectId, cashboxId })
     });
 
     let payload;

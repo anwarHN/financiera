@@ -20,10 +20,12 @@ interface ExportPayload {
     | "employee_loans"
     | "employee_payroll"
     | "cashboxes_balance"
+    | "cashbox_movements"
     | "pending_deliveries";
   dateFrom?: string | null;
   dateTo?: string | null;
   currencyId?: number | null;
+  cashboxId?: number | null;
 }
 
 type BaseTxRow = {
@@ -205,6 +207,7 @@ const reportTitles: Record<ExportPayload["reportId"], string> = {
   employee_loans: "Préstamos a empleados",
   employee_payroll: "Planilla de empleados",
   cashboxes_balance: "Saldos de cajas",
+  cashbox_movements: "Movimientos de caja chica",
   pending_deliveries: "Pendientes de entrega"
 };
 
@@ -1171,6 +1174,99 @@ async function buildCashboxesBalanceReport(
   };
 }
 
+async function buildCashboxMovementsReport(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payload: ExportPayload
+): Promise<ExportBuildResult> {
+  const resolvedCashboxId = Number(payload.cashboxId || 0);
+  if (!resolvedCashboxId) {
+    throw new Error("Missing cashboxId for cashbox movements report");
+  }
+
+  const { data: cashboxRow, error: cashboxError } = await supabaseAdmin
+    .from("account_payment_forms")
+    .select("id, name")
+    .eq("accountId", payload.accountId)
+    .eq("isActive", true)
+    .eq("kind", "cashbox")
+    .eq("id", resolvedCashboxId)
+    .single();
+  if (cashboxError) throw cashboxError;
+  const cashboxName = (cashboxRow as { name?: string } | null)?.name || String(resolvedCashboxId);
+
+  let txQuery = supabaseAdmin
+    .from("transactions")
+    .select(
+      'id, date, type, total, name, "referenceNumber", currencyId, "accountPaymentFormId", "paymentMethodId", isIncomingPayment, isOutcomingPayment, isAccountReceivable, isAccountPayable, isInternalTransfer, isDeposit, isCashWithdrawal, tags, persons(name), payment_methods(code)'
+    )
+    .eq("accountId", payload.accountId)
+    .eq("isActive", true)
+    .eq("accountPaymentFormId", resolvedCashboxId);
+
+  if (payload.dateFrom) txQuery = txQuery.gte("date", payload.dateFrom);
+  if (payload.dateTo) txQuery = txQuery.lte("date", payload.dateTo);
+  if (payload.currencyId != null) txQuery = txQuery.eq("currencyId", payload.currencyId);
+
+  const txRows = await fetchAllPages<any>((from, to) =>
+    txQuery.order("date", { ascending: false }).order("id", { ascending: false }).range(from, to)
+  );
+
+  const normalizeSignedTotal = (tx: {
+    total: number;
+    type: number;
+    isIncomingPayment: boolean;
+    isOutcomingPayment: boolean;
+    isAccountPayable?: boolean | null;
+    tags?: string[] | null;
+  }) => {
+    const raw = Number(tx.total || 0);
+    const abs = Math.abs(raw);
+    if (isPayableCashIn(tx)) return abs;
+    if (tx.isIncomingPayment) return abs;
+    if (tx.isOutcomingPayment) return -abs;
+    const type = Number(tx.type);
+    if (type === 1 || type === 3) return abs;
+    if (type === 2 || type === 4) return -abs;
+    return raw;
+  };
+
+  const resolveTypeLabel = (tx: any) => {
+    if (Boolean(tx.isDeposit)) return "Depósito bancario";
+    if (Boolean(tx.isCashWithdrawal)) return "Retiro de efectivo";
+    if (Boolean(tx.isInternalTransfer)) return "Traslado interno";
+    if (isPayableCashIn(tx)) return "Ingreso por cuenta por pagar";
+    if (Boolean(tx.isIncomingPayment)) return "Pago entrante";
+    if (Boolean(tx.isOutcomingPayment)) return "Pago saliente";
+    return txTypeLabel(Number(tx.type));
+  };
+
+  const filteredTransactions = (txRows ?? []).filter((row) => {
+    if (Boolean(row.isInternalTransfer) && !Boolean(row.isCashWithdrawal) && !Boolean(row.isDeposit)) return false;
+    if (Boolean(row.isAccountReceivable)) return false;
+    if (Boolean(row.isAccountPayable) && !isPayableCashIn(row)) return false;
+    if (Array.isArray(row.tags) && row.tags.includes(INVENTORY_ADJUSTMENT_TAG)) return false;
+    if (Array.isArray(row.tags) && row.tags.includes(PRIOR_BALANCE_TAG)) return false;
+    return true;
+  });
+
+  const rows = filteredTransactions.map((row) => ({
+    id: Number(row.id),
+    fecha: row.date || "-",
+    tipo: resolveTypeLabel(row),
+    persona: row.persons?.name || "-",
+    descripcion: row.name || "-",
+    referencia: row.referenceNumber || "-",
+    total: sanitizeNumber(normalizeSignedTotal(row))
+  }));
+
+  return {
+    rows,
+    total: rows.reduce((acc, row) => acc + Number(row.total || 0), 0),
+    balance: 0,
+    extras: [["Caja", cashboxName]]
+  };
+}
+
 async function buildPendingDeliveriesReport(
   supabaseAdmin: ReturnType<typeof createClient>,
   payload: ExportPayload
@@ -1459,6 +1555,9 @@ async function buildReportData(supabaseAdmin: any, payload: ExportPayload): Prom
   }
   if (payload.reportId === "cashboxes_balance") {
     return buildCashboxesBalanceReport(supabaseAdmin, payload);
+  }
+  if (payload.reportId === "cashbox_movements") {
+    return buildCashboxMovementsReport(supabaseAdmin, payload);
   }
   if (payload.reportId === "pending_deliveries") {
     return buildPendingDeliveriesReport(supabaseAdmin, payload);

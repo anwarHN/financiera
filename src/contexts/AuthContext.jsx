@@ -6,6 +6,24 @@ import { getCurrentUserProfile } from "../services/profilesService";
 import { resolveAccountSectionByPath, resolveReadModuleByPath } from "../utils/accessControl";
 
 const AuthContext = createContext(null);
+const defaultReportAccess = {
+  sales: true,
+  receivable: true,
+  payable: true,
+  internal_obligations: true,
+  budget_execution: true,
+  project_execution: true,
+  expenses: true,
+  cashflow: true,
+  employee_absences: true,
+  sales_by_employee: true,
+  expenses_by_tag_payment_form: true,
+  employee_loans: true,
+  employee_payroll: true,
+  cashboxes_balance: true,
+  cashbox_movements: true,
+  pending_deliveries: true
+};
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
@@ -172,7 +190,7 @@ export function AuthProvider({ children }) {
     const profileData = currentProfile?.account_profiles ?? null;
     const isSystemAdmin = Boolean(profileData?.isSystemAdmin);
     const permissions = profileData?.permissions ?? {};
-    const reportAccess = permissions?.reportAccess ?? {};
+    const reportAccess = { ...defaultReportAccess, ...(permissions?.reportAccess ?? {}) };
     const hasModulePermission = (moduleKey, action = "read") => {
       if (isSystemAdmin) return true;
       return Boolean(permissions?.[moduleKey]?.[action]);

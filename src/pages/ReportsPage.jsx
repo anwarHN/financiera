@@ -3,10 +3,12 @@ import { FiChevronRight } from "react-icons/fi";
 import ReadOnlyField from "../components/form/ReadOnlyField";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import { listAccountPaymentForms } from "../services/accountPaymentFormsService";
 import { getBudgetExecutionReport, getProjectExecutionReport, listBudgets } from "../services/budgetsService";
 import { listCurrencies } from "../services/currenciesService";
 import { listProjects } from "../services/projectsService";
 import {
+  getCashboxMovementsReport,
   exportReportXlsx,
   getCashboxesBalanceReport,
   getCashflowBankBalances,
@@ -40,6 +42,7 @@ const fullReportCatalog = [
   { id: "employee_loans", titleKey: "reports.employeeLoans", filters: ["dateRange", "currency"] },
   { id: "employee_payroll", titleKey: "reports.employeePayroll", filters: ["dateRange", "currency"] },
   { id: "cashboxes_balance", titleKey: "reports.cashboxesBalance", filters: ["dateRange", "currency"] },
+  { id: "cashbox_movements", titleKey: "reports.cashboxMovements", filters: ["dateRange", "currency", "cashbox"] },
   { id: "pending_deliveries", titleKey: "reports.pendingDeliveries", filters: ["dateRange", "currency"] }
 ];
 
@@ -47,10 +50,11 @@ function ReportsPage() {
   const { t, language } = useI18n();
   const { account, hasModulePermission, hasReportPermission, isSystemAdmin } = useAuth();
   const [selectedReport, setSelectedReport] = useState("sales");
-  const [filters, setFilters] = useState({ dateFrom: "", dateTo: "", currencyId: "", budgetId: "", projectId: "" });
+  const [filters, setFilters] = useState({ dateFrom: "", dateTo: "", currencyId: "", budgetId: "", projectId: "", cashboxId: "" });
   const [currencies, setCurrencies] = useState([]);
   const [projects, setProjects] = useState([]);
   const [budgets, setBudgets] = useState([]);
+  const [accountPaymentForms, setAccountPaymentForms] = useState([]);
   const [results, setResults] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -71,6 +75,10 @@ function ReportsPage() {
     [hasReportPermission, isSystemAdmin]
   );
   const canReadReportsModule = hasModulePermission("reports", "read");
+  const cashboxOptions = useMemo(
+    () => accountPaymentForms.filter((item) => item.kind === "cashbox"),
+    [accountPaymentForms]
+  );
   const reportConfig = useMemo(
     () => reportCatalog.find((report) => report.id === selectedReport) ?? reportCatalog[0] ?? null,
     [selectedReport, reportCatalog]
@@ -106,18 +114,21 @@ function ReportsPage() {
 
   const loadDependencies = async () => {
     try {
-      const [currenciesData, projectsData, budgetsData] = await Promise.all([
+      const [currenciesData, projectsData, budgetsData, paymentFormsData] = await Promise.all([
         listCurrencies(account.accountId).catch(() => []),
         listProjects(account.accountId).catch(() => []),
-        listBudgets(account.accountId).catch(() => [])
+        listBudgets(account.accountId).catch(() => []),
+        listAccountPaymentForms(account.accountId).catch(() => [])
       ]);
       setCurrencies(currenciesData);
       setProjects(projectsData);
       setBudgets(budgetsData);
+      setAccountPaymentForms(paymentFormsData);
     } catch {
       setCurrencies([]);
       setProjects([]);
       setBudgets([]);
+      setAccountPaymentForms([]);
     }
   };
 
@@ -417,6 +428,26 @@ function ReportsPage() {
           payableOutstanding: 0
         });
         setCashflowBankBalances([]);
+      } else if (selectedReport === "cashbox_movements") {
+        if (!filters.cashboxId) {
+          setError(t("reports.cashboxRequired"));
+          return;
+        }
+        const rows = await getCashboxMovementsReport(account.accountId, {
+          cashboxId: Number(filters.cashboxId),
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined,
+          currencyId: filters.currencyId || undefined
+        });
+        setResults(rows);
+        setCashflowSummary({
+          previousBalance: 0,
+          periodMovements: 0,
+          newBalance: 0,
+          receivableOutstanding: 0,
+          payableOutstanding: 0
+        });
+        setCashflowBankBalances([]);
       } else if (selectedReport === "pending_deliveries") {
         const rows = await getPendingDeliveriesReport(account.accountId, {
           dateFrom: filters.dateFrom || undefined,
@@ -483,7 +514,9 @@ function ReportsPage() {
       return results.map((tx) => ({
         ...tx,
         typeLabel:
-          selectedReport === "budget_execution" || selectedReport === "project_execution"
+          selectedReport === "cashbox_movements"
+            ? tx.typeLabel || "-"
+            : selectedReport === "budget_execution" || selectedReport === "project_execution"
             ? tx.conceptName || "-"
             : selectedReport === "internal_obligations"
               ? tx.name || t("reports.internalObligations")
@@ -542,14 +575,16 @@ function ReportsPage() {
     const currencyName = currencies.find((c) => String(c.id) === String(filters.currencyId))?.name || t("reports.currencyFilterHint");
     const budgetName = budgets.find((b) => String(b.id) === String(filters.budgetId))?.name || "-";
     const projectName = projects.find((p) => String(p.id) === String(filters.projectId))?.name || "-";
+    const cashboxName = cashboxOptions.find((item) => String(item.id) === String(filters.cashboxId))?.name || "-";
     return [
       ...(!usesAsOfDateOnly ? [`${t("reports.dateFrom")}: ${formatDate(filters.dateFrom, language)}`] : []),
       `${t("reports.dateTo")}: ${formatDate(filters.dateTo, language)}`,
       `${t("reports.currencyFilter")}: ${currencyName}`,
       `${t("reports.budget")}: ${budgetName}`,
-      `${t("projects.project")}: ${projectName}`
+      `${t("projects.project")}: ${projectName}`,
+      `${t("transactions.cashbox")}: ${cashboxName}`
     ];
-  }, [filters, currencies, budgets, projects, t, language, usesAsOfDateOnly]);
+  }, [filters, currencies, budgets, projects, cashboxOptions, t, language, usesAsOfDateOnly]);
 
   const total = useMemo(() => {
     if (selectedReport === "receivable" || selectedReport === "payable") {
@@ -566,6 +601,9 @@ function ReportsPage() {
     }
     if (selectedReport === "cashboxes_balance") {
       return results.reduce((acc, item) => acc + Number(item.balance || 0), 0);
+    }
+    if (selectedReport === "cashbox_movements") {
+      return results.reduce((acc, item) => acc + Number(item.total || 0), 0);
     }
     if (selectedReport === "pending_deliveries") {
       return results.reduce((acc, item) => acc + Number(item.totalPendingQuantity || 0), 0);
@@ -606,7 +644,8 @@ function ReportsPage() {
         dateTo: filters.dateTo || null,
         currencyId: filters.currencyId ? Number(filters.currencyId) : null,
         budgetId: filters.budgetId ? Number(filters.budgetId) : null,
-        projectId: filters.projectId ? Number(filters.projectId) : null
+        projectId: filters.projectId ? Number(filters.projectId) : null,
+        cashboxId: filters.cashboxId ? Number(filters.cashboxId) : null
       });
       window.open(exported.downloadUrl, "_blank", "noopener,noreferrer");
       setError("");
@@ -703,6 +742,20 @@ function ReportsPage() {
                     {projects.map((project) => (
                       <option key={project.id} value={project.id}>
                         {project.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              {reportConfig.filters.includes("cashbox") && (
+                <label className="field-block form-span-2">
+                  <span>{t("transactions.cashbox")}</span>
+                  <select name="cashboxId" value={filters.cashboxId} onChange={handleFilterChange}>
+                    <option value="">{`-- ${t("reports.selectCashbox")} --`}</option>
+                    {cashboxOptions.map((cashbox) => (
+                      <option key={cashbox.id} value={cashbox.id}>
+                        {cashbox.name}
                       </option>
                     ))}
                   </select>
@@ -900,6 +953,16 @@ function ReportsPage() {
                   <th>{t("paymentForms.reference")}</th>
                   <th className="num-col">{t("transactions.balance")}</th>
                 </tr>
+              ) : selectedReport === "cashbox_movements" ? (
+                <tr>
+                  <th className="num-col">ID</th>
+                  <th>{t("transactions.date")}</th>
+                  <th>{t("common.type")}</th>
+                  <th>{t("transactions.person")}</th>
+                  <th>{t("common.name")}</th>
+                  <th>{t("transactions.referenceNumber")}</th>
+                  <th className="num-col">{t("transactions.total")}</th>
+                </tr>
               ) : selectedReport === "pending_deliveries" ? (
                 <tr>
                   <th className="num-col">ID</th>
@@ -965,6 +1028,8 @@ function ReportsPage() {
                                     ? 7
                                   : selectedReport === "cashboxes_balance"
                                     ? 4
+                                    : selectedReport === "cashbox_movements"
+                                      ? 7
                                     : selectedReport === "pending_deliveries"
                                       ? 7
                                 : 5
@@ -1078,6 +1143,18 @@ function ReportsPage() {
                     <td>{row.provider || "-"}</td>
                     <td>{row.reference || "-"}</td>
                     <td className="num-col">{formatNumber(row.balance || 0)}</td>
+                  </tr>
+                ))
+              ) : selectedReport === "cashbox_movements" ? (
+                rowsWithTypeLabel.map((row) => (
+                  <tr key={`cashbox-movement-${row.id}`}>
+                    <td className="num-col">{row.id}</td>
+                    <td>{formatDate(row.date, language)}</td>
+                    <td>{row.typeLabel || "-"}</td>
+                    <td>{row.personName || "-"}</td>
+                    <td>{row.name || "-"}</td>
+                    <td>{row.referenceNumber || "-"}</td>
+                    <td className="num-col">{formatNumber(row.total || 0)}</td>
                   </tr>
                 ))
               ) : selectedReport === "pending_deliveries" ? (
