@@ -13,7 +13,8 @@ import {
   listInventoryDeliveryHistory,
   listPendingDeliveryInvoices,
   listTransactionDetails,
-  registerInventoryDelivery
+  registerInventoryDelivery,
+  voidInventoryDeliveryBatch
 } from "../services/transactionsService";
 import { formatDate } from "../utils/dateFormat";
 import { formatNumber } from "../utils/numberFormat";
@@ -23,7 +24,7 @@ const pageSize = 10;
 function InventoryDeliveriesPage() {
   const { t, language } = useI18n();
   const { account } = useAuth();
-  const { canCreate, canUpdate } = useModulePermissions("transactions");
+  const { canCreate, canUpdate, canVoidTransactions } = useModulePermissions("transactions");
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -35,7 +36,8 @@ function InventoryDeliveriesPage() {
     open: false,
     transaction: null,
     history: [],
-    isLoading: false
+    isLoading: false,
+    voidingBatchKey: ""
   });
   const [invoiceLookup, setInvoiceLookup] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
@@ -126,14 +128,16 @@ function InventoryDeliveriesPage() {
         open: true,
         transaction: invoice,
         history: [],
-        isLoading: true
+        isLoading: true,
+        voidingBatchKey: ""
       });
       const history = await listInventoryDeliveryHistory(invoice.id);
       setDeliveryHistoryModal({
         open: true,
         transaction: invoice,
         history,
-        isLoading: false
+        isLoading: false,
+        voidingBatchKey: ""
       });
       setError("");
     } catch {
@@ -142,7 +146,8 @@ function InventoryDeliveriesPage() {
         open: false,
         transaction: null,
         history: [],
-        isLoading: false
+        isLoading: false,
+        voidingBatchKey: ""
       });
     }
   };
@@ -152,8 +157,44 @@ function InventoryDeliveriesPage() {
       open: false,
       transaction: null,
       history: [],
-      isLoading: false
+      isLoading: false,
+      voidingBatchKey: ""
     });
+  };
+
+  const handleVoidDeliveryBatch = async (batch) => {
+    if (!deliveryHistoryModal.transaction?.id || !batch?.deliveryBatchKey || !batch?.isVoidable) return;
+    if (!window.confirm(t("inventory.deliveries.confirmVoid"))) return;
+
+    try {
+      setDeliveryHistoryModal((prev) => ({
+        ...prev,
+        voidingBatchKey: batch.deliveryBatchKey
+      }));
+      await voidInventoryDeliveryBatch({
+        transactionId: Number(deliveryHistoryModal.transaction.id),
+        deliveryBatchKey: batch.deliveryBatchKey
+      });
+      const [history, rows] = await Promise.all([
+        listInventoryDeliveryHistory(deliveryHistoryModal.transaction.id),
+        listPendingDeliveryInvoices(account.accountId)
+      ]);
+      setItems(rows);
+      setDeliveryHistoryModal((prev) => ({
+        ...prev,
+        transaction: rows.find((row) => Number(row.id) === Number(prev.transaction?.id)) ?? prev.transaction,
+        history,
+        isLoading: false,
+        voidingBatchKey: ""
+      }));
+      setError("");
+    } catch (err) {
+      setDeliveryHistoryModal((prev) => ({
+        ...prev,
+        voidingBatchKey: ""
+      }));
+      setError(err?.message || t("common.genericSaveError"));
+    }
   };
 
   const handleDraftChange = (detailId, value) => {
@@ -428,6 +469,9 @@ function InventoryDeliveriesPage() {
         transaction={deliveryHistoryModal.transaction}
         history={deliveryHistoryModal.history}
         isLoading={deliveryHistoryModal.isLoading}
+        canVoid={canVoidTransactions}
+        voidingBatchKey={deliveryHistoryModal.voidingBatchKey}
+        onVoidBatch={handleVoidDeliveryBatch}
       />
     </div>
   );

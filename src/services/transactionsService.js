@@ -565,6 +565,7 @@ export async function listInventoryDeliveryHistory(transactionId) {
       deliveryBatchKey: key,
       deliveryDate: row.deliveryDate || null,
       createdAt: row.createdAt || null,
+      isVoidable: key.startsWith("delivery-"),
       lines: []
     };
     current.lines.push({
@@ -577,6 +578,21 @@ export async function listInventoryDeliveryHistory(transactionId) {
   });
 
   return Array.from(batches.values());
+}
+
+export async function voidInventoryDeliveryBatch({ transactionId, deliveryBatchKey }) {
+  const txId = Number(transactionId);
+  const batchKey = String(deliveryBatchKey || "").trim();
+
+  if (!Number.isFinite(txId) || txId <= 0) throw new Error("Invalid transaction id");
+  if (!batchKey) throw new Error("Invalid delivery batch key");
+
+  const { data, error } = await supabase.rpc("void_inventory_delivery_batch", {
+    p_transaction_id: txId,
+    p_delivery_batch_key: batchKey
+  });
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function listPaymentsForTransaction(transactionId) {

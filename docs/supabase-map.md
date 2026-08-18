@@ -141,6 +141,8 @@ Campos actuales relevantes:
 - opcionalmente, tras backfill:
   - `isInferred`
   - `source`
+Funciones relevantes:
+- `void_inventory_delivery_batch(transaction_id, delivery_batch_key)`: revierte un lote manual `delivery-*` y ajusta `transactionDetails.quantityDelivered`.
 
 ## Edge Functions
 ### `export-report`

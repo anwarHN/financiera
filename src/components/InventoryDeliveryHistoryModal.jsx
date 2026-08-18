@@ -12,7 +12,16 @@ function formatDateTime(value, language) {
   }).format(date);
 }
 
-export default function InventoryDeliveryHistoryModal({ isOpen, onClose, transaction, history = [], isLoading = false }) {
+export default function InventoryDeliveryHistoryModal({
+  isOpen,
+  onClose,
+  transaction,
+  history = [],
+  isLoading = false,
+  canVoid = false,
+  voidingBatchKey = "",
+  onVoidBatch
+}) {
   const { t, language } = useI18n();
 
   if (!isOpen) return null;
@@ -53,12 +62,13 @@ export default function InventoryDeliveryHistoryModal({ isOpen, onClose, transac
                   <th>{t("transactions.date")}</th>
                   <th>{t("transactions.product")}</th>
                   <th className="num-col">{t("inventory.deliveries.deliveredQuantity")}</th>
+                  <th>{t("common.actions")}</th>
                 </tr>
               </thead>
               {history.map((batch) => (
                 <tbody key={batch.deliveryBatchKey}>
                   <tr className="nested-table-row">
-                    <td colSpan={4}>
+                    <td colSpan={5}>
                       <strong>{formatDateTime(batch.createdAt, language)}</strong>
                     </td>
                   </tr>
@@ -73,6 +83,20 @@ export default function InventoryDeliveryHistoryModal({ isOpen, onClose, transac
                           minimumFractionDigits: 0,
                           maximumFractionDigits: 2
                         })}
+                      </td>
+                      <td>
+                        {canVoid && batch.isVoidable && onVoidBatch ? (
+                          <button
+                            type="button"
+                            className="button-link-secondary danger-text"
+                            disabled={voidingBatchKey === batch.deliveryBatchKey}
+                            onClick={() => onVoidBatch(batch)}
+                          >
+                            {voidingBatchKey === batch.deliveryBatchKey ? t("common.loading") : t("inventory.deliveries.void")}
+                          </button>
+                        ) : (
+                          "-"
+                        )}
                       </td>
                     </tr>
                   ))}

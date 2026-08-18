@@ -169,6 +169,7 @@ Notas:
 ### Inventario / entregas / devoluciones
 - `createSaleReturnTransaction`: crea devolución de factura.
 - `registerInventoryDelivery`: registra entrega posterior y escribe historial.
+- `voidInventoryDeliveryBatch`: anula un lote manual de entrega y revierte cantidades entregadas.
 - `syncInitialInvoiceDeliveryHistory`: sincroniza entregado inicial de factura hacia historial.
 
 ### Pagos

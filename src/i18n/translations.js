@@ -319,7 +319,9 @@ export const translations = {
         deliveredQuantity: "Cantidad entregada",
         pendingQuantity: "Cantidad pendiente",
         quantityToDeliver: "Cantidad a entregar",
-        invalidQuantityToDeliver: "Debes indicar una cantidad a entregar mayor a cero."
+        invalidQuantityToDeliver: "Debes indicar una cantidad a entregar mayor a cero.",
+        void: "Anular entrega",
+        confirmVoid: "Esta acción anulará el lote de entrega seleccionado y restaurará las cantidades pendientes. ¿Deseas continuar?"
       },
       returns: {
         register: "Registrar devolución",
@@ -1057,7 +1059,9 @@ export const translations = {
         deliveredQuantity: "Delivered quantity",
         pendingQuantity: "Pending quantity",
         quantityToDeliver: "Quantity to deliver",
-        invalidQuantityToDeliver: "You must enter a quantity to deliver greater than zero."
+        invalidQuantityToDeliver: "You must enter a quantity to deliver greater than zero.",
+        void: "Void delivery",
+        confirmVoid: "This will void the selected delivery batch and restore the pending quantities. Do you want to continue?"
       },
       returns: {
         register: "Register return",
