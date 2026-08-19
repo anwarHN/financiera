@@ -565,7 +565,7 @@ export async function listInventoryDeliveryHistory(transactionId) {
       deliveryBatchKey: key,
       deliveryDate: row.deliveryDate || null,
       createdAt: row.createdAt || null,
-      isVoidable: key.startsWith("delivery-"),
+      isVoidable: key.startsWith("delivery-") || key.startsWith("invoice-delivery-"),
       lines: []
     };
     current.lines.push({

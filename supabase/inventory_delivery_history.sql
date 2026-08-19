@@ -52,8 +52,9 @@ begin
     raise exception 'Invalid delivery batch key';
   end if;
 
-  if p_delivery_batch_key not like 'delivery-%' then
-    raise exception 'Only manual delivery batches can be voided';
+  if p_delivery_batch_key not like 'delivery-%'
+     and p_delivery_batch_key not like 'invoice-delivery-%' then
+    raise exception 'Only delivery batches can be voided';
   end if;
 
   select t."accountId", t.type, t."isActive"
