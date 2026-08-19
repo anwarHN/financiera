@@ -13,6 +13,7 @@ import {
   listInventoryDeliveryHistory,
   listPaymentsForTransaction,
   listTransactionDetails,
+  voidInventoryDeliveryBatch,
   voidPaymentForTransaction
 } from "../services/transactionsService";
 import { formatDate } from "../utils/dateFormat";
@@ -29,7 +30,8 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
   const [deliveryHistoryModal, setDeliveryHistoryModal] = useState({
     open: false,
     history: [],
-    isLoading: false
+    isLoading: false,
+    voidingBatchKey: ""
   });
   const [isPrintingInvoice, setIsPrintingInvoice] = useState(false);
   const [error, setError] = useState("");
@@ -79,13 +81,15 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
       setDeliveryHistoryModal({
         open: true,
         history: [],
-        isLoading: true
+        isLoading: true,
+        voidingBatchKey: ""
       });
       const history = await listInventoryDeliveryHistory(id);
       setDeliveryHistoryModal({
         open: true,
         history,
-        isLoading: false
+        isLoading: false,
+        voidingBatchKey: ""
       });
       setError("");
     } catch {
@@ -93,8 +97,40 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
       setDeliveryHistoryModal({
         open: false,
         history: [],
-        isLoading: false
+        isLoading: false,
+        voidingBatchKey: ""
       });
+    }
+  };
+
+  const handleVoidDeliveryBatch = async (batch) => {
+    if (!transaction?.id || !batch?.deliveryBatchKey || !batch?.isVoidable) return;
+    if (!window.confirm(t("inventory.deliveries.confirmVoid"))) return;
+
+    try {
+      setDeliveryHistoryModal((prev) => ({
+        ...prev,
+        voidingBatchKey: batch.deliveryBatchKey
+      }));
+      await voidInventoryDeliveryBatch({
+        transactionId: Number(transaction.id),
+        deliveryBatchKey: batch.deliveryBatchKey
+      });
+      const history = await listInventoryDeliveryHistory(id);
+      await loadData();
+      setDeliveryHistoryModal({
+        open: true,
+        history,
+        isLoading: false,
+        voidingBatchKey: ""
+      });
+      setError("");
+    } catch (err) {
+      setDeliveryHistoryModal((prev) => ({
+        ...prev,
+        voidingBatchKey: ""
+      }));
+      setError(err?.message || t("common.genericSaveError"));
     }
   };
 
@@ -275,12 +311,16 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
           setDeliveryHistoryModal({
             open: false,
             history: [],
-            isLoading: false
+            isLoading: false,
+            voidingBatchKey: ""
           })
         }
         transaction={transaction}
         history={deliveryHistoryModal.history}
         isLoading={deliveryHistoryModal.isLoading}
+        canVoid={canVoidTransactions}
+        voidingBatchKey={deliveryHistoryModal.voidingBatchKey}
+        onVoidBatch={handleVoidDeliveryBatch}
       />
     </div>
   );
