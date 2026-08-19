@@ -1,0 +1,86 @@
+create or replace function public.void_inventory_delivery_batch(
+  p_transaction_id bigint,
+  p_delivery_batch_key text
+)
+returns table (
+  "transactionDetailId" bigint,
+  "quantityDelivered" numeric
+)
+language plpgsql
+as $$
+declare
+  v_account_id bigint;
+  v_type integer;
+  v_is_active boolean;
+begin
+  if p_transaction_id is null or p_transaction_id <= 0 then
+    raise exception 'Invalid transaction id';
+  end if;
+
+  if p_delivery_batch_key is null or btrim(p_delivery_batch_key) = '' then
+    raise exception 'Invalid delivery batch key';
+  end if;
+
+  if p_delivery_batch_key not like 'delivery-%'
+     and p_delivery_batch_key not like 'invoice-delivery-%' then
+    raise exception 'Only delivery batches can be voided';
+  end if;
+
+  select t."accountId", t.type, t."isActive"
+    into v_account_id, v_type, v_is_active
+  from public.transactions t
+  where t.id = p_transaction_id;
+
+  if v_account_id is null then
+    raise exception 'Transaction not found';
+  end if;
+
+  if not public.user_belongs_to_account(v_account_id) then
+    raise exception 'Access denied';
+  end if;
+
+  if coalesce(v_is_active, false) is false or coalesce(v_type, 0) <> 1 then
+    raise exception 'Only active sales invoices can have deliveries voided';
+  end if;
+
+  if not exists (
+    select 1
+    from public.inventory_delivery_history idh
+    where idh."transactionId" = p_transaction_id
+      and idh."deliveryBatchKey" = p_delivery_batch_key
+  ) then
+    raise exception 'Delivery batch not found';
+  end if;
+
+  return query
+  with batch_totals as (
+    select
+      idh."transactionDetailId" as transaction_detail_id,
+      sum(coalesce(idh.quantity, 0)) as delivered_quantity
+    from public.inventory_delivery_history idh
+    where idh."transactionId" = p_transaction_id
+      and idh."deliveryBatchKey" = p_delivery_batch_key
+    group by idh."transactionDetailId"
+  ),
+  updated as (
+    update public."transactionDetails" td
+    set "quantityDelivered" = greatest(coalesce(td."quantityDelivered", 0) - coalesce(bt.delivered_quantity, 0), 0)
+    from batch_totals bt
+    where td.id = bt.transaction_detail_id
+      and td."transactionId" = p_transaction_id
+    returning td.id, td."quantityDelivered"
+  ),
+  deleted as (
+    delete from public.inventory_delivery_history idh
+    where idh."transactionId" = p_transaction_id
+      and idh."deliveryBatchKey" = p_delivery_batch_key
+    returning idh.id
+  )
+  select updated.id, updated."quantityDelivered"
+  from updated;
+
+  if not found then
+    raise exception 'No delivery details were updated';
+  end if;
+end;
+$$;
