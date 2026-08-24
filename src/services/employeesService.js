@@ -62,3 +62,13 @@ export async function deactivateEmployee(id) {
 
   return data;
 }
+
+export async function reactivateEmployee(id) {
+  const { data, error } = await supabase.from("employes").update({ isActive: true }).eq("id", id).select(selectColumns).single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}

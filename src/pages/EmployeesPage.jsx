@@ -8,7 +8,7 @@ import StatusBadge from "../components/StatusBadge";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { useModulePermissions } from "../hooks/useModulePermissions";
-import { deactivateEmployee, listEmployees } from "../services/employeesService";
+import { deactivateEmployee, listEmployees, reactivateEmployee } from "../services/employeesService";
 import { formatNumber } from "../utils/numberFormat";
 
 const pageSize = 10;
@@ -61,6 +61,15 @@ function EmployeesPage() {
   const handleDeactivate = async (id) => {
     try {
       await deactivateEmployee(id);
+      await loadData();
+    } catch {
+      setError(t("common.genericSaveError"));
+    }
+  };
+
+  const handleReactivate = async (id) => {
+    try {
+      await reactivateEmployee(id);
       await loadData();
     } catch {
       setError(t("common.genericSaveError"));
@@ -142,13 +151,18 @@ function EmployeesPage() {
                           }
                         },
                         ...(canUpdate
-                          ? [{
-                          key: "deactivate",
-                          label: t("common.deactivate"),
-                          onClick: () => handleDeactivate(item.id),
-                          disabled: !item.isActive,
-                          danger: true
-                        }]
+                          ? item.isActive
+                            ? [{
+                                key: "deactivate",
+                                label: t("common.deactivate"),
+                                onClick: () => handleDeactivate(item.id),
+                                danger: true
+                              }]
+                            : [{
+                                key: "reactivate",
+                                label: t("common.activate"),
+                                onClick: () => handleReactivate(item.id)
+                              }]
                           : [])
                       ]}
                     />
