@@ -1370,7 +1370,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
               </label>
               <div className="field-block">
                 <span>{t("transactions.person")}</span>
-                {moduleType === "income" || moduleType === "expense" ? (
+                {moduleType === "income" || moduleType === "expense" || isManualReceivableMode ? (
                   <LookupCombobox
                     label=""
                     value={simplePersonLookup}
@@ -1378,7 +1378,9 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                     options={personOptions}
                     getOptionLabel={(person) => person.name || ""}
                     onSelect={(person) => setSimpleForm((prev) => ({ ...prev, personId: String(person.id) }))}
-                    placeholder={`-- ${moduleType === "expense" ? t("transactions.selectProvider") : t("transactions.optionalPerson")} --`}
+                    placeholder={`-- ${isManualReceivableMode ? t("transactions.selectClient") : moduleType === "expense" ? t("transactions.selectProvider") : t("transactions.optionalPerson")} --`}
+                    required={isManualReceivableMode}
+                    hasError={isManualReceivableMode && simpleSubmitAttempted && !simpleForm.personId}
                     noResultsText={t("common.empty")}
                     selectedPillText={personOptions.find((person) => person.id === Number(simpleForm.personId))?.name || ""}
                     onClearSelection={() => {
