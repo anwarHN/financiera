@@ -51,6 +51,7 @@ import EmployeeAbsencesPage from "./pages/EmployeeAbsencesPage";
 import EmployeeLoansPage from "./pages/EmployeeLoansPage";
 import EmployeeLoanFormPage from "./pages/EmployeeLoanFormPage";
 import InventoryDeliveriesPage from "./pages/InventoryDeliveriesPage";
+import CustomerCreditsPage from "./pages/CustomerCreditsPage";
 
 function App() {
   return (
@@ -71,6 +72,7 @@ function App() {
         }
       >
         <Route index element={<DashboardPage />} />
+        <Route path="customer-credits" element={<CustomerCreditsPage />} />
         <Route path="clients" element={<PeoplePage personType={1} titleKey="clients.title" basePath="/clients" />} />
         <Route
           path="clients/new"

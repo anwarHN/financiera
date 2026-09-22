@@ -31,7 +31,8 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
     () => paymentMethods.find((method) => method.id === Number(form.paymentMethodId)) ?? null,
     [paymentMethods, form.paymentMethodId]
   );
-  const requiresAccountPaymentForm = selectedPaymentMethod?.code === "card" || selectedPaymentMethod?.code === "bank_transfer";
+  const customerReceipt = direction === "incoming" && paymentMode !== "employeeLoan" && Boolean(transaction?.personId);
+  const requiresAccountPaymentForm = customerReceipt || selectedPaymentMethod?.code === "card" || selectedPaymentMethod?.code === "bank_transfer";
   const filteredAccountPaymentForms = useMemo(() => {
     if (!selectedPaymentMethod) return accountPaymentForms;
     if (selectedPaymentMethod.code === "card") return accountPaymentForms.filter((item) => item.kind === "credit_card");
@@ -43,7 +44,7 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
   useEffect(() => {
     if (!isOpen || !account?.accountId) return;
     loadData();
-    setForm((prev) => ({ ...prev, amount: Number(transaction?.balance || 0) }));
+    setForm({ ...initialForm, date: new Date().toISOString().slice(0, 10), amount: Number(transaction?.balance || 0), requestId: crypto.randomUUID() });
   }, [isOpen, account?.accountId, transaction?.id]);
 
   const loadData = async () => {
@@ -93,7 +94,7 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
 
     const amount = Number(Number(form.amount || 0).toFixed(2));
     const availableBalance = Number(Number(transaction.balance || 0).toFixed(2));
-    if (amount <= 0 || amount > availableBalance) {
+    if (amount <= 0 || (!customerReceipt && amount > availableBalance)) {
       setError(t("transactions.invalidPaymentAmount"));
       return;
     }
@@ -109,6 +110,7 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
 
     const paymentTransaction = {
       accountId: account.accountId,
+      creditRequestId: form.requestId,
       personId: paymentMode === "employeeLoan" ? null : transaction.personId,
       employeeId: paymentMode === "employeeLoan" ? transaction.employeeId ?? null : null,
       date: form.date,
@@ -190,6 +192,9 @@ function PaymentRegisterModal({ isOpen, onClose, transaction, direction, onSaved
               <span>{t("transactions.amount")}</span>
               <input type="number" min="0" step="0.01" name="amount" value={form.amount} onChange={handleChange} required />
             </label>
+            {customerReceipt && Number(form.amount) > Number(transaction.balance) && (
+              <ReadOnlyField label={t("customerCredits.excess")} value={Number(form.amount) - Number(transaction.balance)} type="currency" />
+            )}
             <label className="field-block">
               <span>{t("transactions.paymentMethod")}</span>
               <select name="paymentMethodId" value={form.paymentMethodId} onChange={handleChange} required>

@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 import { loadBudgetExecution } from "../_shared/budgetExecution.js";
+import { loadCreditEntries, appliedCreditByInvoice, creditReceivableRows } from "../_shared/customerCredits.js";
 const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
 const PRIOR_BALANCE_TAG = "__prior_balance__";
 const PAYABLE_CASH_IN_TAG = "__payable_cash_in__";
@@ -273,7 +274,7 @@ async function authenticateRequest(supabaseAdmin: any, req: Request, accountId: 
   if (membershipError || !membership) {
     throw new Error("Forbidden for this account");
   }
-  if (reportId === "budget_execution" || reportId === "project_execution") {
+  if (reportId === "budget_execution" || reportId === "project_execution" || reportId === "receivable") {
     const { data, error } = await supabaseAdmin.from("users_to_profiles")
       .select('account_profiles!inner(accountId, isSystemAdmin, permissions)')
       .eq("accountId", accountId).eq("userId", user.id).single();
@@ -307,6 +308,9 @@ async function fetchOutstandingTransactionsAsOf(
 ) {
   const asOfDate = payload.dateTo || new Date().toISOString().slice(0, 10);
   const isReceivable = payload.reportId === "receivable";
+  const creditEntries = isReceivable ? await loadCreditEntries(supabaseAdmin, payload.accountId, asOfDate, payload.currencyId) : [];
+  const creditApplications = appliedCreditByInvoice(creditEntries, asOfDate);
+  const creditRows = creditReceivableRows(creditEntries, asOfDate);
 
   let sourceQuery = supabaseAdmin
     .from("transactions")
@@ -325,7 +329,7 @@ async function fetchOutstandingTransactionsAsOf(
     id: Number(row.id),
     total: Math.abs(Number(row.total || 0))
   }));
-  if (!txRows.length) return [];
+  if (!txRows.length) return creditRows;
 
   const txIds = txRows.map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
   const paymentRows = await fetchAllPages<{ transactionId: number; transactionPaidId: number; total: number }>((from, to) =>
@@ -357,6 +361,11 @@ async function fetchOutstandingTransactionsAsOf(
   }
 
   const paidBySource = new Map<number, number>();
+  for (const entry of creditEntries) {
+    if (entry.kind === "excess" && entry.transactionId && (!entry.voidedOn || entry.voidedOn > asOfDate)) {
+      validPaymentTxIds.add(Number(entry.transactionId));
+    }
+  }
   (paymentRows ?? []).forEach((row) => {
     const sourceId = Number(row.transactionPaidId || 0);
     const paymentId = Number(row.transactionId || 0);
@@ -367,9 +376,9 @@ async function fetchOutstandingTransactionsAsOf(
   return txRows
     .map((row) => ({
       ...row,
-      balance: Math.max(Number(row.total || 0) - Number(paidBySource.get(Number(row.id)) || 0), 0)
+      balance: Math.max(Number(row.total || 0) - Number(paidBySource.get(Number(row.id)) || 0) - (creditApplications.get(Number(row.id)) || 0), 0)
     }))
-    .filter((row) => Number(row.balance || 0) > 0);
+    .filter((row) => Number(row.balance || 0) > 0).concat(creditRows);
 }
 
 async function buildStandardReport(
@@ -403,13 +412,13 @@ async function buildStandardReport(
     {
       personId: number;
       personName: string;
-      details: BaseTxRow[];
+      details: any[];
       total: number;
       balance: number;
     }
   >();
 
-  filteredByParty.forEach((tx) => {
+  filteredByParty.forEach((tx: any) => {
     const personId = Number(tx.personId || 0);
     const personName = tx.persons?.name || "Sin cliente/proveedor";
     const key = `${personId}-${personName}`;
@@ -449,7 +458,7 @@ async function buildStandardReport(
           cliente_proveedor: bucket.personName,
           id: tx.id,
           fecha: tx.date,
-          tipo: txTypeLabel(tx.type),
+          tipo: tx.customerCredit ? "Saldo a favor" : txTypeLabel(tx.type),
           total: sanitizeNumber(tx.total),
           balance: sanitizeNumber(tx.balance)
         });
@@ -458,8 +467,12 @@ async function buildStandardReport(
 
   return {
     rows,
-    total: rows.reduce((acc, row) => acc + Number(row.total || 0), 0),
-    balance: rows.reduce((acc, row) => acc + Number(row.balance || 0), 0)
+    total: filteredByParty.reduce((acc: number, row: any) => acc + Number(row.total || 0), 0),
+    balance: filteredByParty.reduce((acc: number, row: any) => acc + Number(row.balance || 0), 0),
+    extras: isReceivable ? [
+      ["Pendiente por cobrar", filteredByParty.reduce((sum: number, row: any) => sum + Math.max(Number(row.balance), 0), 0)],
+      ["Saldo a favor", filteredByParty.reduce((sum: number, row: any) => sum + Math.max(-Number(row.balance), 0), 0)]
+    ] : []
   };
 }
 
@@ -738,6 +751,10 @@ async function fetchReceivablePayableBalanceSummary(
   asOfDate: string
 ): Promise<AccountBalanceSummary> {
   const fetchGroupBalance = async (typeColumn: "isAccountReceivable" | "isAccountPayable") => {
+    if (typeColumn === "isAccountReceivable") {
+      const rows = await fetchOutstandingTransactionsAsOf(supabaseAdmin, { ...payload, reportId: "receivable", dateTo: asOfDate });
+      return rows.reduce((sum: number, row: any) => sum + Math.max(Number(row.balance), 0), 0);
+    }
     let baseQuery = supabaseAdmin
       .from("transactions")
       .select("id, total")
@@ -1549,6 +1566,7 @@ async function buildEmployeePayrollReport(
 }
 
 async function buildReportData(supabaseAdmin: any, payload: ExportPayload): Promise<ExportBuildResult> {
+  if (payload.reportId === "receivable" && !payload.currencyId) throw new Error("Select a currency");
   if (payload.reportId === "budget_execution" || payload.reportId === "project_execution") {
     const isBudget = payload.reportId === "budget_execution";
     if (isBudget ? !payload.budgetId : !payload.projectId) throw new Error("Missing budgetId/projectId");

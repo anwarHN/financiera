@@ -1,5 +1,16 @@
 export const translations = {
   es: {
+    customerCredits: {
+      title: "Saldos a favor de clientes",
+      appliedToInvoice: "Aplicado a factura",
+      help: "Consulta créditos por cliente y moneda. Aplicarlos a una factura no genera un nuevo ingreso de efectivo.",
+      opening: "Registrar saldo anterior", receive: "Registrar cobro",
+      application: "Aplicar a factura", refund: "Devolver saldo", reverse: "Anular movimiento",
+      excess: "Saldo a favor generado", available: "Disponible", used: "Aplicado / devuelto",
+      history: "Historial de saldos a favor", originInvoice: "Crédito / documento",
+      invoice: "Factura / cuenta por cobrar", openingHelp: "Registra un crédito existente. No aumenta caja ni banco.",
+      debt: "Pendiente por cobrar", net: "Saldo neto", credit: "Saldo a favor"
+    },
     common: {
       appName: "Daime",
       account: "Cuenta",
@@ -745,6 +756,17 @@ export const translations = {
     }
   },
   en: {
+    customerCredits: {
+      title: "Customer credits",
+      appliedToInvoice: "Applied to invoice",
+      help: "Review credits by customer and currency. Applying credit to an invoice does not create another cash receipt.",
+      opening: "Record opening credit", receive: "Record receipt",
+      application: "Apply to invoice", refund: "Refund credit", reverse: "Reverse entry",
+      excess: "Credit generated", available: "Available", used: "Applied / refunded",
+      history: "Customer credit history", originInvoice: "Credit / document",
+      invoice: "Invoice / receivable", openingHelp: "Record existing credit without increasing cash or bank balances.",
+      debt: "Outstanding receivables", net: "Net balance", credit: "Customer credit"
+    },
     common: {
       appName: "Daime",
       account: "Account",

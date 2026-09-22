@@ -41,7 +41,8 @@ function TransactionPaymentPage({ direction }) {
     () => paymentMethods.find((method) => method.id === Number(form.paymentMethodId)) ?? null,
     [paymentMethods, form.paymentMethodId]
   );
-  const requiresAccountPaymentForm = selectedPaymentMethod?.code === "card" || selectedPaymentMethod?.code === "bank_transfer";
+  const customerReceipt = direction === "incoming" && Boolean(paidTransaction?.personId);
+  const requiresAccountPaymentForm = customerReceipt || selectedPaymentMethod?.code === "card" || selectedPaymentMethod?.code === "bank_transfer";
   const filteredAccountPaymentForms = useMemo(() => {
     if (!selectedPaymentMethod) return accountPaymentForms;
     if (selectedPaymentMethod.code === "card") return accountPaymentForms.filter((item) => item.kind === "credit_card");
@@ -69,7 +70,7 @@ function TransactionPaymentPage({ direction }) {
       setPaymentMethods(methods);
       setAccountPaymentForms(forms);
       setConcepts(conceptData);
-      setForm((prev) => ({ ...prev, amount: Number(tx.balance || 0) }));
+      setForm((prev) => ({ ...prev, amount: Number(tx.balance || 0), requestId: crypto.randomUUID() }));
       setError("");
     } catch {
       setError(t("common.genericLoadError"));
@@ -107,7 +108,7 @@ function TransactionPaymentPage({ direction }) {
 
     const amount = Number(Number(form.amount || 0).toFixed(2));
     const availableBalance = Number(Number(paidTransaction.balance || 0).toFixed(2));
-    if (amount <= 0 || amount > availableBalance) {
+    if (amount <= 0 || (!customerReceipt && amount > availableBalance)) {
       setError(t("transactions.invalidPaymentAmount"));
       return;
     }
@@ -127,6 +128,7 @@ function TransactionPaymentPage({ direction }) {
     const shouldAutoReconcile = selectedAccountPaymentForm?.kind === "bank_account";
     const paymentTransaction = {
       accountId: account.accountId,
+      creditRequestId: form.requestId,
       personId: paidTransaction.personId,
       date: form.date,
       type: paymentType,
@@ -205,6 +207,9 @@ function TransactionPaymentPage({ direction }) {
         <div className="form-grid-2">
           <DateField label={t("transactions.date")} name="date" value={form.date} onChange={handleChange} required />
           <NumberField label={t("transactions.amount")} name="amount" value={form.amount} min="0" step="0.01" onChange={handleChange} required />
+          {customerReceipt && Number(form.amount) > Number(paidTransaction.balance) && (
+            <ReadOnlyField label={t("customerCredits.excess")} value={Number(form.amount) - Number(paidTransaction.balance)} type="currency" />
+          )}
           <SelectField label={t("transactions.paymentMethod")} name="paymentMethodId" value={form.paymentMethodId} onChange={handleChange} required>
               <option value="">{`-- ${t("transactions.selectPaymentMethod")} --`}</option>
               {paymentMethods.map((method) => (

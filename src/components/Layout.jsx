@@ -79,7 +79,10 @@ const navGroups = [
     id: "receivable",
     titleKey: "nav.accountsReceivable",
     icon: FiTrendingUp,
-    items: [{ path: "/accounts-receivable", key: "nav.accountsReceivable", icon: FiTrendingUp }]
+    items: [
+      { path: "/accounts-receivable", key: "nav.accountsReceivable", icon: FiTrendingUp },
+      { path: "/customer-credits", key: "customerCredits.title", icon: FiTrendingUp }
+    ]
   },
   {
     id: "payable",
@@ -206,6 +209,7 @@ function resolveCreateModuleByPath(pathname) {
   if (pathname.startsWith("/internal-obligations")) return "transactions";
   if (pathname.startsWith("/employee-loans")) return "transactions";
   if (pathname.startsWith("/accounts-receivable")) return "transactions";
+  if (pathname.startsWith("/customer-credits")) return "transactions";
   if (pathname.startsWith("/accounts-payable")) return "transactions";
   if (pathname.startsWith("/sales")) return "transactions";
   if (pathname.startsWith("/purchases")) return "transactions";

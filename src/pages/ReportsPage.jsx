@@ -274,6 +274,7 @@ function ReportsPage() {
   };
 
   const validateBudgetFilters = () => {
+    if (selectedReport === "receivable" && !filters.currencyId) return t("reports.currencyRequired");
     if (selectedReport === "project_execution" && !filters.currencyId) return t("reports.currencyRequired");
     if (selectedReport === "budget_execution" && filters.budgetId) {
       const budget = budgets.find((item) => String(item.id) === String(filters.budgetId));
@@ -835,6 +836,11 @@ function ReportsPage() {
         <section className="generic-panel">
           <h3>{t(reportConfig.titleKey)}</h3>
           <div className="report-summary-grid">
+            {selectedReport === "receivable" && <>
+              <ReadOnlyField label={t("customerCredits.debt")} value={results.flatMap((group) => group.details || []).reduce((sum, row) => sum + Math.max(Number(row.balance), 0), 0)} type="currency" numberOptions={budgetNumberOptions} />
+              <ReadOnlyField label={t("customerCredits.credit")} value={results.flatMap((group) => group.details || []).reduce((sum, row) => sum + Math.max(-Number(row.balance), 0), 0)} type="currency" numberOptions={budgetNumberOptions} />
+              <ReadOnlyField label={t("customerCredits.net")} value={results.reduce((sum, group) => sum + Number(group.balance), 0)} type="currency" numberOptions={budgetNumberOptions} />
+            </>}
             {appliedFilters.map((line, index) => (
               <ReadOnlyField key={`${line}-${index}`} label={index === 0 ? t("reports.applicableFilters") : " "} value={line} />
             ))}
@@ -870,7 +876,7 @@ function ReportsPage() {
                       ? { minimumFractionDigits: 0, maximumFractionDigits: 0 }
                       : selectedReport === "pending_deliveries"
                         ? { showCurrency: false, minimumFractionDigits: 0, maximumFractionDigits: 2 }
-                        : undefined
+                        : selectedReport === "receivable" ? budgetNumberOptions : undefined
                   }
                 />
                 {selectedReport === "sales" ? (
@@ -880,7 +886,7 @@ function ReportsPage() {
                   selectedReport === "receivable" ||
                   selectedReport === "payable" ||
                   selectedReport === "internal_obligations") ? (
-                  <ReadOnlyField label={t("transactions.balance")} value={balance} type="currency" />
+                  <ReadOnlyField label={t("transactions.balance")} value={balance} type="currency" numberOptions={selectedReport === "receivable" ? budgetNumberOptions : undefined} />
                 ) : null}
               </>
             )}
@@ -1271,8 +1277,8 @@ function ReportsPage() {
                     <td className="num-col">-</td>
                     <td>-</td>
                     <td>{t("reports.subtotal")}</td>
-                    <td className="num-col">{formatNumber(group.total || 0)}</td>
-                    <td className="num-col">{formatNumber(group.balance || 0)}</td>
+                    <td className="num-col">{formatNumber(group.total || 0, selectedReport === "receivable" ? budgetNumberOptions : undefined)}</td>
+                    <td className="num-col">{formatNumber(group.balance || 0, selectedReport === "receivable" ? budgetNumberOptions : undefined)}</td>
                   </tr>,
                   ...(group.details || []).map((tx) => (
                     <tr key={`report-party-detail-${selectedReport}-${group.partyId}-${tx.id}`} className="report-concept-row">
@@ -1280,7 +1286,7 @@ function ReportsPage() {
                       <td className="num-col">{tx.id}</td>
                       <td>{formatDate(tx.date, language)}</td>
                       <td>
-                        {tx.type === 1
+                        {tx.customerCredit ? t("customerCredits.credit") : tx.type === 1
                           ? t("reports.sales")
                           : tx.type === 2
                             ? t("reports.expenses")
@@ -1288,8 +1294,8 @@ function ReportsPage() {
                               ? t("nav.purchases")
                               : t("reports.incomes")}
                       </td>
-                      <td className="num-col">{formatNumber(tx.total || 0)}</td>
-                      <td className="num-col">{formatNumber(tx.balance || 0)}</td>
+                      <td className="num-col">{formatNumber(tx.total || 0, selectedReport === "receivable" ? budgetNumberOptions : undefined)}</td>
+                      <td className="num-col">{formatNumber(tx.balance || 0, selectedReport === "receivable" ? budgetNumberOptions : undefined)}</td>
                     </tr>
                   ))
                 ])

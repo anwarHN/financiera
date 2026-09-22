@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import { loadCreditEntries, appliedCreditByInvoice, creditReceivableRows } from "../../supabase/functions/_shared/customerCredits.js";
 import { fetchAllPages } from "../../supabase/functions/_shared/fetchAllPages.js";
 
 const PRIOR_BALANCE_TAG = "__prior_balance__";
@@ -67,6 +68,9 @@ export async function getTransactionsForReports(accountId, { dateFrom, dateTo } 
 
 export async function getOutstandingTransactionsForReports(accountId, { reportId, dateFrom, dateTo, currencyId } = {}) {
   const asOfDate = dateTo || new Date().toISOString().slice(0, 10);
+  const creditEntries = reportId === "receivable" ? await loadCreditEntries(supabase, accountId, asOfDate, currencyId) : [];
+  const creditApplications = appliedCreditByInvoice(creditEntries, asOfDate);
+  const creditRows = creditReceivableRows(creditEntries, asOfDate);
   const typeColumn = reportId === "receivable" ? "isAccountReceivable" : "isAccountPayable";
 
   let sourceQuery = supabase
@@ -89,7 +93,7 @@ export async function getOutstandingTransactionsForReports(accountId, { reportId
     personId: Number(row.personId || 0),
     total: Math.abs(Number(row.total || 0))
   }));
-  if (txRows.length === 0) return [];
+  if (txRows.length === 0) return creditRows;
 
   const txIds = txRows.map((row) => row.id).filter((id) => Number.isFinite(id) && id > 0);
   const paymentRows = await fetchAllPages((from, to) =>
@@ -123,6 +127,11 @@ export async function getOutstandingTransactionsForReports(accountId, { reportId
   }
 
   const paidBySource = new Map();
+  for (const entry of creditEntries) {
+    if (entry.kind === "excess" && entry.transactionId && (!entry.voidedOn || entry.voidedOn > asOfDate)) {
+      validPaymentTxIds.add(Number(entry.transactionId));
+    }
+  }
   (paymentRows ?? []).forEach((row) => {
     const sourceId = Number(row.transactionPaidId || 0);
     const paymentId = Number(row.transactionId || 0);
@@ -133,9 +142,9 @@ export async function getOutstandingTransactionsForReports(accountId, { reportId
   return txRows
     .map((row) => ({
       ...row,
-      balance: Math.max(Number(row.total || 0) - Number(paidBySource.get(row.id) || 0), 0)
+      balance: Math.max(Number(row.total || 0) - Number(paidBySource.get(row.id) || 0) - (creditApplications.get(row.id) || 0), 0)
     }))
-    .filter((row) => Number(row.balance || 0) > 0);
+    .filter((row) => Number(row.balance || 0) > 0).concat(creditRows);
 }
 
 export async function getCashflowConceptTotals(accountId, { dateFrom, dateTo, currencyId } = {}) {
@@ -351,6 +360,10 @@ export async function getCashflowOutstandingBalanceSummary(accountId, { asOfDate
   const resolvedDate = asOfDate || new Date().toISOString().slice(0, 10);
 
   const fetchBalanceByType = async (typeColumn) => {
+    if (typeColumn === "isAccountReceivable") {
+      const rows = await getOutstandingTransactionsForReports(accountId, { reportId: "receivable", dateTo: resolvedDate, currencyId });
+      return rows.reduce((sum, row) => sum + Math.max(Number(row.balance), 0), 0);
+    }
     let sourceQuery = supabase
       .from("transactions")
       .select("id, total")

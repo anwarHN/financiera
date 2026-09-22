@@ -1,4 +1,6 @@
 import { supabase } from "../lib/supabase";
+import { customerCreditCommand } from "./customerCreditsService";
+import { fetchAllPages } from "../../supabase/functions/_shared/fetchAllPages.js";
 
 export const TRANSACTION_TYPES = {
   sale: 1,
@@ -641,11 +643,13 @@ async function getAppliedPaymentsSnapshot(transactionId) {
     activePaymentTxIds = new Set((activePayments ?? []).map((row) => Number(row.id)));
   }
 
+  const credits = await fetchAllPages((from, to) => supabase.from("customer_credit_entries")
+    .select("id, amount").eq("invoiceId", txId).eq("kind", "application").is("voidedOn", null).order("id").range(from, to));
   const payments = (paymentLinks ?? []).reduce((acc, row) => {
     const paymentId = Number(row.transactionId || 0);
     if (!activePaymentTxIds.has(paymentId)) return acc;
     return acc + Math.abs(Number(row.total || 0));
-  }, 0);
+  }, (credits || []).reduce((sum, row) => sum + Number(row.amount), 0));
 
   const total = roundCurrency(Math.abs(Number(transaction.total || 0)));
   const normalizedPayments = roundCurrency(payments);
@@ -662,6 +666,15 @@ export async function registerPaymentForTransaction({
   paymentTransaction,
   paymentDetail
 }) {
+  if (paymentTransaction.isIncomingPayment && paymentTransaction.personId && !paymentTransaction.isEmployeeLoan) {
+    return customerCreditCommand(paymentTransaction.accountId, {
+      action: "receive", personId: paymentTransaction.personId, currencyId: paymentTransaction.currencyId,
+      amount: paymentTransaction.total, date: paymentTransaction.date,
+      reference: paymentTransaction.referenceNumber || paymentTransaction.name || `Cobro #${paidTransaction.id}`,
+      invoiceId: paidTransaction.id, paymentMethodId: paymentTransaction.paymentMethodId,
+      accountPaymentFormId: paymentTransaction.accountPaymentFormId
+    }, paymentTransaction.creditRequestId || crypto.randomUUID());
+  }
   const latestPaidTransaction = await getAppliedPaymentsSnapshot(paidTransaction.id);
 
   if (!latestPaidTransaction.isActive) {
