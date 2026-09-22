@@ -31,13 +31,13 @@ Deno.test("customer credit migration and complete monetary lifecycle in PostgreS
       create table transactions(
         id bigint generated always as identity primary key,"accountId" bigint,"personId" bigint,"currencyId" bigint,
         date date,type int,name text,status int,"createdById" uuid,net numeric,discounts numeric,taxes numeric,"additionalCharges" numeric,
-        total numeric,balance numeric,payments numeric,"isAccountReceivable" boolean,"isAccountPayable" boolean,
+        total double precision,balance double precision,payments double precision,"isAccountReceivable" boolean,"isAccountPayable" boolean,
         "isIncomingPayment" boolean,"isOutcomingPayment" boolean,"isActive" boolean,"paymentMethodId" bigint,"accountPaymentFormId" bigint,
         "referenceNumber" text,"isReconciled" boolean,"reconciledAt" date,"isEmployeeLoan" boolean default false,tags text[]
       );
       create table "transactionDetails"(
         id bigint generated always as identity primary key,"transactionId" bigint references transactions(id),
-        "transactionPaidId" bigint references transactions(id),"conceptId" bigint,quantity numeric,price numeric,net numeric,total numeric,
+        "transactionPaidId" bigint references transactions(id),"conceptId" bigint,quantity numeric,price numeric,net numeric,total double precision,
         tax numeric,"taxPercentage" numeric,discount numeric,"discountPercentage" numeric,"additionalCharges" numeric,"createdById" uuid
       );
       insert into transactions("accountId","personId","currencyId",date,total,balance,payments,"isAccountReceivable","isActive")
@@ -53,7 +53,10 @@ Deno.test("customer credit migration and complete monetary lifecycle in PostgreS
     };
     const balance = async (id: number) => Number((await db.query<{balance: string}>('select balance from transactions where id=$1',[id])).rows[0].balance);
     const key = crypto.randomUUID();
-    await run("receive",1300,null,1,key);
+    await assert.rejects(run("receive",1300,null,1,key), /function round\(double precision, integer\) does not exist/);
+    assert.equal((await db.query("select * from transactions where type=6")).rows.length,0);
+    await db.exec(await Deno.readTextFile("supabase/migrations/20260922150419_fix_customer_payment_numeric_round.sql"));
+    const receipt = await run("receive",1300,null,1,key);
     await run("receive",1300,null,1,key);
     assert.equal((await db.query('select * from transactions where type=6')).rows.length,1);
     assert.equal(await balance(1),0);
@@ -62,7 +65,7 @@ Deno.test("customer credit migration and complete monetary lifecycle in PostgreS
     assert.equal(await balance(2),380);
     await assert.rejects(run("application",181,credit,2), /available credit/);
     await assert.rejects(db.exec('update transactions set "isActive"=false where id=2'), /Reverse credit applications/);
-    await assert.rejects(db.exec('delete from "transactionDetails" where "transactionId"=3'), /cannot be modified/);
+    await assert.rejects(db.query('delete from "transactionDetails" where "transactionId"=$1',[receipt.id]), /cannot be modified/);
     const refund = await run("refund",180,credit);
     assert.equal((await db.query("select * from transactions where type=5")).rows.length,1);
     await assert.rejects(run("refund",1,credit), /available credit/);

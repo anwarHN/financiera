@@ -21,7 +21,7 @@
 - El resumen CxC dentro de flujo de caja conserva deuda bruta pendiente (no compensa creditos sin aplicar).
 
 ## Despliegue
-1. Aplicar la migracion 20260922005224_customer_credit_ledger.sql por el flujo de migraciones.
+1. Aplicar las migraciones 20260922005224_customer_credit_ledger.sql y 20260922150419_fix_customer_payment_numeric_round.sql por el flujo de migraciones.
 2. Desplegar export-report con _shared/customerCredits.js.
 3. Publicar frontend.
 
@@ -35,6 +35,7 @@ La migracion requiere el esquema existente, perfiles y triggers de payment_forms
 - npm run build
 
 La prueba SQL usa PostgreSQL embebido (PGlite) y un esquema de prueba: valida migracion,
+reproduce el error round(double precision, integer) con columnas double precision y verifica su correccion,
 cobro 1300/factura 1000, aplicaciones parciales, devolucion, reversas, idempotencia,
 rechazo de sobreconsumo, moneda/cuenta ajena, permisos y ausencia de escrituras parciales.
 Pendiente validar en staging con el esquema y triggers completos, dos sesiones concurrentes,
