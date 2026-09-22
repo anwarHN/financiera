@@ -10,13 +10,15 @@ import {
 } from "../services/budgetsService";
 import { listConcepts } from "../services/conceptsService";
 import { listProjects } from "../services/projectsService";
+import { listCurrencies } from "../services/currenciesService";
 
 const initialHeader = {
   name: "",
   periodType: "monthly",
   periodStart: "",
   periodEnd: "",
-  projectId: ""
+  projectId: "",
+  currencyId: ""
 };
 
 function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }) {
@@ -31,6 +33,7 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
   const [lines, setLines] = useState([]);
   const [concepts, setConcepts] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [currencies, setCurrencies] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -42,36 +45,50 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
 
   useEffect(() => {
     if (!account?.accountId) return;
-    loadDependencies();
-  }, [account?.accountId]);
-
-  useEffect(() => {
-    if (!isEdit || !account?.accountId) return;
-    loadBudget();
+    let cancelled = false;
+    setHeader(initialHeader);
+    setLines([]);
+    setProjects([]);
+    setConcepts([]);
+    setCurrencies([]);
+    setError("");
+    setIsLoading(true);
+    const isCancelled = () => cancelled;
+    Promise.all([loadDependencies(isCancelled), isEdit ? loadBudget(isCancelled) : Promise.resolve()])
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
   }, [isEdit, currentId, account?.accountId]);
 
-  const loadDependencies = async () => {
+  const loadDependencies = async (isCancelled) => {
     try {
-      const [conceptsData, projectsData] = await Promise.all([listConcepts(account.accountId), listProjects(account.accountId)]);
+      const [conceptsData, projectsData, currenciesData] = await Promise.all([listConcepts(account.accountId), listProjects(account.accountId), listCurrencies(account.accountId)]);
+      if (isCancelled()) return;
       setConcepts(conceptsData);
       setProjects(projectsData);
+      setCurrencies(currenciesData);
+      if (!isEdit) {
+        const local = currenciesData.find((currency) => currency.isLocal && Number(currency.accountId) === Number(account.accountId))
+          || currenciesData.find((currency) => currency.isLocal);
+        setHeader({ ...initialHeader, currencyId: local ? String(local.id) : "" });
+        setLines([]);
+      }
     } catch {
-      setError(t("common.genericLoadError"));
-    } finally {
-      if (!isEdit) setIsLoading(false);
+      if (!isCancelled()) setError(t("common.genericLoadError"));
     }
   };
 
-  const loadBudget = async () => {
+  const loadBudget = async (isCancelled) => {
     try {
       setIsLoading(true);
-      const [budget, budgetLines] = await Promise.all([getBudgetById(currentId), listBudgetLines(currentId)]);
+      const [budget, budgetLines] = await Promise.all([getBudgetById(currentId, account.accountId), listBudgetLines(currentId)]);
+      if (isCancelled()) return;
       setHeader({
         name: budget.name || "",
         periodType: budget.periodType || "monthly",
         periodStart: budget.periodStart || "",
         periodEnd: budget.periodEnd || "",
-        projectId: budget.projectId ? String(budget.projectId) : ""
+        projectId: budget.projectId ? String(budget.projectId) : "",
+        currencyId: budget.currencyId ? String(budget.currencyId) : ""
       });
       setLines(
         (budgetLines || []).map((line) => ({
@@ -82,9 +99,7 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
       );
       setError("");
     } catch {
-      setError(t("common.genericLoadError"));
-    } finally {
-      setIsLoading(false);
+      if (!isCancelled()) setError(t("common.genericLoadError"));
     }
   };
 
@@ -108,7 +123,7 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
       setError(t("common.requiredFields"));
       return;
     }
-    if (!account?.accountId || !user?.id) {
+    if (!account?.accountId || !user?.id || !currencies.some((currency) => String(currency.id) === header.currencyId)) {
       setError(t("common.requiredFields"));
       return;
     }
@@ -120,6 +135,7 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
       periodStart: header.periodStart,
       periodEnd: header.periodEnd,
       projectId: header.projectId ? Number(header.projectId) : null,
+      currencyId: Number(header.currencyId),
       isActive: true,
       createdById: user.id
     };
@@ -170,6 +186,13 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
       ) : (
         <form className="crud-form" onSubmit={handleSubmit}>
           <div className="form-grid-2">
+            <label className="field-block">
+              <span>{t("transactions.currency")}</span>
+              <select required value={header.currencyId} onChange={(event) => setHeader((prev) => ({ ...prev, currencyId: event.target.value }))}>
+                <option value="">--</option>
+                {currencies.map((currency) => <option key={currency.id} value={currency.id}>{currency.name} ({currency.symbol})</option>)}
+              </select>
+            </label>
             <label className="field-block">
               <span>{t("common.name")}</span>
               <input

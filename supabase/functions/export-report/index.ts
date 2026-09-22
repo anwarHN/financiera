@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
+import { loadBudgetExecution } from "../_shared/budgetExecution.js";
 const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
 const PRIOR_BALANCE_TAG = "__prior_balance__";
 const PAYABLE_CASH_IN_TAG = "__payable_cash_in__";
@@ -8,6 +9,8 @@ const REPORT_PAGE_SIZE = 1000;
 interface ExportPayload {
   accountId: number;
   reportId:
+    | "budget_execution"
+    | "project_execution"
     | "sales"
     | "receivable"
     | "payable"
@@ -26,6 +29,8 @@ interface ExportPayload {
   dateTo?: string | null;
   currencyId?: number | null;
   cashboxId?: number | null;
+  budgetId?: number | null;
+  projectId?: number | null;
 }
 
 type BaseTxRow = {
@@ -195,6 +200,8 @@ type PendingDeliveryDetailRow = {
 };
 
 const reportTitles: Record<ExportPayload["reportId"], string> = {
+  budget_execution: "Ejecución presupuestaria",
+  project_execution: "Ejecución por proyecto",
   sales: "Ventas",
   receivable: "Cuentas por cobrar",
   payable: "Cuentas por pagar",
@@ -241,7 +248,7 @@ function previousDate(date: string) {
   return d.toISOString().slice(0, 10);
 }
 
-async function authenticateRequest(supabaseAdmin: any, req: Request, accountId: number) {
+async function authenticateRequest(supabaseAdmin: any, req: Request, accountId: number, reportId: string) {
   const authHeader = req.headers.get("Authorization") || "";
   const accessToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
   if (!accessToken) {
@@ -265,6 +272,16 @@ async function authenticateRequest(supabaseAdmin: any, req: Request, accountId: 
 
   if (membershipError || !membership) {
     throw new Error("Forbidden for this account");
+  }
+  if (reportId === "budget_execution" || reportId === "project_execution") {
+    const { data, error } = await supabaseAdmin.from("users_to_profiles")
+      .select('account_profiles!inner(accountId, isSystemAdmin, permissions)')
+      .eq("accountId", accountId).eq("userId", user.id).single();
+    const profile = data?.account_profiles;
+    if (error || !profile || Number(profile.accountId) !== Number(accountId) ||
+      (!profile.isSystemAdmin && (!profile.permissions?.reports?.read || profile.permissions?.reportAccess?.[reportId] === false))) {
+      throw new Error("Forbidden for this report");
+    }
   }
 }
 
@@ -1532,6 +1549,29 @@ async function buildEmployeePayrollReport(
 }
 
 async function buildReportData(supabaseAdmin: any, payload: ExportPayload): Promise<ExportBuildResult> {
+  if (payload.reportId === "budget_execution" || payload.reportId === "project_execution") {
+    const isBudget = payload.reportId === "budget_execution";
+    if (isBudget ? !payload.budgetId : !payload.projectId) throw new Error("Missing budgetId/projectId");
+    if (isBudget) {
+      const { data: budget, error } = await supabaseAdmin.from("budgets")
+        .select("currencyId, periodStart, periodEnd").eq("accountId", payload.accountId).eq("id", payload.budgetId).single();
+      if (error) throw error;
+      payload.currencyId = payload.currencyId ?? budget.currencyId;
+      payload.dateFrom = payload.dateFrom || budget.periodStart;
+      payload.dateTo = payload.dateTo || budget.periodEnd;
+    }
+    const data = await loadBudgetExecution(supabaseAdmin, {
+      ...payload, budgetId: isBudget ? payload.budgetId : null, projectId: isBudget ? null : payload.projectId
+    });
+    const rows = data.map((row: any) => ({
+      Concepto: row.conceptName, Presupuestado: row.budgeted, Ejecutado: row.executed, Variación: row.variance
+    }));
+    const totals = data.reduce((sum: any, row: any) => ({
+      budgeted: sum.budgeted + row.budgeted, executed: sum.executed + row.executed, variance: sum.variance + row.variance
+    }), { budgeted: 0, executed: 0, variance: 0 });
+    rows.push({ Concepto: "TOTAL", Presupuestado: totals.budgeted, Ejecutado: totals.executed, Variación: totals.variance });
+    return { rows, total: totals.executed, balance: totals.variance };
+  }
   if (payload.reportId === "internal_obligations") {
     return buildInternalObligationsReport(supabaseAdmin, payload);
   }
@@ -1605,7 +1645,7 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false }
     });
 
-    await authenticateRequest(supabaseAdmin, req, payload.accountId);
+    await authenticateRequest(supabaseAdmin, req, payload.accountId, payload.reportId);
 
     const report = await buildReportData(supabaseAdmin, payload);
 

@@ -64,6 +64,13 @@ Usar antes de ejecutar cambios SQL o migraciones manuales en Supabase.
 ### 12. `docs/release-checklist.md`
 Usar antes de desplegar o cerrar cambios relevantes.
 
+### 13. `docs/handoff-budget-control-eleven-studio.md`
+Usar si se va a trabajar en presupuestos, proyectos o sus reportes. Contiene los cambios
+pendientes detectados para el servicio de control presupuestario de Eleven Studio:
+- paginación faltante en `src/services/budgetsService.js` (riesgo de ejecutado subestimado)
+- exportación XLSX de `budget_execution` y `project_execution`
+- moneda en presupuestos
+
 ## Ruta de lectura según tarea
 ### Si vas a tocar UI
 1. `docs/glossary.md`

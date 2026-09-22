@@ -32,8 +32,8 @@ const fullReportCatalog = [
   { id: "receivable", titleKey: "reports.accountsReceivable", filters: ["dateRange", "currency"] },
   { id: "payable", titleKey: "reports.accountsPayable", filters: ["dateRange", "currency"] },
   { id: "internal_obligations", titleKey: "reports.internalObligations", filters: ["dateRange", "currency"] },
-  { id: "budget_execution", titleKey: "reports.budgetExecution", filters: ["budget"] },
-  { id: "project_execution", titleKey: "reports.projectExecution", filters: ["project", "dateRange"] },
+  { id: "budget_execution", titleKey: "reports.budgetExecution", filters: ["budget", "currency", "dateRange"] },
+  { id: "project_execution", titleKey: "reports.projectExecution", filters: ["project", "dateRange", "currency"] },
   { id: "expenses", titleKey: "reports.expenses", filters: ["dateRange", "currency"] },
   { id: "cashflow", titleKey: "reports.cashflow", filters: ["dateRange", "currency"] },
   { id: "employee_absences", titleKey: "reports.employeeAbsences", filters: ["dateRange"] },
@@ -109,10 +109,20 @@ function ReportsPage() {
 
   useEffect(() => {
     if (!account?.accountId) return;
-    loadDependencies();
+    let cancelled = false;
+    setResults([]);
+    setHasExecuted(false);
+    setShowSetup(true);
+    setFilters({ dateFrom: "", dateTo: "", currencyId: "", budgetId: "", projectId: "", cashboxId: "" });
+    setCurrencies([]);
+    setProjects([]);
+    setBudgets([]);
+    setAccountPaymentForms([]);
+    loadDependencies(() => cancelled);
+    return () => { cancelled = true; };
   }, [account?.accountId]);
 
-  const loadDependencies = async () => {
+  const loadDependencies = async (isCancelled = () => false) => {
     try {
       const [currenciesData, projectsData, budgetsData, paymentFormsData] = await Promise.all([
         listCurrencies(account.accountId).catch(() => []),
@@ -120,11 +130,13 @@ function ReportsPage() {
         listBudgets(account.accountId).catch(() => []),
         listAccountPaymentForms(account.accountId).catch(() => [])
       ]);
+      if (isCancelled()) return;
       setCurrencies(currenciesData);
       setProjects(projectsData);
       setBudgets(budgetsData);
       setAccountPaymentForms(paymentFormsData);
     } catch {
+      if (isCancelled()) return;
       setCurrencies([]);
       setProjects([]);
       setBudgets([]);
@@ -134,7 +146,9 @@ function ReportsPage() {
 
   const handleFilterChange = (event) => {
     const { name, value } = event.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
+    setFilters((prev) => ({ ...prev, [name]: value,
+      ...(name === "budgetId" ? { currencyId: String(budgets.find((budget) => String(budget.id) === value)?.currencyId || "") } : {})
+    }));
   };
 
   const buildResults = (transactions, reportId) => {
@@ -259,8 +273,20 @@ function ReportsPage() {
     return transactions;
   };
 
+  const validateBudgetFilters = () => {
+    if (selectedReport === "project_execution" && !filters.currencyId) return t("reports.currencyRequired");
+    if (selectedReport === "budget_execution" && filters.budgetId) {
+      const budget = budgets.find((item) => String(item.id) === String(filters.budgetId));
+      if (!budget?.currencyId) return t("reports.budgetCurrencyRequired");
+      if (filters.currencyId && String(budget.currencyId) !== String(filters.currencyId)) return t("reports.budgetCurrencyMismatch");
+    }
+    return "";
+  };
+
   const executeReport = async () => {
     if (!account?.accountId || !selectedReport || !reportConfig) return;
+    const validationError = validateBudgetFilters();
+    if (validationError) { setError(validationError); return; }
 
     try {
       setIsLoading(true);
@@ -273,6 +299,7 @@ function ReportsPage() {
         const rows = await getBudgetExecutionReport({
           accountId: account.accountId,
           budgetId: Number(filters.budgetId),
+          currencyId: filters.currencyId || undefined,
           dateFrom: filters.dateFrom || undefined,
           dateTo: filters.dateTo || undefined
         });
@@ -285,6 +312,7 @@ function ReportsPage() {
         const rows = await getProjectExecutionReport({
           accountId: account.accountId,
           projectId: Number(filters.projectId),
+          currencyId: filters.currencyId || undefined,
           dateFrom: filters.dateFrom || undefined,
           dateTo: filters.dateTo || undefined
         });
@@ -544,7 +572,11 @@ function ReportsPage() {
       { budgeted: 0, executed: 0, variance: 0 }
     );
   }, [results, selectedReport]);
-  const canExportCurrentReport = !["budget_execution", "project_execution"].includes(selectedReport);
+  const canExportCurrentReport = Boolean(reportConfig);
+  const budgetCurrencyId = selectedReport === "budget_execution"
+    ? budgets.find((budget) => String(budget.id) === String(filters.budgetId))?.currencyId
+    : filters.currencyId;
+  const budgetNumberOptions = { currencySymbol: currencies.find((currency) => String(currency.id) === String(budgetCurrencyId))?.symbol || "" };
 
   const cashflowRowCount = useMemo(() => {
     if (selectedReport !== "cashflow") return 0;
@@ -634,6 +666,16 @@ function ReportsPage() {
 
   const handleExport = async () => {
     if (!account?.accountId || !selectedReport || isExporting) return;
+    const validationError = validateBudgetFilters();
+    if (validationError) { setError(validationError); return; }
+    if (selectedReport === "budget_execution" && !filters.budgetId) {
+      setError(t("reports.budgetRequired"));
+      return;
+    }
+    if (selectedReport === "project_execution" && !filters.projectId) {
+      setError(t("reports.projectRequired"));
+      return;
+    }
 
     try {
       setIsExporting(true);
@@ -710,7 +752,7 @@ function ReportsPage() {
                 <label className="field-block form-span-2">
                   <span>{t("reports.currencyFilter")}</span>
                   <select name="currencyId" value={filters.currencyId} onChange={handleFilterChange}>
-                    <option value="">{`-- ${t("reports.currencyFilterHint")} --`}</option>
+                    <option value="">{`-- ${t(["budget_execution", "project_execution"].includes(selectedReport) ? "reports.currencyRequired" : "reports.currencyFilterHint")} --`}</option>
                     {currencies.map((currency) => (
                       <option key={currency.id} value={currency.id}>
                         {currency.name} ({currency.symbol})
@@ -813,9 +855,9 @@ function ReportsPage() {
 
             {budgetExecutionTotals ? (
               <>
-                <ReadOnlyField label={t("budgets.totalBudget")} value={budgetExecutionTotals.budgeted} type="currency" />
-                <ReadOnlyField label={t("reports.executed")} value={budgetExecutionTotals.executed} type="currency" />
-                <ReadOnlyField label={t("reports.variance")} value={budgetExecutionTotals.variance} type="currency" />
+                <ReadOnlyField label={t("budgets.totalBudget")} value={budgetExecutionTotals.budgeted} type="currency" numberOptions={budgetNumberOptions} />
+                <ReadOnlyField label={t("reports.executed")} value={budgetExecutionTotals.executed} type="currency" numberOptions={budgetNumberOptions} />
+                <ReadOnlyField label={t("reports.variance")} value={budgetExecutionTotals.variance} type="currency" numberOptions={budgetNumberOptions} />
               </>
             ) : (
               <>
@@ -1042,9 +1084,9 @@ function ReportsPage() {
                 rowsWithTypeLabel.map((tx) => (
                   <tr key={`${selectedReport}-${tx.id}`}>
                     <td>{tx.typeLabel}</td>
-                    <td className="num-col">{formatNumber(tx.budgeted || 0)}</td>
-                    <td className="num-col">{formatNumber(tx.executed || 0)}</td>
-                    <td className="num-col">{formatNumber(tx.variance || 0)}</td>
+                    <td className="num-col">{formatNumber(tx.budgeted || 0, budgetNumberOptions)}</td>
+                    <td className="num-col">{formatNumber(tx.executed || 0, budgetNumberOptions)}</td>
+                    <td className="num-col">{formatNumber(tx.variance || 0, budgetNumberOptions)}</td>
                   </tr>
                 ))
               ) : selectedReport === "cashflow" ? (

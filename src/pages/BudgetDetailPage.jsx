@@ -39,7 +39,7 @@ function BudgetDetailPage() {
     try {
       setIsLoading(true);
       const [budgetData, executionRows] = await Promise.all([
-        getBudgetById(id),
+        getBudgetById(id, account.accountId),
         getBudgetExecutionReport({ accountId: account.accountId, budgetId: Number(id) })
       ]);
       setBudget(budgetData);
@@ -77,8 +77,9 @@ function BudgetDetailPage() {
               {formatDate(budget?.periodEnd, language)}
             </p>
             <p>
-              {t("budgets.totalBudget")}: {formatNumber(totals.budgeted)} | {t("reports.executed")}: {formatNumber(totals.executed)} |{" "}
-              {t("reports.variance")}: {formatNumber(totals.variance)}
+              {t("transactions.currency")}: {budget?.currencies?.name || "-"} |{" "}
+              {t("budgets.totalBudget")}: {formatNumber(totals.budgeted, { currencySymbol: budget?.currencies?.symbol || "" })} | {t("reports.executed")}: {formatNumber(totals.executed, { currencySymbol: budget?.currencies?.symbol || "" })} |{" "}
+              {t("reports.variance")}: {formatNumber(totals.variance, { currencySymbol: budget?.currencies?.symbol || "" })}
             </p>
           </section>
 
@@ -100,11 +101,11 @@ function BudgetDetailPage() {
                 rows.map((row) => (
                   <tr key={row.id}>
                     <td>{row.conceptName}</td>
-                    <td className="num-col">{formatNumber(row.budgeted)}</td>
+                    <td className="num-col">{formatNumber(row.budgeted, { currencySymbol: budget?.currencies?.symbol || "" })}</td>
                     <td className={`num-col ${Number(row.executed || 0) > Number(row.budgeted || 0) ? "text-danger" : ""}`.trim()}>
-                      {formatNumber(row.executed)}
+                      {formatNumber(row.executed, { currencySymbol: budget?.currencies?.symbol || "" })}
                     </td>
-                    <td className="num-col">{formatNumber(row.variance)}</td>
+                    <td className="num-col">{formatNumber(row.variance, { currencySymbol: budget?.currencies?.symbol || "" })}</td>
                   </tr>
                 ))
               )}

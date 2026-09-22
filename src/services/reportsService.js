@@ -1,9 +1,9 @@
 import { supabase } from "../lib/supabase";
+import { fetchAllPages } from "../../supabase/functions/_shared/fetchAllPages.js";
 
 const PRIOR_BALANCE_TAG = "__prior_balance__";
 const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
 const PAYABLE_CASH_IN_TAG = "__payable_cash_in__";
-const REPORT_PAGE_SIZE = 1000;
 
 function isPayableCashIn(tx) {
   return Boolean(tx?.isAccountPayable) && Array.isArray(tx?.tags) && tx.tags.includes(PAYABLE_CASH_IN_TAG);
@@ -45,23 +45,6 @@ function getCashMovementTypeLabel(tx) {
   return "Transacción";
 }
 
-async function fetchAllPages(buildPageQuery, pageSize = REPORT_PAGE_SIZE) {
-  const rows = [];
-  let from = 0;
-
-  while (true) {
-    const to = from + pageSize - 1;
-    const { data, error } = await buildPageQuery(from, to);
-    if (error) throw error;
-
-    const batch = data ?? [];
-    rows.push(...batch);
-    if (batch.length < pageSize) break;
-    from += pageSize;
-  }
-
-  return rows;
-}
 
 export async function getTransactionsForReports(accountId, { dateFrom, dateTo } = {}) {
   let query = supabase

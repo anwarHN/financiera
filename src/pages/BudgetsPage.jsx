@@ -109,7 +109,7 @@ function BudgetsPage() {
                   <td>{formatDate(item.periodStart, language)}</td>
                   <td>{formatDate(item.periodEnd, language)}</td>
                   <td>{item.projects?.name || "-"}</td>
-                  <td className="num-col">{formatNumber(lineTotals[item.id] || 0)}</td>
+                  <td className="num-col">{formatNumber(lineTotals[item.id] || 0, { currencySymbol: item.currencies?.symbol || "" })}</td>
                   <td className="table-actions">
                     <RowActionsMenu
                       actions={[

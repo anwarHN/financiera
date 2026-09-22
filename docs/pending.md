@@ -1,6 +1,12 @@
 # Pendientes
 
 ## Alta prioridad
+- `src/services/budgetsService.js` no pagina lecturas de `transactionDetails`:
+  - `getBudgetExecutionReport` (línea `109`) y `getProjectExecutionReport` (línea `158`).
+  - Por encima de `1000` filas el ejecutado sale subestimado y la variación sale
+    falsamente favorable. Mismo patrón del incidente de flujo de caja descrito en `handoff.md`.
+  - `getProjectExecutionReport` además lee `transactionDetails` sin filtro de cuenta.
+  - Detalle y criterios de aceptación en `docs/handoff-budget-control-eleven-studio.md`.
 - Validar manualmente todos los formularios con picklists después de cambio de cuenta:
   - nueva factura
   - compra
