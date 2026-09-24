@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
@@ -11,6 +11,15 @@ import {
 import { listConcepts } from "../services/conceptsService";
 import { listProjects } from "../services/projectsService";
 import { listCurrencies } from "../services/currenciesService";
+import LookupCombobox from "../components/LookupCombobox";
+import ConceptModuleFormPage from "./ConceptModuleFormPage";
+import { useModulePermissions } from "../hooks/useModulePermissions";
+
+const conceptModules = {
+  expense: { titleKey: "actions.newExpenseConcept", basePath: "/expense-concepts" },
+  income: { titleKey: "actions.newIncomeConcept", basePath: "/income-concepts" },
+  products: { titleKey: "actions.newProduct", basePath: "/products" }
+};
 
 const initialHeader = {
   name: "",
@@ -24,6 +33,9 @@ const initialHeader = {
 function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }) {
   const { t } = useI18n();
   const { account, user } = useAuth();
+  const activeAccountId = useRef(account?.accountId);
+  activeAccountId.current = account?.accountId;
+  const { canCreate: canCreateConcept } = useModulePermissions("concepts");
   const navigate = useNavigate();
   const { id } = useParams();
   const currentId = embedded ? itemId : id;
@@ -37,6 +49,7 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [conceptModule, setConceptModule] = useState("expense");
 
   const conceptOptions = useMemo(
     () => concepts.filter((item) => !item.isGroup && (item.isIncome || item.isExpense || item.isProduct)),
@@ -48,6 +61,7 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
     let cancelled = false;
     setHeader(initialHeader);
     setLines([]);
+    setConceptModule("expense");
     setProjects([]);
     setConcepts([]);
     setCurrencies([]);
@@ -115,6 +129,12 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
     setLines((prev) => prev.filter((line) => line.rowId !== rowId));
   };
 
+  const selectLineConcept = (rowId, concept) => {
+    setLines((prev) => prev.map((line) => line.rowId === rowId
+      ? { ...line, conceptId: String(concept.id), conceptLookup: concept.name }
+      : line));
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
@@ -143,7 +163,7 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
     const normalizedLines = lines
       .filter((line) => line.conceptId)
       .map((line) => ({ conceptId: Number(line.conceptId), amount: Number(line.amount || 0) }));
-    if (normalizedLines.length === 0) {
+    if (normalizedLines.length === 0 || lines.some((line) => !line.conceptId)) {
       setError(t("common.requiredFields"));
       return;
     }
@@ -264,14 +284,46 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
                   lines.map((line) => (
                     <tr key={line.rowId}>
                       <td>
-                        <select value={line.conceptId} onChange={(event) => updateLine(line.rowId, "conceptId", event.target.value)}>
-                          <option value="">{`-- ${t("transactions.selectConcept")} --`}</option>
-                          {conceptOptions.map((concept) => (
-                            <option key={concept.id} value={concept.id}>
-                              {concept.name}
-                            </option>
-                          ))}
-                        </select>
+                        <LookupCombobox
+                          value={line.conceptLookup ?? concepts.find((concept) => String(concept.id) === line.conceptId)?.name ?? ""}
+                          onValueChange={(value) => setLines((prev) => prev.map((item) => item.rowId === line.rowId
+                            ? { ...item, conceptId: "", conceptLookup: value }
+                            : item))}
+                          options={conceptOptions}
+                          getOptionLabel={(concept) => concept.name || ""}
+                          onSelect={(concept) => selectLineConcept(line.rowId, concept)}
+                          placeholder={t("transactions.selectConcept")}
+                          noResultsText={t("common.empty")}
+                          required
+                          onCreateRecord={(concept) => {
+                            if (!concept?.id || activeAccountId.current !== account.accountId) return;
+                            setConcepts((prev) => [...prev.filter((item) => item.id !== concept.id), concept]
+                              .sort((a, b) => a.name.localeCompare(b.name)));
+                            selectLineConcept(line.rowId, concept);
+                          }}
+                          renderCreateModal={canCreateConcept ? ({ isOpen, onClose, onCreated }) => isOpen ? (
+                            <div className="modal-backdrop" onSubmit={(event) => event.stopPropagation()}>
+                              <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+                                <label className="field-block">
+                                  <span>{t("transactions.concept")}</span>
+                                  <select value={conceptModule} onChange={(event) => setConceptModule(event.target.value)}>
+                                    {Object.entries(conceptModules).map(([type, config]) => (
+                                      <option key={type} value={type}>{t(config.titleKey)}</option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <ConceptModuleFormPage
+                                  key={`${account.accountId}-${conceptModule}`}
+                                  embedded
+                                  moduleType={conceptModule}
+                                  {...conceptModules[conceptModule]}
+                                  onCancel={onClose}
+                                  onCreated={onCreated}
+                                />
+                              </div>
+                            </div>
+                          ) : null : undefined}
+                        />
                       </td>
                       <td>
                         <input
