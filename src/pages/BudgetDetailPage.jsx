@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import BudgetExecutionSummary from "../components/BudgetExecutionSummary";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
@@ -21,19 +22,6 @@ function BudgetDetailPage() {
     loadData();
   }, [account?.accountId, id]);
 
-  const totals = useMemo(
-    () =>
-      rows.reduce(
-        (acc, row) => {
-          acc.budgeted += Number(row.budgeted || 0);
-          acc.executed += Number(row.executed || 0);
-          acc.variance += Number(row.variance || 0);
-          return acc;
-        },
-        { budgeted: 0, executed: 0, variance: 0 }
-      ),
-    [rows]
-  );
 
   const loadData = async () => {
     try {
@@ -77,11 +65,11 @@ function BudgetDetailPage() {
               {formatDate(budget?.periodEnd, language)}
             </p>
             <p>
-              {t("transactions.currency")}: {budget?.currencies?.name || "-"} |{" "}
-              {t("budgets.totalBudget")}: {formatNumber(totals.budgeted, { currencySymbol: budget?.currencies?.symbol || "" })} | {t("reports.executed")}: {formatNumber(totals.executed, { currencySymbol: budget?.currencies?.symbol || "" })} |{" "}
-              {t("reports.variance")}: {formatNumber(totals.variance, { currencySymbol: budget?.currencies?.symbol || "" })}
+              {t("transactions.currency")}: {budget?.currencies?.name || "-"}
             </p>
           </section>
+
+          <BudgetExecutionSummary rows={rows} numberOptions={{ currencySymbol: budget?.currencies?.symbol || "" }} />
 
           <table className="crud-table">
             <thead>
@@ -100,9 +88,9 @@ function BudgetDetailPage() {
               ) : (
                 rows.map((row) => (
                   <tr key={row.id}>
-                    <td>{row.conceptName}</td>
+                    <td>{t(`budgets.${row.lineType}`)}: {row.unclassified ? `${t("budgets.unclassified")} / ` : ""}{row.conceptName}{row.unbudgeted ? ` (${t("budgets.unbudgeted")})` : ""}</td>
                     <td className="num-col">{formatNumber(row.budgeted, { currencySymbol: budget?.currencies?.symbol || "" })}</td>
-                    <td className={`num-col ${Number(row.executed || 0) > Number(row.budgeted || 0) ? "text-danger" : ""}`.trim()}>
+                    <td className={`num-col ${row.variance < 0 ? "text-danger" : ""}`.trim()}>
                       {formatNumber(row.executed, { currencySymbol: budget?.currencies?.symbol || "" })}
                     </td>
                     <td className="num-col">{formatNumber(row.variance, { currencySymbol: budget?.currencies?.symbol || "" })}</td>

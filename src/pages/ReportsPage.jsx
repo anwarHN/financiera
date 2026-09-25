@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import BudgetExecutionSummary from "../components/BudgetExecutionSummary";
+import { summarizeBudgetExecution } from "../../supabase/functions/_shared/budgetExecution.js";
 import { FiChevronRight } from "react-icons/fi";
 import ReadOnlyField from "../components/form/ReadOnlyField";
 import { useAuth } from "../contexts/AuthContext";
@@ -546,7 +548,7 @@ function ReportsPage() {
           selectedReport === "cashbox_movements"
             ? tx.typeLabel || "-"
             : selectedReport === "budget_execution" || selectedReport === "project_execution"
-            ? tx.conceptName || "-"
+            ? `${t(`budgets.${tx.lineType}`)}: ${tx.unclassified ? `${t("budgets.unclassified")} / ` : ""}${tx.conceptName || "-"}${tx.unbudgeted ? ` (${t("budgets.unbudgeted")})` : ""}`
             : selectedReport === "internal_obligations"
               ? tx.name || t("reports.internalObligations")
               : selectedReport === "cashflow"
@@ -563,15 +565,7 @@ function ReportsPage() {
 
   const budgetExecutionTotals = useMemo(() => {
     if (!["budget_execution", "project_execution"].includes(selectedReport)) return null;
-    return results.reduce(
-      (acc, row) => {
-        acc.budgeted += Number(row.budgeted || 0);
-        acc.executed += Number(row.executed || 0);
-        acc.variance += Number(row.variance || 0);
-        return acc;
-      },
-      { budgeted: 0, executed: 0, variance: 0 }
-    );
+    return summarizeBudgetExecution(results);
   }, [results, selectedReport]);
   const canExportCurrentReport = Boolean(reportConfig);
   const budgetCurrencyId = selectedReport === "budget_execution"
@@ -861,9 +855,7 @@ function ReportsPage() {
 
             {budgetExecutionTotals ? (
               <>
-                <ReadOnlyField label={t("budgets.totalBudget")} value={budgetExecutionTotals.budgeted} type="currency" numberOptions={budgetNumberOptions} />
-                <ReadOnlyField label={t("reports.executed")} value={budgetExecutionTotals.executed} type="currency" numberOptions={budgetNumberOptions} />
-                <ReadOnlyField label={t("reports.variance")} value={budgetExecutionTotals.variance} type="currency" numberOptions={budgetNumberOptions} />
+                <BudgetExecutionSummary rows={results} numberOptions={budgetNumberOptions} />
               </>
             ) : (
               <>

@@ -49,7 +49,7 @@ function BudgetsPage() {
       await Promise.all(
         data.map(async (budget) => {
           const lines = await listBudgetLines(budget.id).catch(() => []);
-          totals[budget.id] = lines.reduce((acc, line) => acc + Number(line.amount || 0), 0);
+          totals[budget.id] = lines.reduce((acc, line) => acc + Number(line.amount || 0) * (line.lineType === "income" ? 1 : -1), 0);
         })
       );
       setLineTotals(totals);
@@ -95,7 +95,7 @@ function BudgetsPage() {
                 <th>{t("reports.dateFrom")}</th>
                 <th>{t("reports.dateTo")}</th>
                 <th>{t("projects.project")}</th>
-                <th className="num-col">{t("budgets.totalBudget")}</th>
+                <th className="num-col">{t("budgets.result")}</th>
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>

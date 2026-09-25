@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
-import { loadBudgetExecution } from "../_shared/budgetExecution.js";
+import { loadBudgetExecution, summarizeBudgetExecution } from "../_shared/budgetExecution.js";
 import { loadCreditEntries, appliedCreditByInvoice, creditReceivableRows } from "../_shared/customerCredits.js";
 const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
 const PRIOR_BALANCE_TAG = "__prior_balance__";
@@ -1582,12 +1582,15 @@ async function buildReportData(supabaseAdmin: any, payload: ExportPayload): Prom
       ...payload, budgetId: isBudget ? payload.budgetId : null, projectId: isBudget ? null : payload.projectId
     });
     const rows = data.map((row: any) => ({
-      Concepto: row.conceptName, Presupuestado: row.budgeted, Ejecutado: row.executed, Variación: row.variance
+      Tipo: row.lineType === "income" ? "Ingreso" : "Gasto",
+      Concepto: `${row.unclassified ? "Sin clasificar / " : ""}${row.conceptName}`,
+      Estado: row.unvaluedReturn ? "Revisar: devolucion historica sin importe" : row.unbudgeted ? "No presupuestado" : "Presupuestado",
+      Presupuestado: row.budgeted, Ejecutado: row.executed, Variación: row.variance
     }));
-    const totals = data.reduce((sum: any, row: any) => ({
-      budgeted: sum.budgeted + row.budgeted, executed: sum.executed + row.executed, variance: sum.variance + row.variance
-    }), { budgeted: 0, executed: 0, variance: 0 });
-    rows.push({ Concepto: "TOTAL", Presupuestado: totals.budgeted, Ejecutado: totals.executed, Variación: totals.variance });
+    const totals = summarizeBudgetExecution(data);
+    for (const [label, value] of [["INGRESOS", totals.income], ["GASTOS", totals.expense], ["RESULTADO", totals]] as const) {
+      rows.push({ Tipo: label, Concepto: label, Estado: "", Presupuestado: value.budgeted, Ejecutado: value.executed, Variación: value.variance });
+    }
     return { rows, total: totals.executed, balance: totals.variance };
   }
   if (payload.reportId === "internal_obligations") {

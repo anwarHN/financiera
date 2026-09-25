@@ -33,6 +33,7 @@ const moduleFlags = {
 const initialForm = {
   name: "",
   parentConceptId: "",
+  incomeConceptId: "",
   productType: "product",
   taxPercentage: 0,
   price: 0,
@@ -55,6 +56,20 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [groupOptions, setGroupOptions] = useState([]);
   const [groupLookup, setGroupLookup] = useState("");
+  const [incomeOptions, setIncomeOptions] = useState([]);
+  const [incomeLookup, setIncomeLookup] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setIncomeOptions([]);
+    setIncomeLookup("");
+    if (moduleType === "products" && account?.accountId) {
+      listConceptsByModule(account.accountId, "income").then((items) => {
+        if (!cancelled) setIncomeOptions(items.filter((item) => !item.isProduct && !item.isGroup && !item.isSystem));
+      }).catch(() => { if (!cancelled) setError(t("common.genericLoadError")); });
+    }
+    return () => { cancelled = true; };
+  }, [account?.accountId, moduleType]);
 
   useEffect(() => {
     if (!account?.accountId) {
@@ -86,6 +101,7 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
       setForm({
         name: item.name,
         parentConceptId: item.parentConceptId ? String(item.parentConceptId) : "",
+        incomeConceptId: item.incomeConceptId ? String(item.incomeConceptId) : "",
         productType: item.productType === "service" ? "service" : "product",
         taxPercentage: item.taxPercentage ?? 0,
         price: item.price ?? 0,
@@ -131,6 +147,7 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
       accountId: account.accountId,
       name: form.name.trim(),
       parentConceptId: moduleType === "groups" ? null : form.parentConceptId ? Number(form.parentConceptId) : null,
+      incomeConceptId: moduleType === "products" && form.incomeConceptId ? Number(form.incomeConceptId) : null,
       productType: moduleType === "products" ? form.productType : null,
       taxPercentage: moduleType === "products" ? Number(form.taxPercentage) || 0 : 0,
       price: Number(form.price) || 0,
@@ -183,6 +200,20 @@ function ConceptModuleFormPage({ moduleType, titleKey, basePath, embedded = fals
         <form className="crud-form" onSubmit={handleSubmit}>
           <div className="form-grid-2">
             <TextField label={t("common.name")} name="name" placeholder={t("common.name")} value={form.name} onChange={handleChange} required />
+            {moduleType === "products" ? (
+              <LookupCombobox
+                label={t("budgets.incomeConcept")}
+                value={incomeLookup}
+                onValueChange={setIncomeLookup}
+                options={incomeOptions}
+                getOptionLabel={(item) => item.name}
+                onSelect={(item) => { setForm((prev) => ({ ...prev, incomeConceptId: String(item.id) })); setIncomeLookup(""); }}
+                selectedPillText={incomeOptions.find((item) => String(item.id) === form.incomeConceptId)?.name || ""}
+                onClearSelection={() => { setForm((prev) => ({ ...prev, incomeConceptId: "" })); setIncomeLookup(""); }}
+                placeholder={t("budgets.unclassified")}
+                noResultsText={t("common.empty")}
+              />
+            ) : null}
 
             {moduleType !== "groups" ? (
               ["products", "income", "expense", "payable"].includes(moduleType) ? (

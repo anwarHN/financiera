@@ -173,7 +173,7 @@ export async function listTransactionDetails(transactionId) {
   const { data, error } = await supabase
     .from("transactionDetails")
     .select(
-      "id, conceptId, quantity, quantityDelivered, pendingDelivery, price, net, taxPercentage, tax, discountPercentage, discount, total, additionalCharges, transactionPaidId, concepts(name, isProduct, productType)"
+      "id, conceptId, incomeAllocation, quantity, quantityDelivered, pendingDelivery, price, net, taxPercentage, tax, discountPercentage, discount, total, additionalCharges, transactionPaidId, concepts(name, isProduct, productType)"
     )
     .eq("transactionId", transactionId)
     .order("id");

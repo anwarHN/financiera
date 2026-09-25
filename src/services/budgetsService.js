@@ -27,7 +27,7 @@ export async function getBudgetById(id, accountId) {
 export async function listBudgetLines(budgetId) {
   return fetchAllPages((from, to) => supabase
     .from("budget_lines")
-    .select('id, "budgetId", "conceptId", amount, concepts(name)')
+    .select('id, "budgetId", "conceptId", "lineType", amount, concepts(name)')
     .eq("budgetId", budgetId)
     .order("id", { ascending: true }).range(from, to));
 }
@@ -40,13 +40,16 @@ export async function createBudgetWithLines({ budget, lines }) {
     .filter((line) => Number(line.conceptId))
     .map((line) => ({
       budgetId: createdBudget.id,
+      lineType: line.lineType,
       conceptId: Number(line.conceptId),
       amount: Number(line.amount || 0),
       createdById: budget.createdById
     }));
 
   if (payloadLines.length > 0) {
-    const { error: linesError } = await supabase.from("budget_lines").insert(payloadLines);
+    const { error: linesError } = await supabase.rpc("replace_budget_lines", {
+      p_budget_id: createdBudget.id, p_account_id: budget.accountId, p_lines: payloadLines
+    });
     if (linesError) {
       await supabase.from("budgets").delete().eq("id", createdBudget.id);
       throw linesError;
@@ -61,20 +64,20 @@ export async function updateBudgetWithLines(id, { budget, lines }) {
     .eq("id", id).eq("accountId", budget.accountId).select("id").single();
   if (budgetError) throw budgetError;
 
-  const { error: deleteError } = await supabase.from("budget_lines").delete().eq("budgetId", id);
-  if (deleteError) throw deleteError;
-
   const payloadLines = (lines ?? [])
     .filter((line) => Number(line.conceptId))
     .map((line) => ({
       budgetId: id,
+      lineType: line.lineType,
       conceptId: Number(line.conceptId),
       amount: Number(line.amount || 0),
       createdById: budget.createdById
     }));
 
   if (payloadLines.length > 0) {
-    const { error: linesError } = await supabase.from("budget_lines").insert(payloadLines);
+    const { error: linesError } = await supabase.rpc("replace_budget_lines", {
+      p_budget_id: Number(id), p_account_id: budget.accountId, p_lines: payloadLines
+    });
     if (linesError) throw linesError;
   }
 }

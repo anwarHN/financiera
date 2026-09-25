@@ -460,6 +460,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
             rowId: String(line.id || `${Date.now()}-${Math.random()}`),
             conceptId: Number(line.conceptId),
             conceptName: line.concepts?.name || "",
+            incomeAllocation: line.incomeAllocation ?? {},
             quantity: Number(line.quantity) || 0,
             quantityDelivered:
               line.pendingDelivery
@@ -1130,6 +1131,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                 conceptId: Number(line.conceptId),
                 quantity: amounts.quantity,
                 quantityDelivered: safeDelivered,
+                incomeAllocation: line.incomeAllocation ?? null,
                 pendingDelivery: invoicePendingDelivery && safeDelivered < safeQuantity,
                 price: amounts.price,
                 net: amounts.net,

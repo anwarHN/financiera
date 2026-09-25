@@ -72,6 +72,9 @@ pendientes detectados para el servicio de control presupuestario de Eleven Studi
 - moneda en presupuestos
 
 ## Ruta de lectura según tarea
+### Presupuestos de ingresos y gastos
+Leer `docs/budget-income-expense.md` para tipos de línea, asignación histórica de ingresos, resultado, devoluciones y despliegue. Sus reglas actualizan el comportamiento anterior de ejecución presupuestaria.
+
 ### Si vas a tocar UI
 1. `docs/glossary.md`
 2. `docs/frontend-map.md`

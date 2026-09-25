@@ -17,8 +17,7 @@ import { useModulePermissions } from "../hooks/useModulePermissions";
 
 const conceptModules = {
   expense: { titleKey: "actions.newExpenseConcept", basePath: "/expense-concepts" },
-  income: { titleKey: "actions.newIncomeConcept", basePath: "/income-concepts" },
-  products: { titleKey: "actions.newProduct", basePath: "/products" }
+  income: { titleKey: "actions.newIncomeConcept", basePath: "/income-concepts" }
 };
 
 const initialHeader = {
@@ -49,10 +48,9 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [conceptModule, setConceptModule] = useState("expense");
 
   const conceptOptions = useMemo(
-    () => concepts.filter((item) => !item.isGroup && (item.isIncome || item.isExpense || item.isProduct)),
+    () => concepts.filter((item) => !item.isGroup && !item.isSystem && !item.isProduct && (item.isIncome || item.isExpense)),
     [concepts]
   );
 
@@ -61,7 +59,6 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
     let cancelled = false;
     setHeader(initialHeader);
     setLines([]);
-    setConceptModule("expense");
     setProjects([]);
     setConcepts([]);
     setCurrencies([]);
@@ -108,6 +105,7 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
         (budgetLines || []).map((line) => ({
           rowId: String(line.id),
           conceptId: String(line.conceptId),
+          lineType: line.lineType,
           amount: Number(line.amount || 0)
         }))
       );
@@ -118,7 +116,7 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
   };
 
   const addLine = () => {
-    setLines((prev) => [...prev, { rowId: `${Date.now()}-${Math.random()}`, conceptId: "", amount: 0 }]);
+    setLines((prev) => [...prev, { rowId: `${Date.now()}-${Math.random()}`, conceptId: "", lineType: "expense", amount: 0 }]);
   };
 
   const updateLine = (rowId, field, value) => {
@@ -162,9 +160,13 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
 
     const normalizedLines = lines
       .filter((line) => line.conceptId)
-      .map((line) => ({ conceptId: Number(line.conceptId), amount: Number(line.amount || 0) }));
+      .map((line) => ({ conceptId: Number(line.conceptId), lineType: line.lineType, amount: Number(line.amount || 0) }));
     if (normalizedLines.length === 0 || lines.some((line) => !line.conceptId)) {
       setError(t("common.requiredFields"));
+      return;
+    }
+    if (new Set(normalizedLines.map((line) => `${line.lineType}:${line.conceptId}`)).size !== normalizedLines.length) {
+      setError(t("budgets.duplicateLine"));
       return;
     }
 
@@ -270,6 +272,7 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
             <table className="crud-table">
               <thead>
                 <tr>
+                  <th>{t("common.type")}</th>
                   <th>{t("transactions.concept")}</th>
                   <th>{t("budgets.budgetAmount")}</th>
                   <th>{t("common.actions")}</th>
@@ -278,18 +281,28 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
               <tbody>
                 {lines.length === 0 ? (
                   <tr>
-                    <td colSpan={3}>{t("common.empty")}</td>
+                    <td colSpan={4}>{t("common.empty")}</td>
                   </tr>
                 ) : (
                   lines.map((line) => (
                     <tr key={line.rowId}>
+                      <td>
+                        <select value={line.lineType} onChange={(event) => {
+                          const lineType = event.target.value;
+                          setLines((prev) => prev.map((item) => item.rowId === line.rowId
+                            ? { ...item, lineType, conceptId: "", conceptLookup: "" } : item));
+                        }}>
+                          <option value="income">{t("budgets.income")}</option>
+                          <option value="expense">{t("budgets.expense")}</option>
+                        </select>
+                      </td>
                       <td>
                         <LookupCombobox
                           value={line.conceptLookup ?? concepts.find((concept) => String(concept.id) === line.conceptId)?.name ?? ""}
                           onValueChange={(value) => setLines((prev) => prev.map((item) => item.rowId === line.rowId
                             ? { ...item, conceptId: "", conceptLookup: value }
                             : item))}
-                          options={conceptOptions}
+                          options={conceptOptions.filter((item) => line.lineType === "income" ? item.isIncome : item.isExpense)}
                           getOptionLabel={(concept) => concept.name || ""}
                           onSelect={(concept) => selectLineConcept(line.rowId, concept)}
                           placeholder={t("transactions.selectConcept")}
@@ -304,19 +317,11 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
                           renderCreateModal={canCreateConcept ? ({ isOpen, onClose, onCreated }) => isOpen ? (
                             <div className="modal-backdrop" onSubmit={(event) => event.stopPropagation()}>
                               <div className="modal-card" onClick={(event) => event.stopPropagation()}>
-                                <label className="field-block">
-                                  <span>{t("transactions.concept")}</span>
-                                  <select value={conceptModule} onChange={(event) => setConceptModule(event.target.value)}>
-                                    {Object.entries(conceptModules).map(([type, config]) => (
-                                      <option key={type} value={type}>{t(config.titleKey)}</option>
-                                    ))}
-                                  </select>
-                                </label>
                                 <ConceptModuleFormPage
-                                  key={`${account.accountId}-${conceptModule}`}
+                                  key={`${account.accountId}-${line.lineType}`}
                                   embedded
-                                  moduleType={conceptModule}
-                                  {...conceptModules[conceptModule]}
+                                  moduleType={line.lineType}
+                                  {...conceptModules[line.lineType]}
                                   onCancel={onClose}
                                   onCreated={onCreated}
                                 />
@@ -328,6 +333,7 @@ function BudgetFormPage({ embedded = false, onCancel, onCreated, itemId = null }
                       <td>
                         <input
                           type="number"
+                          min="0"
                           step="0.01"
                           value={line.amount}
                           onChange={(event) => updateLine(line.rowId, "amount", event.target.value)}

@@ -2,7 +2,7 @@ import { supabase } from "../lib/supabase";
 import { TRANSACTION_TYPES } from "./transactionsService";
 
 const selectColumns =
-  "id, name, parentConceptId, isGroup, isIncome, isExpense, isProduct, productType, isPaymentForm, isAccountPayableConcept, isIncomingPaymentConcept, isOutgoingPaymentConcept, isLoanConcept, isLoanPaymentConcept, isCashWithdrawalConcept, isSystem, taxPercentage, price, additionalCharges";
+  "id, name, parentConceptId, incomeConceptId, isGroup, isIncome, isExpense, isProduct, productType, isPaymentForm, isAccountPayableConcept, isIncomingPaymentConcept, isOutgoingPaymentConcept, isLoanConcept, isLoanPaymentConcept, isCashWithdrawalConcept, isSystem, taxPercentage, price, additionalCharges";
 
 async function attachParentConcept(rows) {
   const source = Array.isArray(rows) ? rows : [];

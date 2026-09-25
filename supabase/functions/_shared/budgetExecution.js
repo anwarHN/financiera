@@ -1,5 +1,24 @@
 import { fetchAllPages } from "./fetchAllPages.js";
 
+const money = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+
+export function summarizeBudgetExecution(rows) {
+  const totals = { income: { budgeted: 0, executed: 0, variance: 0 }, expense: { budgeted: 0, executed: 0, variance: 0 } };
+  for (const row of rows) {
+    totals[row.lineType].budgeted += row.budgeted;
+    totals[row.lineType].executed += row.executed;
+  }
+  for (const type of ["income", "expense"]) {
+    const row = totals[type];
+    row.budgeted = money(row.budgeted);
+    row.executed = money(row.executed);
+    row.variance = money((row.executed - row.budgeted) * (type === "income" ? 1 : -1));
+  }
+  const budgeted = money(totals.income.budgeted - totals.expense.budgeted);
+  const executed = money(totals.income.executed - totals.expense.executed);
+  return { ...totals, budgeted, executed, variance: money(executed - budgeted) };
+}
+
 /**
  * @param {any} client
  * @param {{accountId: number, budgetId?: number|null, projectId?: number|null, currencyId?: number|string|null, dateFrom?: string|null, dateTo?: string|null}} filters
@@ -33,35 +52,62 @@ export async function loadBudgetExecution(client, { accountId, budgetId = null, 
   for (let index = 0; index < budgets.length; index += 100) {
     const ids = budgets.slice(index, index + 100).map((budget) => budget.id);
     lines.push(...await fetchAllPages((from, to) => client.from("budget_lines")
-      .select('id, "conceptId", amount, concepts(name, isExpense)')
+      .select('id, "conceptId", "lineType", amount, concepts(name, isExpense)')
       .in("budgetId", ids).order("id").range(from, to)));
   }
   const amounts = new Map();
   for (const line of lines) {
-    const key = Number(line.conceptId);
-    const row = amounts.get(key) || { id: key, conceptId: key, conceptName: line.concepts?.name || `#${key}`, budgeted: 0, executed: 0 };
+    const key = `${line.lineType}:${line.conceptId}`;
+    const row = amounts.get(key) || { id: key, conceptId: Number(line.conceptId), lineType: line.lineType,
+      conceptName: line.concepts?.name || `#${line.conceptId}`, budgeted: 0, executed: 0, unbudgeted: false, unclassified: false };
     row.budgeted += Number(line.amount || 0);
     amounts.set(key, row);
   }
-  const conceptIds = [...amounts.keys()];
-  const chunks = budgetId ? Array.from({ length: Math.ceil(conceptIds.length / 100) }, (_, i) => conceptIds.slice(i * 100, i * 100 + 100)) : [null];
-  for (const chunk of chunks) {
+  // Read unbudgeted movements too: excluding them would overstate the result.
+  {
     let query = client.from("transactionDetails")
-      .select('id, conceptId, total, concepts(name, isExpense), transactions!transaction_details_transactionId_fkey!inner(accountId, date, isActive, projectId, currencyId)')
+      .select('id, conceptId, total, net, discount, additionalCharges, incomeAllocation, budgetIncomeReversal, concepts(name, isExpense, isIncome, isProduct, isSystem), transactions!transaction_details_transactionId_fkey!inner(accountId, date, type, tags, isActive, projectId, currencyId, isInternalTransfer, isDeposit, isEmployeeLoan, isInternalObligation)')
       .eq("transactions.accountId", accountId).eq("transactions.isActive", true)
       .eq("transactions.currencyId", currencyId).order("id");
     if (projectId) query = query.eq("transactions.projectId", projectId);
     if (dateFrom) query = query.gte("transactions.date", dateFrom);
     if (dateTo) query = query.lte("transactions.date", dateTo);
-    if (chunk) query = query.in("conceptId", chunk);
     const details = await fetchAllPages((from, to) => query.range(from, to));
     for (const detail of details) {
-      const key = Number(detail.conceptId);
-      const row = amounts.get(key) || { id: key, conceptId: key, conceptName: detail.concepts?.name || `#${key}`, budgeted: 0, executed: 0 };
-      const total = Number(detail.total || 0);
-      row.executed += detail.concepts?.isExpense ? Math.abs(total) : total;
+      const tx = detail.transactions;
+      const tags = tx.tags || [];
+      if (tx.isInternalTransfer || tx.isDeposit || tx.isEmployeeLoan || tx.isInternalObligation
+        || tags.some((tag) => ["__prior_balance__", "__manual_receivable__", "__manual_payable__", "__payable_cash_in__"].includes(tag))) continue;
+      const isReturn = tags.includes("__sale_return__");
+      if (tags.includes("__inventory_adjustment__") && !isReturn) continue;
+      let lineType, conceptId = Number(detail.conceptId), conceptName = detail.concepts?.name || `#${conceptId}`;
+      let amount, unclassified = false;
+      if (Number(tx.type) === 1 || isReturn) {
+        lineType = "income";
+        const allocation = detail.incomeAllocation;
+        unclassified = !allocation?.conceptId;
+        if (!unclassified) {
+          conceptId = Number(allocation.conceptId);
+          conceptName = allocation.name || `#${conceptId}`;
+        }
+        // Legacy inventory-only returns have no financial amount; do not invent one.
+        amount = isReturn ? -Number(detail.budgetIncomeReversal || 0)
+          : Number(detail.net || 0) - Number(detail.discount || 0) + Number(detail.additionalCharges || 0);
+      } else if (Number(tx.type) === 3 && detail.concepts?.isIncome && !detail.concepts?.isSystem) {
+        lineType = "income";
+        amount = Number(detail.net ?? detail.total ?? 0) - Number(detail.discount || 0) + Number(detail.additionalCharges || 0);
+      } else if ([2, 4].includes(Number(tx.type)) && detail.concepts?.isExpense && !detail.concepts?.isSystem && !detail.concepts?.isProduct) {
+        lineType = "expense";
+        amount = Math.abs(Number(detail.total || 0));
+      } else continue;
+      const key = `${lineType}:${unclassified ? "unclassified:" : ""}${conceptId}`;
+      const row = amounts.get(key) || { id: key, conceptId, lineType, conceptName, budgeted: 0, executed: 0, unbudgeted: true, unclassified };
+      row.executed += money(amount);
+      if (isReturn && detail.budgetIncomeReversal == null) row.unvaluedReturn = true;
       amounts.set(key, row);
     }
   }
-  return [...amounts.values()].map((row) => ({ ...row, variance: row.budgeted - row.executed }));
+  return [...amounts.values()].map((row) => ({ ...row, budgeted: money(row.budgeted), executed: money(row.executed),
+    variance: money((row.executed - row.budgeted) * (row.lineType === "income" ? 1 : -1))
+  })).sort((a, b) => b.lineType.localeCompare(a.lineType) || Number(a.unbudgeted) - Number(b.unbudgeted) || a.conceptName.localeCompare(b.conceptName));
 }
