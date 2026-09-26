@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import BudgetExecutionSummary from "../components/BudgetExecutionSummary";
+import ProjectIncomeStatement from "../components/ProjectIncomeStatement";
 import { summarizeBudgetExecution } from "../../supabase/functions/_shared/budgetExecution.js";
 import { FiChevronRight } from "react-icons/fi";
 import ReadOnlyField from "../components/form/ReadOnlyField";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { listAccountPaymentForms } from "../services/accountPaymentFormsService";
-import { getBudgetExecutionReport, getProjectExecutionReport, listBudgets } from "../services/budgetsService";
+import { getBudgetExecutionReport, getProjectExecutionReport, getProjectIncomeStatement, listBudgets } from "../services/budgetsService";
 import { listCurrencies } from "../services/currenciesService";
 import { listProjects } from "../services/projectsService";
 import {
@@ -36,6 +37,7 @@ const fullReportCatalog = [
   { id: "internal_obligations", titleKey: "reports.internalObligations", filters: ["dateRange", "currency"] },
   { id: "budget_execution", titleKey: "reports.budgetExecution", filters: ["budget", "currency", "dateRange"] },
   { id: "project_execution", titleKey: "reports.projectExecution", filters: ["project", "dateRange", "currency"] },
+  { id: "project_income_statement", titleKey: "incomeStatement.title", filters: ["project", "dateRange", "currency"] },
   { id: "expenses", titleKey: "reports.expenses", filters: ["dateRange", "currency"] },
   { id: "cashflow", titleKey: "reports.cashflow", filters: ["dateRange", "currency"] },
   { id: "employee_absences", titleKey: "reports.employeeAbsences", filters: ["dateRange"] },
@@ -277,7 +279,7 @@ function ReportsPage() {
 
   const validateBudgetFilters = () => {
     if (selectedReport === "receivable" && !filters.currencyId) return t("reports.currencyRequired");
-    if (selectedReport === "project_execution" && !filters.currencyId) return t("reports.currencyRequired");
+    if (["project_execution", "project_income_statement"].includes(selectedReport) && !filters.currencyId) return t("reports.currencyRequired");
     if (selectedReport === "budget_execution" && filters.budgetId) {
       const budget = budgets.find((item) => String(item.id) === String(filters.budgetId));
       if (!budget?.currencyId) return t("reports.budgetCurrencyRequired");
@@ -307,12 +309,12 @@ function ReportsPage() {
           dateTo: filters.dateTo || undefined
         });
         setResults(rows);
-      } else if (selectedReport === "project_execution") {
+      } else if (["project_execution", "project_income_statement"].includes(selectedReport)) {
         if (!filters.projectId) {
           setError(t("reports.projectRequired"));
           return;
         }
-        const rows = await getProjectExecutionReport({
+        const rows = await (selectedReport === "project_income_statement" ? getProjectIncomeStatement : getProjectExecutionReport)({
           accountId: account.accountId,
           projectId: Number(filters.projectId),
           currencyId: filters.currencyId || undefined,
@@ -667,7 +669,7 @@ function ReportsPage() {
       setError(t("reports.budgetRequired"));
       return;
     }
-    if (selectedReport === "project_execution" && !filters.projectId) {
+    if (["project_execution", "project_income_statement"].includes(selectedReport) && !filters.projectId) {
       setError(t("reports.projectRequired"));
       return;
     }
@@ -853,7 +855,7 @@ function ReportsPage() {
               numberOptions={{ minimumFractionDigits: 0, maximumFractionDigits: 0 }}
             />
 
-            {budgetExecutionTotals ? (
+            {selectedReport === "project_income_statement" ? null : budgetExecutionTotals ? (
               <>
                 <BudgetExecutionSummary rows={results} numberOptions={budgetNumberOptions} />
               </>
@@ -937,7 +939,7 @@ function ReportsPage() {
             </>
           ) : null}
 
-          <table className="crud-table">
+          {selectedReport === "project_income_statement" ? <ProjectIncomeStatement rows={results} numberOptions={budgetNumberOptions} /> : <table className="crud-table">
             <thead>
               {budgetExecutionTotals ? (
                 <tr>
@@ -1303,7 +1305,7 @@ function ReportsPage() {
                 ))
               )}
             </tbody>
-          </table>
+          </table>}
         </section>
       )}
     </div>

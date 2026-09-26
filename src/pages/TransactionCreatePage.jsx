@@ -83,6 +83,7 @@ const initialSimpleForm = {
   conceptId: "",
   description: "",
   amount: 0,
+  tax: 0,
   additionalCharges: 0,
   currencyId: "",
   number: "",
@@ -490,6 +491,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
           conceptId,
           description: tx.name || "",
           amount: isExpenseFlow ? Math.abs(amountValue) : amountValue,
+          tax: isExpenseFlow ? Math.abs(Number(firstDetail?.tax || 0)) : 0,
           additionalCharges: isExpenseFlow ? Math.abs(txAdditional) : txAdditional,
           currencyId: tx.currencyId ? String(tx.currencyId) : "",
           number: tx.number == null ? "" : String(tx.number),
@@ -821,7 +823,13 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     }
     const baseAmount = isExpenseFlow ? -Math.abs(baseAmountRaw) : baseAmountRaw;
     const additionalCharges = isExpenseFlow ? -Math.abs(additionalChargesRaw) : additionalChargesRaw;
-    const totalAmount = baseAmount + additionalCharges;
+    const taxInput = isExpenseFlow && !isManualBalanceMode ? Number(simpleForm.tax || 0) : 0;
+    if (!Number.isFinite(taxInput) || taxInput < 0) {
+      setError(t("transactions.invalidTransactionAmount"));
+      return;
+    }
+    const tax = -Math.round(taxInput * 100) / 100;
+    const totalAmount = Math.round((baseAmount + additionalCharges + tax) * 100) / 100;
     const isCredit = isManualBalanceMode ? true : moduleType === "purchase" ? simpleForm.paymentMode === "credit" : false;
     const shouldPersistPayment = (moduleType !== "purchase" || simpleForm.paymentMode === "cash") || manualPayableCashIn;
     const normalizedTags = isManualReceivableMode
@@ -847,7 +855,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
             ? t("transactions.manualPayableDescription")
             : ""),
       date: simpleForm.date,
-      totals: { net: baseAmount, tax: 0, discount: 0, additionalCharges, total: totalAmount },
+      totals: { net: baseAmount, tax, discount: 0, additionalCharges, total: totalAmount },
       currencyId: simpleForm.currencyId,
       number: simpleForm.number,
       printNumber: simpleForm.printNumber,
@@ -874,7 +882,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
           price: baseAmount,
           net: baseAmount,
           taxPercentage: 0,
-          tax: 0,
+          tax,
           discountPercentage: 0,
           discount: 0,
           total: totalAmount,
@@ -1780,9 +1788,15 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
             <label
               className={`field-block ${simpleSubmitAttempted && !isPriorBalanceMode && !(Number(simpleForm.amount) > 0) ? "field-error" : ""}`}
             >
-              <span>{t("transactions.amount")}</span>
+              <span>{t(moduleType === "expense" && !isManualBalanceMode ? "incomeStatement.base" : "transactions.amount")}</span>
               <input name="amount" type="number" min="0" step="0.01" value={simpleForm.amount} onChange={handleSimpleChange} required />
             </label>
+            {moduleType === "expense" && !isManualBalanceMode ? (
+              <label className="field-block">
+                <span>{t("incomeStatement.expenseTax")}</span>
+                <input name="tax" type="number" min="0" step="0.01" value={simpleForm.tax ?? 0} onChange={handleSimpleChange} required />
+              </label>
+            ) : null}
             <ReadOnlyField
               label={t("transactions.additionalCharges")}
               value={simpleForm.additionalCharges}
@@ -1792,7 +1806,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
           </section>
 
           <p>
-            {t("transactions.summary")} {formatNumber(Number(simpleForm.amount || 0) + Number(simpleForm.additionalCharges || 0))}
+            {t("transactions.summary")} {formatNumber(Number(simpleForm.amount || 0) + Number(simpleForm.additionalCharges || 0) + (moduleType === "expense" && !isManualBalanceMode ? Number(simpleForm.tax || 0) : 0))}
           </p>
 
           <div className="crud-form-actions">

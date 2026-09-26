@@ -18,7 +18,7 @@ Deno.test("budget migration validates accounts and preserves invoice income snap
         tags text[] default '{}', "sourceTransactionId" bigint);
       create table "transactionDetails"(id bigint primary key, "transactionId" bigint references transactions,
         "conceptId" bigint references concepts, "transactionPaidId" bigint,
-        quantity double precision, net double precision, discount double precision, "additionalCharges" double precision);
+        quantity double precision, net double precision, tax double precision, discount double precision, "additionalCharges" double precision);
       insert into concepts(id,"accountId",name,"isIncome") values (10,8,'Services',true),(11,8,'Other income',true),(12,9,'Foreign',true);
       insert into concepts(id,"accountId",name,"isProduct","isIncome") values (20,8,'Product',true,true);
       insert into concepts(id,"accountId",name,"isExpense") values (30,8,'Expense',true);
@@ -60,6 +60,14 @@ Deno.test("budget migration validates accounts and preserves invoice income snap
     const returned = (await query('select "incomeAllocation", "budgetIncomeReversal" from "transactionDetails" where id=4')).rows[0];
     assert.deepEqual(returned.incomeAllocation, allocation);
     assert.equal(Number(returned.budgetIncomeReversal), 92.5);
+    await db.exec(await Deno.readTextFile("supabase/migrations/20260926022619_project_income_statement_tax.sql"));
+    assert.equal((await query('select "returnTaxReversal" from "transactionDetails" where id=4')).rows[0].returnTaxReversal, null);
+    await db.exec(`update "transactionDetails" set tax=30 where id=2;
+      insert into "transactionDetails"(id,"transactionId","conceptId","transactionPaidId",quantity) values(5,4,20,2,0.5);`);
+    assert.equal(Number((await query('select "returnTaxReversal" from "transactionDetails" where id=5')).rows[0].returnTaxReversal), 7.5);
+    await db.exec(`update "transactionDetails" set tax=60 where id=2;
+      update "transactionDetails" set net=0 where id=5;`);
+    assert.equal(Number((await query('select "returnTaxReversal" from "transactionDetails" where id=5')).rows[0].returnTaxReversal), 7.5);
   } finally {
     await db.close();
   }

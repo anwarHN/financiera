@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
-import { loadBudgetExecution, summarizeBudgetExecution } from "../_shared/budgetExecution.js";
+import { loadBudgetExecution, summarizeBudgetExecution, loadProjectIncomeStatement, summarizeIncomeStatement } from "../_shared/budgetExecution.js";
 import { loadCreditEntries, appliedCreditByInvoice, creditReceivableRows } from "../_shared/customerCredits.js";
 const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
 const PRIOR_BALANCE_TAG = "__prior_balance__";
@@ -12,6 +12,7 @@ interface ExportPayload {
   reportId:
     | "budget_execution"
     | "project_execution"
+    | "project_income_statement"
     | "sales"
     | "receivable"
     | "payable"
@@ -203,6 +204,7 @@ type PendingDeliveryDetailRow = {
 const reportTitles: Record<ExportPayload["reportId"], string> = {
   budget_execution: "Ejecución presupuestaria",
   project_execution: "Ejecución por proyecto",
+  project_income_statement: "Estado de resultado por proyecto",
   sales: "Ventas",
   receivable: "Cuentas por cobrar",
   payable: "Cuentas por pagar",
@@ -274,13 +276,14 @@ async function authenticateRequest(supabaseAdmin: any, req: Request, accountId: 
   if (membershipError || !membership) {
     throw new Error("Forbidden for this account");
   }
-  if (reportId === "budget_execution" || reportId === "project_execution" || reportId === "receivable") {
+  if (reportId === "budget_execution" || reportId === "project_execution" || reportId === "project_income_statement" || reportId === "receivable") {
     const { data, error } = await supabaseAdmin.from("users_to_profiles")
       .select('account_profiles!inner(accountId, isSystemAdmin, permissions)')
       .eq("accountId", accountId).eq("userId", user.id).single();
     const profile = data?.account_profiles;
     if (error || !profile || Number(profile.accountId) !== Number(accountId) ||
-      (!profile.isSystemAdmin && (!profile.permissions?.reports?.read || profile.permissions?.reportAccess?.[reportId] === false))) {
+      (!profile.isSystemAdmin && (!profile.permissions?.reports?.read || (reportId === "project_income_statement"
+        ? profile.permissions?.reportAccess?.[reportId] !== true : profile.permissions?.reportAccess?.[reportId] === false)))) {
       throw new Error("Forbidden for this report");
     }
   }
@@ -1567,6 +1570,22 @@ async function buildEmployeePayrollReport(
 
 async function buildReportData(supabaseAdmin: any, payload: ExportPayload): Promise<ExportBuildResult> {
   if (payload.reportId === "receivable" && !payload.currencyId) throw new Error("Select a currency");
+  if (payload.reportId === "project_income_statement") {
+    const data = await loadProjectIncomeStatement(supabaseAdmin, payload);
+    const totals = summarizeIncomeStatement(data);
+    const rows = data.map((row: any) => ({
+      Tipo: row.lineType === "income" ? "Ingreso" : "Gasto",
+      Concepto: `${row.unclassified ? "Sin clasificar / " : ""}${row.conceptName}`,
+      "Base sin impuesto": row.base, Impuesto: row.tax, Total: row.total,
+      Nota: row.unvaluedReturn ? "Devolucion historica: base o impuesto sin valorar" : ""
+    }));
+    for (const [label, value] of [["INGRESOS", totals.income], ["GASTOS", totals.expense]] as const) {
+      rows.push({ Tipo: label, Concepto: label, "Base sin impuesto": value.base, Impuesto: value.tax, Total: value.total, Nota: "" });
+    }
+    rows.push({ Tipo: "RESULTADO", Concepto: "Resultado antes del efecto de impuestos", "Base sin impuesto": totals.result,
+      Impuesto: null, Total: null, Nota: "Impuestos informativos; no es liquidacion fiscal ni utilidad contable completa. Historicos sin desglose conservan importe como base." });
+    return { rows, total: totals.result, balance: 0 };
+  }
   if (payload.reportId === "budget_execution" || payload.reportId === "project_execution") {
     const isBudget = payload.reportId === "budget_execution";
     if (isBudget ? !payload.budgetId : !payload.projectId) throw new Error("Missing budgetId/projectId");

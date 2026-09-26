@@ -1281,6 +1281,22 @@ export const translations = {
       startDate: "Start",
       endDate: "End"
     },
+    incomeStatement: {
+      title: "Estado de resultado por proyecto",
+      returnWarning: "Hay devoluciones históricas con base o impuesto sin valorar. Se muestran únicamente los importes conocidos; revise los totales antes de considerarlos definitivos.",
+      base: "Base sin impuesto",
+      expenseTax: "Impuesto del gasto",
+      result: "Resultado antes del efecto de impuestos",
+      basis: "Movimientos ejecutados, no cobros. Impuestos informativos separados; no es una liquidación fiscal ni utilidad contable completa. Los gastos históricos sin desglose conservan su importe como base.",
+    },
+    incomeStatement: {
+      title: "Project income statement",
+      returnWarning: "Historical returns have an unvalued base or tax. Only known amounts are shown; review totals before treating them as final.",
+      base: "Amount excluding tax",
+      expenseTax: "Expense tax",
+      result: "Result before tax effects",
+      basis: "Executed movements, not collections. Taxes shown separately for information; not a tax settlement or full accounting profit. Historical expenses without a breakdown retain their amount as the base.",
+    },
     budgets: {
       title: "Budgets",
       income: "Income",

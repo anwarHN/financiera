@@ -188,6 +188,10 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
             <ReadOnlyField label="ID" value={transaction.id} type="number" numberOptions={{ minimumFractionDigits: 0, maximumFractionDigits: 0 }} />
             <ReadOnlyField label={t("transactions.person")} value={transaction.persons?.name ?? ""} />
             <ReadOnlyField label={t("transactions.total")} value={transaction.total} type="currency" />
+            {moduleType === "expense" ? <>
+              <ReadOnlyField label={t("incomeStatement.base")} value={Math.abs(Number(transaction.total || 0)) - Math.abs(taxesTotal)} type="currency" />
+              <ReadOnlyField label={t("incomeStatement.expenseTax")} value={Math.abs(taxesTotal)} type="currency" />
+            </> : null}
             <ReadOnlyField label={t("transactions.balance")} value={transaction.balance} type="currency" />
             <ReadOnlyField label={t("transactions.date")} value={transaction.date} type="date" />
             {moduleType === "sale" ? <ReadOnlyField label={t("transactions.number")} value={transaction.number || ""} /> : null}

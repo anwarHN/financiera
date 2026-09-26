@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loadBudgetExecution, summarizeBudgetExecution } from "../supabase/functions/_shared/budgetExecution.js";
+import { loadBudgetExecution, summarizeBudgetExecution, loadProjectIncomeStatement, summarizeIncomeStatement } from "../supabase/functions/_shared/budgetExecution.js";
 import { fetchAllPages } from "../supabase/functions/_shared/fetchAllPages.js";
 
 function clientFor(tables, cap = 1000) {
@@ -41,6 +41,46 @@ function fixture() {
     transactionDetails: details
   };
 }
+
+test("project statement needs no budget and separates expense tax without changing budget execution", async () => {
+  const tables = fixture();
+  const tx = tables.transactionDetails[0].transactions;
+  // Even an unrelated legacy budget without currency must not block the statement.
+  tables.budgets[0].currencyId = null;
+  const sale = { id: 1, conceptId: 90, net: 1000, discount: 100, additionalCharges: 10, tax: 150, total: 1060,
+    incomeAllocation: { conceptId: 60, name: "Services" }, transactions: { ...tx, type: 1 } };
+  tables.transactionDetails = [sale,
+    { id: 2, conceptId: 10, net: -600, tax: -90, total: -710, additionalCharges: -20, concepts: { isExpense: true, name: "Venue" }, transactions: tx },
+    { ...sale, id: 3, total: 0, budgetIncomeReversal: 91, returnTaxReversal: 15, transactions: { ...tx, type: 2, tags: ["__sale_return__"] } },
+    { ...sale, id: 4, transactions: { ...tx, type: 6 } },
+    { ...sale, id: 5, transactions: { ...tx, type: 1, accountId: 9 } },
+    { ...sale, id: 6, transactions: { ...tx, type: 1, projectId: 9 } },
+    { ...sale, id: 7, transactions: { ...tx, type: 1, currencyId: 2 } },
+    { ...sale, id: 8, transactions: { ...tx, type: 1, isActive: false } }
+  ];
+  const filters = { accountId: 8, projectId: 7, currencyId: 1 };
+  const rows = await loadProjectIncomeStatement(clientFor(tables, 1), filters);
+  assert.deepEqual(summarizeIncomeStatement(rows), {
+    income: { base: 819, tax: 135, total: 954 }, expense: { base: 620, tax: 90, total: 710 }, result: 199
+  });
+  tables.budgets[0].currencyId = 1;
+  const budget = await loadBudgetExecution(clientFor(tables), { accountId: 8, budgetId: 1 });
+  assert.equal(budget.find((row) => row.lineType === "expense").executed, 710);
+  await assert.rejects(loadProjectIncomeStatement(clientFor(tables), { accountId: 9, projectId: 7, currencyId: 1 }), /Not found/);
+  assert.throws(() => loadProjectIncomeStatement(clientFor(tables), { accountId: 8, currencyId: 1 }), /Project/);
+});
+
+test("statement paginates over 1000 rows and flags unvalued returns", async () => {
+  const tables = fixture();
+  const tx = tables.transactionDetails[0].transactions;
+  tables.transactionDetails.push({ id: 9000, conceptId: 90, total: 0, budgetIncomeReversal: 5,
+    transactions: { ...tx, tags: ["__sale_return__"] } });
+  const rows = await loadProjectIncomeStatement(clientFor(tables, 300), {
+    accountId: 8, projectId: 7, currencyId: 1, dateFrom: "2026-09-01", dateTo: "2026-11-16"
+  });
+  assert.equal(summarizeIncomeStatement(rows).expense.base, 2460);
+  assert.equal(rows.find((row) => row.conceptId === 90).unvaluedReturn, true);
+});
 
 test("budget reads all details even with a smaller server cap and excludes other currencies/accounts/dates", async () => {
   const rows = await loadBudgetExecution(clientFor(fixture(), 400), { accountId: 8, budgetId: 1 });

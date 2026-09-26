@@ -21,16 +21,19 @@ export function summarizeBudgetExecution(rows) {
 
 /**
  * @param {any} client
- * @param {{accountId: number, budgetId?: number|null, projectId?: number|null, currencyId?: number|string|null, dateFrom?: string|null, dateTo?: string|null}} filters
+ * @param {{accountId: number, budgetId?: number|null, projectId?: number|null, currencyId?: number|string|null, dateFrom?: string|null, dateTo?: string|null, statementOnly?: boolean}} filters
  */
-export async function loadBudgetExecution(client, { accountId, budgetId = null, projectId = null, currencyId = null, dateFrom = null, dateTo = null }) {
+export async function loadBudgetExecution(client, { accountId, budgetId = null, projectId = null, currencyId = null, dateFrom = null, dateTo = null, statementOnly = false }) {
   if (!accountId || (!budgetId && !projectId)) throw new Error("Budget or project is required");
-  let budgetsQuery = client.from("budgets")
-    .select('id, "currencyId", "projectId", "periodStart", "periodEnd"')
-    .eq("accountId", accountId).order("id");
-  if (budgetId) budgetsQuery = budgetsQuery.eq("id", budgetId);
-  else budgetsQuery = budgetsQuery.eq("projectId", projectId).eq("isActive", true);
-  let budgets = await fetchAllPages((from, to) => budgetsQuery.range(from, to));
+  let budgets = [];
+  if (!statementOnly) {
+    let budgetsQuery = client.from("budgets")
+      .select('id, "currencyId", "projectId", "periodStart", "periodEnd"')
+      .eq("accountId", accountId).order("id");
+    if (budgetId) budgetsQuery = budgetsQuery.eq("id", budgetId);
+    else budgetsQuery = budgetsQuery.eq("projectId", projectId).eq("isActive", true);
+    budgets = await fetchAllPages((from, to) => budgetsQuery.range(from, to));
+  }
   if (budgetId) {
     if (!budgets.length) throw new Error("Budget not found for this account");
     const budget = budgets[0];
@@ -66,7 +69,7 @@ export async function loadBudgetExecution(client, { accountId, budgetId = null, 
   // Read unbudgeted movements too: excluding them would overstate the result.
   {
     let query = client.from("transactionDetails")
-      .select('id, conceptId, total, net, discount, additionalCharges, incomeAllocation, budgetIncomeReversal, concepts(name, isExpense, isIncome, isProduct, isSystem), transactions!transaction_details_transactionId_fkey!inner(accountId, date, type, tags, isActive, projectId, currencyId, isInternalTransfer, isDeposit, isEmployeeLoan, isInternalObligation)')
+      .select('id, conceptId, total, net, tax, discount, additionalCharges, incomeAllocation, budgetIncomeReversal,' + (statementOnly ? ' returnTaxReversal,' : '') + ' concepts(name, isExpense, isIncome, isProduct, isSystem), transactions!transaction_details_transactionId_fkey!inner(accountId, date, type, tags, isActive, projectId, currencyId, isInternalTransfer, isDeposit, isEmployeeLoan, isInternalObligation)')
       .eq("transactions.accountId", accountId).eq("transactions.isActive", true)
       .eq("transactions.currencyId", currencyId).order("id");
     if (projectId) query = query.eq("transactions.projectId", projectId);
@@ -103,6 +106,14 @@ export async function loadBudgetExecution(client, { accountId, budgetId = null, 
       const key = `${lineType}:${unclassified ? "unclassified:" : ""}${conceptId}`;
       const row = amounts.get(key) || { id: key, conceptId, lineType, conceptName, budgeted: 0, executed: 0, unbudgeted: true, unclassified };
       row.executed += money(amount);
+      if (statementOnly) {
+        const tax = isReturn ? -Number(detail.returnTaxReversal || 0) : Math.abs(Number(detail.tax || 0));
+        const base = lineType === "expense" ? amount - tax : amount;
+        row.base = money((row.base || 0) + base);
+        row.tax = money((row.tax || 0) + tax);
+        row.total = money(row.base + row.tax);
+        if (isReturn && detail.returnTaxReversal == null) row.unvaluedReturn = true;
+      }
       if (isReturn && detail.budgetIncomeReversal == null) row.unvaluedReturn = true;
       amounts.set(key, row);
     }
@@ -110,4 +121,19 @@ export async function loadBudgetExecution(client, { accountId, budgetId = null, 
   return [...amounts.values()].map((row) => ({ ...row, budgeted: money(row.budgeted), executed: money(row.executed),
     variance: money((row.executed - row.budgeted) * (row.lineType === "income" ? 1 : -1))
   })).sort((a, b) => b.lineType.localeCompare(a.lineType) || Number(a.unbudgeted) - Number(b.unbudgeted) || a.conceptName.localeCompare(b.conceptName));
+}
+
+export function loadProjectIncomeStatement(client, filters) {
+  if (!filters.projectId) throw new Error("Project is required");
+  return loadBudgetExecution(client, { ...filters, budgetId: null, statementOnly: true });
+}
+
+export function summarizeIncomeStatement(rows) {
+  const income = { base: 0, tax: 0, total: 0 };
+  const expense = { base: 0, tax: 0, total: 0 };
+  for (const row of rows) {
+    const target = row.lineType === "income" ? income : expense;
+    for (const field of ["base", "tax", "total"]) target[field] = money(target[field] + Number(row[field] || 0));
+  }
+  return { income, expense, result: money(income.base - expense.base) };
 }

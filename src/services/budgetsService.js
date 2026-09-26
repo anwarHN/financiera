@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabase";
-import { loadBudgetExecution } from "../../supabase/functions/_shared/budgetExecution.js";
+import { loadBudgetExecution, loadProjectIncomeStatement } from "../../supabase/functions/_shared/budgetExecution.js";
 import { fetchAllPages } from "../../supabase/functions/_shared/fetchAllPages.js";
 
 const budgetColumns =
@@ -89,3 +89,4 @@ export async function deactivateBudget(id) {
 
 export const getBudgetExecutionReport = (filters) => loadBudgetExecution(supabase, filters);
 export const getProjectExecutionReport = (filters) => loadBudgetExecution(supabase, filters);
+export const getProjectIncomeStatement = (filters) => loadProjectIncomeStatement(supabase, filters);

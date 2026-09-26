@@ -72,6 +72,9 @@ pendientes detectados para el servicio de control presupuestario de Eleven Studi
 - moneda en presupuestos
 
 ## Ruta de lectura según tarea
+### Impuestos y estado de resultado por proyecto
+Leer `docs/project-income-statement.md`: captura de impuesto de gastos, nuevo reporte, permisos y diferencias respecto a presupuestos.
+
 ### Presupuestos de ingresos y gastos
 Leer `docs/budget-income-expense.md` para tipos de línea, asignación histórica de ingresos, resultado, devoluciones y despliegue. Sus reglas actualizan el comportamiento anterior de ejecución presupuestaria.
 

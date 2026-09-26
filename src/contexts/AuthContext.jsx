@@ -13,6 +13,7 @@ const defaultReportAccess = {
   internal_obligations: true,
   budget_execution: true,
   project_execution: true,
+  project_income_statement: false,
   expenses: true,
   cashflow: true,
   employee_absences: true,
