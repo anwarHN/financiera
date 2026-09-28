@@ -23,6 +23,34 @@ function clientFor(tables, cap = 1000) {
   };
 }
 
+test("variance is budgeted minus executed for income, expense and summary", async () => {
+  for (const executed of [80, 100, 120]) {
+    const tables = fixture();
+    const tx = tables.transactionDetails[0].transactions;
+    tables.budget_lines = [
+      { id: 1, budgetId: 1, conceptId: 10, lineType: "expense", amount: 100, concepts: { name: "Expense" } },
+      { id: 2, budgetId: 1, conceptId: 30, lineType: "income", amount: 100, concepts: { name: "Income" } }
+    ];
+    tables.transactionDetails = [
+      { id: 1, conceptId: 10, total: -executed, concepts: { name: "Expense", isExpense: true }, transactions: tx },
+      { id: 2, conceptId: 99, net: executed, incomeAllocation: { conceptId: 30, name: "Income" }, transactions: { ...tx, type: 1 } }
+    ];
+    const rows = await loadBudgetExecution(clientFor(tables), { accountId: 8, budgetId: 1 });
+    assert.ok(rows.every((row) => row.variance === 100 - executed));
+    const totals = summarizeBudgetExecution(rows);
+    assert.equal(totals.income.variance, 100 - executed);
+    assert.equal(totals.expense.variance, 100 - executed);
+    assert.equal(totals.variance, totals.budgeted - totals.executed);
+  }
+  const result = summarizeBudgetExecution([
+    { lineType: "income", budgeted: 1000, executed: 1300 },
+    { lineType: "expense", budgeted: 500, executed: 600 }
+  ]);
+  assert.equal(result.budgeted, 500);
+  assert.equal(result.executed, 700);
+  assert.equal(result.variance, -200);
+});
+
 function fixture() {
   const expense = { name: "Venue", isExpense: true };
   const tx = { accountId: 8, projectId: 7, currencyId: 1, type: 2, isActive: true, date: "2026-09-18" };
@@ -154,14 +182,14 @@ test("income uses invoice snapshot, excludes taxes and payments, and includes un
   ];
   const rows = await loadBudgetExecution(clientFor(tables), { accountId: 8, budgetId: 1 });
   assert.equal(rows.find((row) => row.conceptId === 30).executed, 166.5);
-  assert.equal(rows.find((row) => row.conceptId === 30).variance, 66.5);
+  assert.equal(rows.find((row) => row.conceptId === 30).variance, -66.5);
   assert.equal(rows.find((row) => row.unclassified).executed, 50);
   const totals = summarizeBudgetExecution(rows);
   assert.equal(totals.income.executed, 216.5);
   assert.equal(totals.expense.executed, 60);
   assert.equal(totals.executed, 156.5);
   assert.equal(totals.budgeted, -2900);
-  assert.equal(totals.variance, 3056.5);
+  assert.equal(totals.variance, -3056.5);
 });
 
 test("legacy returns are flagged and direct income is not counted again as payment", async () => {

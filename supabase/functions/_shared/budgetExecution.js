@@ -12,11 +12,11 @@ export function summarizeBudgetExecution(rows) {
     const row = totals[type];
     row.budgeted = money(row.budgeted);
     row.executed = money(row.executed);
-    row.variance = money((row.executed - row.budgeted) * (type === "income" ? 1 : -1));
+    row.variance = money(row.budgeted - row.executed);
   }
   const budgeted = money(totals.income.budgeted - totals.expense.budgeted);
   const executed = money(totals.income.executed - totals.expense.executed);
-  return { ...totals, budgeted, executed, variance: money(executed - budgeted) };
+  return { ...totals, budgeted, executed, variance: money(budgeted - executed) };
 }
 
 /**
@@ -119,7 +119,7 @@ export async function loadBudgetExecution(client, { accountId, budgetId = null, 
     }
   }
   return [...amounts.values()].map((row) => ({ ...row, budgeted: money(row.budgeted), executed: money(row.executed),
-    variance: money((row.executed - row.budgeted) * (row.lineType === "income" ? 1 : -1))
+    variance: money(row.budgeted - row.executed)
   })).sort((a, b) => b.lineType.localeCompare(a.lineType) || Number(a.unbudgeted) - Number(b.unbudgeted) || a.conceptName.localeCompare(b.conceptName));
 }
 

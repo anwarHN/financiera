@@ -21,7 +21,7 @@
 - Se excluyen pagos, prestamos, transferencias, depositos, obligaciones internas, saldos anteriores, CxC/CxP manuales y ajustes de inventario.
 - Se mantienen filtros de cuenta, proyecto, periodo y moneda, y paginacion de todas las colecciones.
 - Ambos reportes incluyen movimientos no presupuestados, identificados como tales. Es un cambio intencional respecto al antiguo reporte de presupuesto que los omitia.
-- Resultado: ingresos menos gastos. Variacion favorable: ejecutado menos presupuestado en ingresos y resultado; presupuestado menos ejecutado en gastos.
+- Resultado: ingresos menos gastos. Diferencia de ejecucion: presupuestado menos ejecutado para todas las lineas, subtotales y resultado. Si lo ejecutado supera lo presupuestado, la diferencia es negativa, tanto en pantalla como en Excel.
 - No es flujo de caja ni utilidad contable completa.
 
 ## Devoluciones
