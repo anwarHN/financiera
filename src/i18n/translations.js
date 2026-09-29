@@ -12,6 +12,7 @@ export const translations = {
       debt: "Pendiente por cobrar", net: "Saldo neto", credit: "Saldo a favor"
     },
     common: {
+      retryLoad: "Reintentar carga",
       appName: "Daime",
       account: "Cuenta",
       loading: "Cargando...",
@@ -780,6 +781,7 @@ export const translations = {
     common: {
       appName: "Daime",
       account: "Account",
+      retryLoad: "Retry loading",
       loading: "Loading...",
       save: "Save",
       cancel: "Cancel",

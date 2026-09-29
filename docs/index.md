@@ -72,6 +72,9 @@ pendientes detectados para el servicio de control presupuestario de Eleven Studi
 - moneda en presupuestos
 
 ## Ruta de lectura según tarea
+### Edicion de transacciones y carga de selectores
+Leer `docs/transaction-editor-loading.md` para coordinacion de consultas, errores y recuperacion de opciones historicas.
+
 ### Impuestos y estado de resultado por proyecto
 Leer `docs/project-income-statement.md`: captura de impuesto de gastos, nuevo reporte, permisos y diferencias respecto a presupuestos.
 

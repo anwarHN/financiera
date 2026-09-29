@@ -157,28 +157,27 @@ export async function deactivateTransaction(id) {
   }
 }
 
-export async function getTransactionById(id) {
-  const { data, error } = await supabase
+export async function getTransactionById(id, accountId = null) {
+  let query = supabase
     .from("transactions")
     .select(
-      'id, accountId, personId, "employeeId", date, type, name, tags, total, balance, payments, "projectId", "referenceNumber", "number", "printNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "isEmployeeLoan", "sourceTransactionId", "isInternalTransfer", "isDeposit", "affectsPayroll", "deliveryAddress", isActive, currencyId, persons(name), employes(name), projects(name), account_payment_forms(name)'
+      'id, accountId, personId, "employeeId", date, type, name, tags, total, balance, payments, isAccountReceivable, isAccountPayable, additionalCharges, "projectId", "referenceNumber", "number", "printNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "isEmployeeLoan", "sourceTransactionId", "isInternalTransfer", "isDeposit", "affectsPayroll", "deliveryAddress", isActive, currencyId, persons(name), employes(name), projects(name), account_payment_forms(name)'
     )
-    .eq("id", id)
-    .single();
+    .eq("id", id);
+  if (accountId != null) query = query.eq("accountId", accountId);
+  const { data, error } = await query.single();
   if (error) throw error;
   return data;
 }
 
 export async function listTransactionDetails(transactionId) {
-  const { data, error } = await supabase
+  return fetchAllPages((from, to) => supabase
     .from("transactionDetails")
     .select(
-      "id, conceptId, incomeAllocation, quantity, quantityDelivered, pendingDelivery, price, net, taxPercentage, tax, discountPercentage, discount, total, additionalCharges, transactionPaidId, concepts(name, isProduct, productType)"
+      "id, conceptId, sellerId, incomeAllocation, quantity, quantityDelivered, pendingDelivery, price, net, taxPercentage, tax, discountPercentage, discount, total, additionalCharges, transactionPaidId, concepts(name, isProduct, productType)"
     )
     .eq("transactionId", transactionId)
-    .order("id");
-  if (error) throw error;
-  return data ?? [];
+    .order("id").range(from, to));
 }
 
 export async function listPendingDeliveryInvoices(accountId, { dateFrom, dateTo, currencyId } = {}) {

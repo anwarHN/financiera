@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { supabase } from "../lib/supabase";
+import { loadTransactionEditor, restoreSelectedOptions } from "../utils/transactionEditorLoad";
 import { Link, useNavigate } from "react-router-dom";
 import LookupCombobox from "../components/LookupCombobox";
 import LoadingSkeleton from "../components/LoadingSkeleton";
@@ -232,6 +234,9 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
 
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [loadedEditorKey, setLoadedEditorKey] = useState(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const editorKey = `${account?.accountId}:${moduleType}:${entryMode}:${itemId || "new"}`;
   const [isSaving, setIsSaving] = useState(false);
   const [simpleSubmitAttempted, setSimpleSubmitAttempted] = useState(false);
   const [saleSubmitAttempted, setSaleSubmitAttempted] = useState(false);
@@ -274,7 +279,6 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     [paymentMethods, saleHeader.paymentMethodId]
   );
   const manualPayableCashIn = isManualPayableMode && Boolean(simpleForm.registerCashIn);
-  const localCurrencyId = useMemo(() => currencies.find((currency) => currency.isLocal)?.id ?? "", [currencies]);
   const simpleFilteredAccountPaymentForms = useMemo(() => {
     if (!selectedSimplePaymentMethod) return accountPaymentForms;
     if (selectedSimplePaymentMethod.code === "card") return accountPaymentForms.filter((item) => item.kind === "credit_card");
@@ -308,24 +312,27 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
 
   useEffect(() => {
     if (!account?.accountId) return;
-    loadDependencies();
-  }, [account?.accountId, config.type]);
-
-  useEffect(() => {
-    if (!account?.accountId || !itemId) return;
-    loadEditableTransaction();
-  }, [account?.accountId, itemId]);
-
-  useEffect(() => {
-    if (!localCurrencyId) return;
-    setSimpleForm((prev) => ({ ...prev, currencyId: prev.currencyId || String(localCurrencyId) }));
-    setSaleHeader((prev) => ({ ...prev, currencyId: prev.currencyId || String(localCurrencyId) }));
-  }, [localCurrencyId]);
-
-  const loadDependencies = async () => {
-    try {
-      setIsLoading(true);
-      const [personsRes, conceptsRes, employeesRes, currenciesRes, paymentMethodsRes, accountPaymentFormsRes, projectsRes, tagsRes] = await Promise.allSettled([
+    let cancelled = false;
+    setIsLoading(true);
+    setLoadedEditorKey(null);
+    setError("");
+    setSimpleForm(initialSimpleForm);
+    setSaleHeader(initialSaleHeader);
+    setEditingTransactionSnapshot(null);
+    setSelectedClient(null);
+    setSaleLines([]);
+    setPriorBalanceProductLines([]);
+    setPriorBalanceAddPendingProducts(false);
+    setInvoicePendingDelivery(false);
+    setSimpleSubmitAttempted(false);
+    setSaleSubmitAttempted(false);
+    [setSimplePersonLookup, setSimpleConceptLookup, setSimplePaymentMethodLookup, setSimpleAccountFormLookup,
+      setClientLookup, setSimpleProjectLookup, setSimpleEmployeeLookup, setSimpleTagLookup,
+      setPriorBalanceProductLookup, setSaleProjectLookup, setSaleTagLookup, setProductLookup].forEach((reset) => reset(""));
+    loadTransactionEditor({
+      accountId: account.accountId,
+      loadCatalogs: async () => {
+        const [persons, concepts, employees, currencies, paymentMethods, accountPaymentForms, projects, tags] = await Promise.all([
         listPersons(account.accountId),
         listConcepts(account.accountId),
         listEmployees(account.accountId),
@@ -333,24 +340,43 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         listPaymentMethods(account.accountId),
         listAccountPaymentForms(account.accountId),
         listProjects(account.accountId),
-        listUsedTransactionTags(account.accountId)
-      ]);
-
-      setPersons(personsRes.status === "fulfilled" ? personsRes.value : []);
-      setConcepts(conceptsRes.status === "fulfilled" ? conceptsRes.value : []);
-      setEmployees(employeesRes.status === "fulfilled" ? employeesRes.value : []);
-      setCurrencies(currenciesRes.status === "fulfilled" ? currenciesRes.value : []);
-      setPaymentMethods(paymentMethodsRes.status === "fulfilled" ? paymentMethodsRes.value : []);
-      setAccountPaymentForms(accountPaymentFormsRes.status === "fulfilled" ? accountPaymentFormsRes.value : []);
-      setProjects(projectsRes.status === "fulfilled" ? projectsRes.value : []);
-      setTagOptions(tagsRes.status === "fulfilled" ? tagsRes.value : []);
-      setError("");
-    } catch {
-      setError(t("common.genericLoadError"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        listUsedTransactionTags(account.accountId).catch(() => [])
+        ]);
+        return { persons, concepts, employees, currencies, paymentMethods, accountPaymentForms, projects, tags };
+      },
+      loadRecord: async () => {
+        if (!itemId) return null;
+        const tx = await getTransactionById(itemId, account.accountId);
+        if (Number(tx.type) !== Number(config.type)) throw new Error("Transaction type mismatch");
+        return { tx, details: await listTransactionDetails(itemId) };
+      },
+      completeOptions: (catalogs, record) => restoreSelectedOptions(supabase, account.accountId, catalogs, record)
+    }).then(({ catalogs, record }) => {
+      if (cancelled) return;
+      setPersons(catalogs.persons);
+      setConcepts(catalogs.concepts);
+      setEmployees(catalogs.employees);
+      setCurrencies(catalogs.currencies);
+      setPaymentMethods(catalogs.paymentMethods);
+      setAccountPaymentForms(catalogs.accountPaymentForms);
+      setProjects(catalogs.projects);
+      setTagOptions(catalogs.tags);
+      if (record) {
+        loadEditableTransaction(record.tx, record.details);
+      } else {
+        const local = catalogs.currencies.find((row) => row.isLocal && Number(row.accountId) === Number(account.accountId))
+          || catalogs.currencies.find((row) => row.isLocal);
+        setSimpleForm({ ...initialSimpleForm, currencyId: local ? String(local.id) : "" });
+        setSaleHeader({ ...initialSaleHeader, currencyId: local ? String(local.id) : "" });
+      }
+      setLoadedEditorKey(editorKey);
+    }).catch(() => {
+      if (!cancelled) setError(t("common.genericLoadError"));
+    }).finally(() => {
+      if (!cancelled) setIsLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [account?.accountId, itemId, moduleType, entryMode, loadAttempt]);
 
   const handleCreatedPerson = async (created) => {
     try {
@@ -415,10 +441,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     }
   };
 
-  const loadEditableTransaction = async () => {
-    try {
-      setIsLoading(true);
-      const [tx, details] = await Promise.all([getTransactionById(itemId), listTransactionDetails(itemId)]);
+  const loadEditableTransaction = (tx, details) => {
       setEditingTransactionSnapshot({
         id: Number(tx.id),
         total: Number(tx.total || 0),
@@ -520,11 +543,6 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         }
       }
       setError("");
-    } catch {
-      setError(t("common.genericLoadError"));
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleSimpleChange = (event) => {
@@ -1184,6 +1202,13 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   };
 
   if (isLoading) return <LoadingSkeleton lines={6} />;
+  if (loadedEditorKey !== editorKey) return (
+    <div className={embedded ? "" : "module-page"}>
+      <p className="error-text">{error || t("common.genericLoadError")}</p>
+      <button type="button" onClick={() => setLoadAttempt((value) => value + 1)}>{t("common.retryLoad")}</button>
+      {embedded ? <button type="button" className="button-secondary" onClick={() => onCancel?.()}>{t("common.cancel")}</button> : null}
+    </div>
+  );
 
   return (
     <div className={embedded ? "" : "module-page"}>
