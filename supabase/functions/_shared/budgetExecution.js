@@ -37,6 +37,7 @@ export async function loadBudgetExecution(client, { accountId, budgetId = null, 
   if (budgetId) {
     if (!budgets.length) throw new Error("Budget not found for this account");
     const budget = budgets[0];
+    if (projectId && Number(projectId) !== Number(budget.projectId)) throw new Error("Budget does not belong to the selected project");
     if (!budget.currencyId) throw new Error("Configure the budget currency before running this report");
     if (currencyId && Number(currencyId) !== Number(budget.currencyId)) throw new Error("Currency does not match the budget");
     currencyId = budget.currencyId;

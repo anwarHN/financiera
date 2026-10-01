@@ -1587,8 +1587,8 @@ async function buildReportData(supabaseAdmin: any, payload: ExportPayload): Prom
     return { rows, total: totals.result, balance: 0 };
   }
   if (payload.reportId === "budget_execution" || payload.reportId === "project_execution") {
-    const isBudget = payload.reportId === "budget_execution";
-    if (isBudget ? !payload.budgetId : !payload.projectId) throw new Error("Missing budgetId/projectId");
+    const isBudget = Boolean(payload.budgetId);
+    if (!payload.budgetId && !payload.projectId) throw new Error("Missing budgetId/projectId");
     if (isBudget) {
       const { data: budget, error } = await supabaseAdmin.from("budgets")
         .select("currencyId, periodStart, periodEnd").eq("accountId", payload.accountId).eq("id", payload.budgetId).single();
@@ -1597,9 +1597,7 @@ async function buildReportData(supabaseAdmin: any, payload: ExportPayload): Prom
       payload.dateFrom = payload.dateFrom || budget.periodStart;
       payload.dateTo = payload.dateTo || budget.periodEnd;
     }
-    const data = await loadBudgetExecution(supabaseAdmin, {
-      ...payload, budgetId: isBudget ? payload.budgetId : null, projectId: isBudget ? null : payload.projectId
-    });
+    const data = await loadBudgetExecution(supabaseAdmin, payload);
     const rows = data.map((row: any) => ({
       Tipo: row.lineType === "income" ? "Ingreso" : "Gasto",
       Concepto: `${row.unclassified ? "Sin clasificar / " : ""}${row.conceptName}`,

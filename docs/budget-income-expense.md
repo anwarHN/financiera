@@ -24,6 +24,18 @@
 - Resultado: ingresos menos gastos. Diferencia de ejecucion: presupuestado menos ejecutado para todas las lineas, subtotales y resultado. Si lo ejecutado supera lo presupuestado, la diferencia es negativa, tanto en pantalla como en Excel.
 - No es flujo de caja ni utilidad contable completa.
 
+## Filtros de ejecucion por presupuesto o proyecto
+
+Ambos reportes de ejecucion muestran Proyecto y Presupuesto. Se requiere al menos uno:
+
+- Seleccionar un proyecto y dejar Presupuesto en "Todos los presupuestos activos del proyecto" consolida sus presupuestos activos de la moneda elegida.
+- Seleccionar un presupuesto utiliza solo sus lineas; asigna automaticamente proyecto y moneda. Sin fechas explicitas se utiliza el periodo del presupuesto.
+- El selector de presupuestos muestra solo los del proyecto seleccionado. Cambiar proyecto limpia la seleccion de presupuesto; cambiar cuenta limpia filtros y catalogos.
+- Pantalla y Excel utilizan el mismo motor, que rechaza combinaciones de presupuesto/proyecto incompatibles y presupuestos ajenos a la cuenta.
+- Los movimientos ejecutados se calculan por proyecto, moneda y fechas, una sola vez. No existe asignacion de transacciones a un presupuesto individual: presupuestos con periodos superpuestos pueden comparar los mismos movimientos. Se conservan movimientos no presupuestados.
+
+Este cambio no requiere migracion SQL. Requiere desplegar frontend y `export-report` para habilitar ambos filtros tambien en Excel.
+
 ## Devoluciones
 
 Las nuevas devoluciones guardan `budgetIncomeReversal` en su detalle, proporcional a cantidad y base sin impuesto de la linea original, con su asignacion original. Se descuentan como ingreso negativo en la fecha de devolucion. No crean un reembolso ni modifican saldos de CxC.
