@@ -29,13 +29,14 @@ Se conserva Catalogos > Numeracion de facturas (`/invoice-numbering`) y su boots
 Las facturas nuevas usan `create_numbered_invoice`: cabecera y detalles se insertan en la misma transaccion. El trigger selecciona el correlativo activo con rango disponible y fecha limite valida para la fecha del documento, bloquea la cuenta y la fila, incrementa el ultimo numero y guarda `number`, `printNumber`, `correlativeId` y `correlativeSnapshot`.
 
 - Si falla cualquier linea, se revierte tambien el avance del contador.
+- Si una cuenta nunca tuvo correlativo de factura, la primera factura crea automaticamente uno ilimitado con patron `FAC-{0}`. Si ya existen correlativos pero estan inactivos, vencidos o agotados, no se crea un reemplazo silencioso: se debe corregir la configuracion.
 - Reimprimir, editar o anular no consume numeros. No se permite modificar numeracion/asignacion ya emitida.
 - Las referencias y el rango de una factura nueva provienen de la copia historica, no de la configuracion actual. Un correlativo que emitio facturas nuevas no admite cambios de formato/rango/referencias: desactivar y crear uno nuevo. Nunca se permite retroceder su contador.
 - Se comprueba que el numero impreso no haya sido utilizado por otra factura ordinaria de la cuenta, incluso anulada.
 - Se mantienen la prioridad por vencimiento y el fallback ilimitado existentes. No se copio la regla de una unica serie activa por sucursal de Unico: Financiera no maneja sucursales. Si se requiere bloquear al agotar un rango fiscal, desactivar el correlativo ilimitado anterior.
 - Compras, CxC manual y facturas de saldo anterior no consumen correlativo. Estas ultimas conservan numero y numero de impresion manuales opcionales.
 - No se renumeran facturas historicas ni se infiere un correlativo para ellas. Sus referencias/rangos PDF quedan vacios si no hay snapshot.
-- La reserva RPC anterior se revoca para clientes: no volver a usar `reserve_transaction_correlative` desde frontend.
+- La RPC anterior `reserve_transaction_correlative` se conserva temporalmente para clientes antiguos, pero solo previsualiza el siguiente numero y no modifica el contador. La insercion atomica mediante `create_numbered_invoice` es el flujo vigente y el unico que consume numeracion.
 
 ## Plantillas y campos
 
@@ -60,6 +61,7 @@ Migraciones nuevas, en este orden:
 1. `supabase/migrations/20261001180000_imprent_integration.sql`.
 2. `supabase/migrations/20261001181000_invoice_correlative_snapshot.sql`.
 3. `supabase/migrations/20261002001000_account_person_rtn.sql`.
+4. `supabase/migrations/20261002231337_fix_invoice_correlative_bootstrap.sql`.
 
 Requieren el esquema actual, incluido `supabase/correlatives_control.sql`, RLS, perfiles y el bootstrap existente. Aplicarlas mediante el flujo de migraciones, no pegarlas manualmente. No volver a ejecutar los SQL historicos de correlativos/RLS despues, porque pueden restablecer permisos anteriores.
 

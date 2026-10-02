@@ -28,8 +28,13 @@ Deno.test("invoice numbering is atomic, account-scoped, immutable, and excludes 
     await db.exec(await Deno.readTextFile("supabase/correlatives_control.sql"));
     await db.exec(await Deno.readTextFile("supabase/migrations/20261001180000_imprent_integration.sql"));
     await db.exec(await Deno.readTextFile("supabase/migrations/20261001181000_invoice_correlative_snapshot.sql"));
+    await db.exec(await Deno.readTextFile("supabase/migrations/20261002231337_fix_invoice_correlative_bootstrap.sql"));
     await db.exec(`insert into correlatives_control("accountId","transactionType","printPattern","numberTo","limitDate","reference1")
       values(8,1,'001-{number:00000000}',2,'2026-12-31','CAI-A'),(9,1,'OTHER-{0}',100,'2026-12-31','CAI-B');`);
+    const preview = (await rows(`select * from reserve_transaction_correlative(8::bigint,1::smallint,'2026-10-01'::date)`))[0];
+    assert.equal(Number(preview.next_number), 1);
+    assert.equal(preview.print_number, "001-00000001");
+    assert.equal(Number((await rows('select "lastNumber" from correlatives_control where id=1'))[0].lastNumber), 0);
     const invoice = `select create_numbered_invoice('{"accountId":8,"type":1,"date":"2026-10-01"}', '[{"quantity":1,"net":100}]')`;
     await db.exec(invoice);
     let tx = (await rows('select * from transactions'))[0];
@@ -43,10 +48,12 @@ Deno.test("invoice numbering is atomic, account-scoped, immutable, and excludes 
     await assert.rejects(db.exec(`update correlatives_control set "reference1"='CHANGED' where id=1`), /ya emitio/);
     await assert.rejects(db.exec(`update correlatives_control set "lastNumber"=0 where id=1`), /retroceder/);
     await assert.rejects(db.exec(`select create_numbered_invoice('{"accountId":9,"type":1}', '[{"quantity":1}]')`), /Sin acceso/);
+    await assert.rejects(db.exec(`select * from reserve_transaction_correlative(9::bigint,1::smallint,current_date)`), /Sin acceso/);
     await db.exec(invoice);
     await assert.rejects(db.exec(invoice), /No hay correlativo/);
     await db.exec(`update account_profiles set "isSystemAdmin"=false`);
     await assert.rejects(db.exec(invoice), /Sin permiso/);
+    await assert.rejects(db.exec(`select * from reserve_transaction_correlative(8::bigint,1::smallint,current_date)`), /Sin permiso/);
     await db.exec(`update account_profiles set "isSystemAdmin"=true`);
     await db.exec(`insert into transactions("accountId",type,tags,"number","printNumber") values
       (8,1,'{__prior_balance__}',99,'LEGACY'), (8,1,'{__manual_receivable__}',null,null), (8,4,'{}',null,null);`);
@@ -60,7 +67,17 @@ Deno.test("invoice numbering is atomic, account-scoped, immutable, and excludes 
     assert.equal((await rows(`select format_invoice_number('{0:00}-{number}-{0}',123) as value`))[0].value, '123-123-123');
     await db.exec(`insert into correlatives_control("accountId","transactionType","printPattern") values(8,1,'001-{number:00000000}');`);
     await assert.rejects(db.exec(invoice), /ya fue utilizado/);
-    assert.equal((await rows(`select has_function_privilege('authenticated','public.reserve_transaction_correlative(bigint,smallint,date)','execute') as allowed`))[0].allowed, false);
+    assert.equal((await rows(`select has_function_privilege('authenticated','public.reserve_transaction_correlative(bigint,smallint,date)','execute') as allowed`))[0].allowed, true);
+    assert.equal((await rows(`select has_function_privilege('anon','public.reserve_transaction_correlative(bigint,smallint,date)','execute') as allowed`))[0].allowed, false);
+    await db.exec(`delete from "transactionDetails"; delete from transactions; delete from correlatives_control;`);
+    await db.exec(invoice);
+    const automatic = (await rows(`select t."printNumber", c."numberFrom", c."numberTo", c."limitDate", c."lastNumber"
+      from transactions t join correlatives_control c on c.id=t."correlativeId"`))[0];
+    assert.equal(automatic.printNumber, "FAC-1");
+    assert.equal(Number(automatic.numberFrom), 1);
+    assert.equal(automatic.numberTo, null);
+    assert.equal(automatic.limitDate, null);
+    assert.equal(Number(automatic.lastNumber), 1);
     assert.equal((await rows(`select has_table_privilege('authenticated','account_integrations','select') as allowed`))[0].allowed, false);
     assert.equal((await rows(`select claim_imprent_setup(8,'00000000-0000-0000-0000-000000000001') as claimed`))[0].claimed, true);
     assert.equal((await rows(`select claim_imprent_setup(8,'00000000-0000-0000-0000-000000000002') as claimed`))[0].claimed, false);
