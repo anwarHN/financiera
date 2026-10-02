@@ -1,6 +1,7 @@
 export const translations = {
   es: {
     imprent: {
+      statusUnavailable: "No se pudo consultar el estado. Puedes reintentar o intentar activar Imprent. Si el error persiste, verifica que la funcion imprent-integration y las migraciones esten desplegadas.",
       integrations: "Integraciones", ownerOnly: "Solo el propietario puede gestionar integraciones.",
       help: "Genera PDF de facturas con plantillas Word por empresa. La credencial se conserva en el servidor.",
       active: "Integracion activa", inactive: "Integracion inactiva o pendiente de activar", activate: "Activar Imprent",
@@ -787,6 +788,7 @@ export const translations = {
   },
   en: {
     imprent: {
+      statusUnavailable: "Could not load integration status. Retry or try activating Imprent. If the error persists, check that the imprent-integration function and migrations are deployed.",
       integrations: "Integrations", ownerOnly: "Only the account owner can manage integrations.",
       help: "Generate invoice PDFs with per-company Word templates. Credentials remain on the server.",
       active: "Integration active", inactive: "Integration inactive or awaiting activation", activate: "Activate Imprent",

@@ -3,6 +3,7 @@
 ## Uso
 
 - Cuenta > Integraciones (`/account/integrations`): solo el propietario puede activar o desactivar Imprent, subir/descargar DOCX y seleccionar la plantilla por defecto.
+- El boton Activar Imprent permanece visible aunque falle la consulta inicial. Durante la carga esta deshabilitado; ante un error se permite reintentar o activar, mostrando el fallo sin asumir que la integracion esta inactiva. Esto no sustituye el despliegue de la funcion y migraciones requeridas.
 - Activar Imprent registra automaticamente la empresa usando el correo del propietario autenticado, habilita B2B_FREE y vincula la plantilla `defaultTemplates.invoice`. No realiza llamadas externas desde el trigger de signup: la activacion inicial se solicita en esta pantalla.
 - El propietario confirma la advertencia de rotacion: Imprent identifica cuentas por correo y puede reemitir una clave si ese correo ya se usa en otro sistema. Dentro de Financiera se impide vincular el mismo correo o cuenta Imprent a empresas diferentes.
 - Si falla billing, se conserva la credencial pero la integracion queda inactiva con el error visible. Reintentar utiliza esa credencial, sin registrar otra vez. La activacion concurrente queda bloqueada durante cinco minutos como maximo.

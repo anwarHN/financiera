@@ -10,6 +10,7 @@ export default function AccountIntegrationsPage() {
   const { t } = useI18n();
   const [state, setState] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [isStatusLoading, setIsStatusLoading] = useState(true);
   const [error, setError] = useState("");
   const [name, setName] = useState("");
   const [file, setFile] = useState(null);
@@ -21,18 +22,21 @@ export default function AccountIntegrationsPage() {
   useEffect(() => {
     const version = ++generation.current;
     setState(null); setError(""); setName(""); setFile(null); setBusy(false);
+    setIsStatusLoading(Boolean(accountId && allowed));
     if (fileInput.current) fileInput.current.value = "";
     if (accountId && allowed) callImprent({ accountId, action: "status" })
       .then((data) => { if (version === generation.current) setState(data); })
-      .catch((err) => { if (version === generation.current) setError(err.message); });
+      .catch((err) => { if (version === generation.current) setError(err.message); })
+      .finally(() => { if (version === generation.current) setIsStatusLoading(false); });
     return () => { generation.current++; };
   }, [accountId, allowed]);
 
   const run = async (action, extra = {}) => {
+    if (!allowed || !accountId || busy || isStatusLoading) return;
     const version = generation.current;
     setBusy(true); setError("");
     try {
-      await callImprent({ accountId, action, ...extra });
+      if (action !== "status") await callImprent({ accountId, action, ...extra });
       const data = await callImprent({ accountId, action: "status" });
       if (version === generation.current) setState(data);
     } catch (err) {
@@ -76,18 +80,19 @@ export default function AccountIntegrationsPage() {
       <p>{t("imprent.help")}</p>
       {error && <p className="error-text" role="alert">{error}</p>}
       {state?.lastError && <p className="error-text">{state.lastError}</p>}
-      {!state && !error ? <p>{t("common.loading")}</p> : null}
-      {!state && error ? <button type="button" disabled={busy} onClick={() => run("status")}>{t("common.retry")}</button> : null}
-      {state && <>
-        <p>{state.isActive ? t("imprent.active") : t("imprent.inactive")}</p>
-        <p>{t("common.email")}: {state.settings?.email || user?.email}</p>
+      {isStatusLoading ? <p>{t("common.loading")}</p> : null}
+      {!state && !isStatusLoading && <p>{t("imprent.statusUnavailable")}</p>}
+      {state && <p>{state.isActive ? t("imprent.active") : t("imprent.inactive")}</p>}
+        <p>{t("common.email")}: {state?.settings?.email || user?.email}</p>
         <div className="crud-form-actions">
-          <button type="button" disabled={busy || state.isActive} onClick={() => {
-            if (state.configured || window.confirm(t("imprent.activationWarning"))) run("activate");
+          <button type="button" disabled={!accountId || busy || isStatusLoading || Boolean(state?.isActive)} onClick={() => {
+            if (state?.configured || window.confirm(t("imprent.activationWarning"))) run("activate");
           }}>{busy ? t("common.loading") : t("imprent.activate")}</button>
-          <button type="button" className="button-secondary" disabled={busy || !state.isActive} onClick={() => run("disable")}>{t("common.deactivate")}</button>
+          <button type="button" className="button-secondary" disabled={busy || isStatusLoading || !state?.isActive} onClick={() => run("disable")}>{t("common.deactivate")}</button>
+          {!state && !isStatusLoading && <button type="button" disabled={busy} onClick={() => run("status")}>{t("common.retry")}</button>}
           {hasModulePermission("catalogs", "read") && <Link className="button-link-secondary" to="/invoice-numbering">{t("invoiceNumbering.title")}</Link>}
         </div>
+      {state && <>
         <h3>{t("imprent.templates")}</h3>
         <p>{t("imprent.templateHelp")}</p>
         {state.templates.map((template) => <div className="generic-panel" key={template.id}>
