@@ -7,8 +7,8 @@
 - Activar Imprent registra automaticamente la empresa usando el correo del propietario autenticado, habilita B2B_FREE y vincula la plantilla `defaultTemplates.invoice`. No realiza llamadas externas desde el trigger de signup: la activacion inicial se solicita en esta pantalla.
 - El propietario confirma la advertencia de rotacion: Imprent identifica cuentas por correo y puede reemitir una clave si ese correo ya se usa en otro sistema. Dentro de Financiera se impide vincular el mismo correo o cuenta Imprent a empresas diferentes.
 - Si falla billing, se conserva la credencial pero la integracion queda inactiva con el error visible. Reintentar utiliza esa credencial, sin registrar otra vez. La activacion concurrente queda bloqueada durante cinco minutos como maximo.
-- Una vez activo, el boton Factura PDF en el detalle de venta permite elegir plantilla, generar, descargar o abrir el PDF para imprimir con el visor del navegador. Requiere permiso `sales.read`; el servidor lo verifica aparte de la membresia.
-- No se promete impresion silenciosa: el usuario utiliza el visor PDF de su navegador. La opcion TXT con el servicio local 127.0.0.1:18080 permanece independiente y sin cambios.
+- Una vez activo, el boton Imprimir factura en el detalle de venta abre el modal y genera de inmediato el PDF con la plantilla predeterminada. Cambiar la plantilla regenera el archivo automaticamente; luego se puede descargar o abrir para imprimir con el visor del navegador. Requiere permiso `sales.read`; el servidor lo verifica aparte de la membresia.
+- No se promete impresion silenciosa: el usuario utiliza el visor PDF de su navegador. El servicio TXT para 127.0.0.1:18080 se conserva en el codigo por compatibilidad, pero ya no aparece como una accion separada en el detalle de la factura.
 - Se rechazan PDFs de facturas anuladas para evitar que una plantilla personalizada las presente como validas. Las facturas de saldo anterior pueden imprimirse, pero no consumen numeracion.
 - La pestaña y la tabla `account_integrations` dejan un punto de extension para otros proveedores; cada proveedor futuro requiere su adaptador y permisos server-side, no solo una nueva fila.
 
@@ -18,7 +18,7 @@
 
 `imprent-integration` retorna un estado publico explicito, nunca `credentials`. `invoice_pdf_templates` tambien se administra a traves de la funcion, con transaccion SQL para cambiar el default. La desactivacion de plantilla es local: no elimina el DOCX en Imprent. La plantilla actual por defecto no puede desactivarse sin elegir una sustituta.
 
-Todas las llamadas al proveedor usan `IMPRENT_BASE_URL` del servidor (HTTPS), timeout y redirects bloqueados. La descarga se construye con `finalFile`, ignorando URLs arbitrarias devueltas por el proveedor. El PDF se valida por firma `%PDF-` y se retorna como binario; la API key no llega al navegador. Errores del proveedor/base no se reflejan literalmente para evitar exponer secretos.
+Todas las llamadas al proveedor usan `IMPRENT_BASE_URL` del servidor, timeout y redirects bloqueados. HTTPS es obligatorio por defecto. Mientras el servidor Imprent no tenga TLS, se puede habilitar HTTP explicitamente con el secreto `IMPRENT_ALLOW_INSECURE_HTTP=true`; esto envia la API key y los datos de las facturas sin cifrado de transporte, por lo que debe limitarse a una red confiable y retirarse al habilitar HTTPS. La descarga se construye con `finalFile`, ignorando URLs arbitrarias devueltas por el proveedor. El PDF se valida por firma `%PDF-` y se retorna como binario; la API key no llega al navegador. Errores del proveedor/base no se reflejan literalmente para evitar exponer secretos.
 
 Las funciones tienen `verify_jwt=false` como las demas del proyecto, pero validan explicitamente el bearer mediante `auth.getUser`, la membresia y los permisos antes de leer credenciales o documentos. Referencia de autenticacion: [Supabase Edge Functions](https://supabase.com/docs/guides/functions/auth).
 
@@ -63,7 +63,7 @@ Migraciones nuevas, en este orden:
 
 Requieren el esquema actual, incluido `supabase/correlatives_control.sql`, RLS, perfiles y el bootstrap existente. Aplicarlas mediante el flujo de migraciones, no pegarlas manualmente. No volver a ejecutar los SQL historicos de correlativos/RLS despues, porque pueden restablecer permisos anteriores.
 
-Configurar secretos server-side `IMPRENT_BASE_URL` (raiz HTTPS sin `/api/v1`) e `IMPRENT_INTERNAL_ADMIN_KEY`. Las funciones tambien requieren `SUPABASE_URL` y `SERVICE_ROLE_KEY` o `SUPABASE_SERVICE_ROLE_KEY`, como las existentes. No copiar valores a `.env` del frontend.
+Configurar secretos server-side `IMPRENT_BASE_URL` (raiz sin `/api/v1`) e `IMPRENT_INTERNAL_ADMIN_KEY`. Si esa URL usa HTTP, configurar ademas `IMPRENT_ALLOW_INSECURE_HTTP=true`; no se necesita esta bandera con HTTPS y debe eliminarse cuando haya TLS. Las funciones tambien requieren `SUPABASE_URL` y `SERVICE_ROLE_KEY` o `SUPABASE_SERVICE_ROLE_KEY`, como las existentes. No copiar valores a `.env` del frontend.
 
 Desplegar `imprent-integration` y `generate-invoice-pdf` junto con `_shared`. Publicar el frontend/build de esta version. Coordinar una ventana corta para el cambio de numeracion: el frontend antiguo usa la RPC revocada y el nuevo necesita la migracion. Solicitar recarga de sesiones abiertas despues de publicar.
 

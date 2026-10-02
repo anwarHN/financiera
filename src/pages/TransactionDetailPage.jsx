@@ -7,7 +7,6 @@ import LoadingSkeleton from "../components/LoadingSkeleton";
 import ReadOnlyField from "../components/form/ReadOnlyField";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
-import { printInvoiceTxt } from "../services/invoicePrintService";
 import InvoicePdfButton from "../components/InvoicePdfButton";
 import {
   getTransactionById,
@@ -34,7 +33,6 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
     isLoading: false,
     voidingBatchKey: ""
   });
-  const [isPrintingInvoice, setIsPrintingInvoice] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const showTaxDiscountDetail = moduleType === "sale";
@@ -135,22 +133,6 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
     }
   };
 
-  const handlePrintInvoice = async () => {
-    if (!account?.accountId || !transaction?.id) return;
-    try {
-      setIsPrintingInvoice(true);
-      await printInvoiceTxt({
-        accountId: account.accountId,
-        transactionId: transaction.id
-      });
-      setError("");
-    } catch (err) {
-      setError(err?.message || t("common.genericSaveError"));
-    } finally {
-      setIsPrintingInvoice(false);
-    }
-  };
-
   if (isLoading) return <LoadingSkeleton lines={5} />;
 
   const taxesTotal = details.reduce((acc, line) => acc + Number(line.tax || 0), 0);
@@ -167,11 +149,6 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
           {moduleType === "sale" ? (
             <button type="button" className="button-link-secondary" onClick={openDeliveryHistoryModal}>
               {t("inventory.deliveries.viewHistory")}
-            </button>
-          ) : null}
-          {moduleType === "sale" ? (
-            <button type="button" className="button-link-secondary" onClick={handlePrintInvoice} disabled={isPrintingInvoice}>
-              {isPrintingInvoice ? t("transactions.printInvoiceTxtLoading") : t("transactions.printInvoiceTxt")}
             </button>
           ) : null}
           {moduleType === "sale" && transaction && hasModulePermission("sales", "read") ? (

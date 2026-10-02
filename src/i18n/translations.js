@@ -9,9 +9,9 @@ export const translations = {
       templates: "Plantillas de factura", template: "Plantilla", default: "Por defecto", makeDefault: "Usar por defecto",
       templateHelp: "Descarga la plantilla para editarla en Word y sube el DOCX personalizado. Selecciona otra como predeterminada antes de desactivar la actual.",
       downloadTemplate: "Descargar DOCX", docx: "Archivo DOCX (max. 10 MB)", upload: "Subir plantilla", invalidFile: "Archivo invalido.",
-      pdf: "Factura PDF", generate: "Generar PDF", openPrint: "Ver / imprimir PDF", downloadPdf: "Descargar PDF",
+      pdf: "Factura PDF", openPrint: "Ver / imprimir PDF", downloadPdf: "Descargar PDF",
       configureFirst: "Activa Imprent y configura una plantilla en Cuenta > Integraciones.", voidInvoice: "La factura esta anulada.",
-      printHelp: "Genera el PDF y abrelo para imprimir con el visor del navegador. No consume otro numero de factura."
+      printHelp: "El PDF se genera automaticamente. Abrelo para imprimir con el visor del navegador. No consume otro numero de factura."
     },
     customerCredits: {
       title: "Saldos a favor de clientes",
@@ -796,9 +796,9 @@ export const translations = {
       templates: "Invoice templates", template: "Template", default: "Default", makeDefault: "Set as default",
       templateHelp: "Download the template to edit in Word and upload the customized DOCX. Choose another default before deactivating the current one.",
       downloadTemplate: "Download DOCX", docx: "DOCX file (max. 10 MB)", upload: "Upload template", invalidFile: "Invalid file.",
-      pdf: "Invoice PDF", generate: "Generate PDF", openPrint: "View / print PDF", downloadPdf: "Download PDF",
+      pdf: "Invoice PDF", openPrint: "View / print PDF", downloadPdf: "Download PDF",
       configureFirst: "Activate Imprent and configure a template in Account > Integrations.", voidInvoice: "This invoice is void.",
-      printHelp: "Generate the PDF and open it to print using the browser viewer. This does not consume another invoice number."
+      printHelp: "The PDF is generated automatically. Open it to print using the browser viewer. This does not consume another invoice number."
     },
     customerCredits: {
       title: "Customer credits",

@@ -13,6 +13,16 @@ test("integration and PDF controls have translations in both languages", () => {
   }
 });
 
+test("invoice detail exposes one print action and PDF generation starts from the modal", () => {
+  const detailSource = readFileSync("src/pages/TransactionDetailPage.jsx", "utf8");
+  const buttonSource = readFileSync("src/components/InvoicePdfButton.jsx", "utf8");
+  assert.doesNotMatch(detailSource, /printInvoiceTxt\s*}/);
+  assert.match(buttonSource, /onClick=\{openAndGenerate\}/);
+  assert.match(buttonSource, /void generate\(templateId\)/);
+  assert.match(buttonSource, /void generate\(selectedTemplateId\)/);
+  assert.doesNotMatch(buttonSource, /t\("imprent\.generate"\)/);
+});
+
 test("PDF uses persisted invoice number and correlative snapshot, line tax and discount", () => {
   const record = buildInvoicePdfRecord({
     account: { name: "Company", address: "Address", rtn: "08011999123456" }, person: { id: 1, name: "Customer", rtn: "01011988123456" }, currency: { name: "Lempiras", symbol: "L" },

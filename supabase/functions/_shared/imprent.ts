@@ -37,11 +37,23 @@ export async function authorizePrinting(client: any, req: Request, accountId: nu
 }
 
 export function imprentBaseUrl() {
-  const raw = Deno.env.get("IMPRENT_BASE_URL");
+  const raw = Deno.env.get("IMPRENT_BASE_URL")?.trim();
   if (!raw) throw new PrintError("Falta configurar IMPRENT_BASE_URL en el servidor.", 412);
-  const url = new URL(raw);
-  if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
-    throw new PrintError("IMPRENT_BASE_URL debe ser una URL HTTPS sin credenciales.", 412);
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new PrintError("IMPRENT_BASE_URL no es una URL valida.", 412);
+  }
+  const allowInsecureHttp = Deno.env.get("IMPRENT_ALLOW_INSECURE_HTTP")?.trim().toLowerCase() === "true";
+  const protocolAllowed = url.protocol === "https:" || (url.protocol === "http:" && allowInsecureHttp);
+  if (!protocolAllowed || url.username || url.password || url.search || url.hash) {
+    throw new PrintError(
+      allowInsecureHttp
+        ? "IMPRENT_BASE_URL debe ser una URL HTTP/HTTPS sin credenciales, query ni fragmento."
+        : "IMPRENT_BASE_URL debe usar HTTPS. Para una instalacion temporal sin TLS configura IMPRENT_ALLOW_INSECURE_HTTP=true.",
+      412,
+    );
   }
   return raw.replace(/\/+$/, "");
 }

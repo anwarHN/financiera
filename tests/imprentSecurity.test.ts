@@ -31,6 +31,8 @@ Deno.test("print access requires membership and sales permission; integration ma
 Deno.test("provider transport pins server origin, disallows redirects and sanitizes upstream errors", async () => {
   const originalFetch = globalThis.fetch;
   const originalUrl = Deno.env.get("IMPRENT_BASE_URL");
+  const originalAllowHttp = Deno.env.get("IMPRENT_ALLOW_INSECURE_HTTP");
+  Deno.env.delete("IMPRENT_ALLOW_INSECURE_HTTP");
   Deno.env.set("IMPRENT_BASE_URL", "https://provider.test");
   try {
     globalThis.fetch = async (input, init) => {
@@ -46,9 +48,21 @@ Deno.test("provider transport pins server origin, disallows redirects and saniti
       err instanceof PrintError && !err.message.includes("secret") && err.status === 502);
     assert.equal((await printErrorResponse(new Error("database secret")).json()).error.includes("secret"), false);
     Deno.env.set("IMPRENT_BASE_URL", "http://provider.test");
-    await assert.rejects(imprentRequest("doc-generator"), /HTTPS/);
+    await assert.rejects(imprentRequest("doc-generator"), /IMPRENT_ALLOW_INSECURE_HTTP=true/);
+    Deno.env.set("IMPRENT_ALLOW_INSECURE_HTTP", "true");
+    globalThis.fetch = async (input, init) => {
+      assert.equal(String(input), "http://provider.test/api/v1/doc-generator");
+      assert.equal(new Headers((init as RequestInit).headers).get("X-API-Key"), "secret");
+      return Response.json({ data: { finalFile: "invoice.pdf" } });
+    };
+    assert.deepEqual(await imprentJson("doc-generator", {}, "secret"), { finalFile: "invoice.pdf" });
+    Deno.env.set("IMPRENT_BASE_URL", "http://user:password@provider.test");
+    await assert.rejects(imprentRequest("doc-generator"), /sin credenciales/);
+    Deno.env.set("IMPRENT_BASE_URL", "ftp://provider.test");
+    await assert.rejects(imprentRequest("doc-generator"), /HTTP\/HTTPS/);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalUrl) Deno.env.set("IMPRENT_BASE_URL", originalUrl); else Deno.env.delete("IMPRENT_BASE_URL");
+    if (originalAllowHttp) Deno.env.set("IMPRENT_ALLOW_INSECURE_HTTP", originalAllowHttp); else Deno.env.delete("IMPRENT_ALLOW_INSECURE_HTTP");
   }
 });
