@@ -206,6 +206,7 @@ export function AuthProvider({ children }) {
     };
     const hasAccountSectionAccess = (section) => {
       if (!account?.isOriginalAccount) return false;
+      if (section === "integrations") return true;
       if (isSystemAdmin) return true;
       if (section === "billing" || section === "settings" || section === "root") return true;
       if (section === "users" || section === "invitations") return Boolean(profileData?.canCreateUsers);

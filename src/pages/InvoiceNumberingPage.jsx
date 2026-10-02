@@ -134,7 +134,7 @@ function InvoiceNumberingPage() {
     if (hasNumberTo && (!Number.isFinite(numberTo) || numberTo < numberFrom || lastNumber > numberTo)) {
       return t("invoiceNumbering.invalidRange");
     }
-    if (!form.printPattern.includes("{0}")) {
+    if (!/\{(0|number)(:0{1,18})?\}/.test(form.printPattern)) {
       return t("invoiceNumbering.patternPlaceholderRequired");
     }
     if (requiresManualRequiredFields && !hasNumberTo) {
@@ -202,7 +202,7 @@ function InvoiceNumberingPage() {
 
   const handleDeactivate = async (itemId) => {
     try {
-      await deactivateCorrelativeControl(itemId);
+      await deactivateCorrelativeControl(itemId, account.accountId);
       await loadData();
       setError("");
     } catch (err) {
@@ -346,6 +346,7 @@ function InvoiceNumberingPage() {
                   onChange={(event) => setForm((prev) => ({ ...prev, printPattern: event.target.value }))}
                   required
                 />
+                <p className="form-span-2">{t("invoiceNumbering.patternHelp")}</p>
                 <TextField
                   label={t("invoiceNumbering.reference1")}
                   name="reference1"

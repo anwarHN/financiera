@@ -17,7 +17,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { listAccountPaymentForms } from "../services/accountPaymentFormsService";
 import { listConcepts } from "../services/conceptsService";
-import { reserveTransactionCorrelative } from "../services/correlativesControlService";
 import { listCurrencies } from "../services/currenciesService";
 import { listEmployees } from "../services/employeesService";
 import { createPaymentMethod, listPaymentMethods } from "../services/paymentMethodsService";
@@ -308,7 +307,6 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   }, [saleHeader.paymentMode, selectedSalePaymentMethod]);
 
   const saleTotals = useMemo(() => aggregateLines(saleLines), [saleLines]);
-  const shouldAssignInvoiceNumber = moduleType === "sale" && !isManualReceivableMode && !isPriorBalanceMode;
 
   useEffect(() => {
     if (!account?.accountId) return;
@@ -784,23 +782,6 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     };
   };
 
-  const attachInvoiceCorrelative = async (transactionPayload) => {
-    if (isEdit || !shouldAssignInvoiceNumber) {
-      return transactionPayload;
-    }
-
-    const reserved = await reserveTransactionCorrelative({
-      accountId: account.accountId,
-      transactionType: config.type,
-      transactionDate: transactionPayload.date
-    });
-
-    return {
-      ...transactionPayload,
-      number: reserved.number,
-      printNumber: reserved.printNumber
-    };
-  };
 
   const handleSubmitSimple = async (event) => {
     event.preventDefault();
@@ -1017,7 +998,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
 
     try {
       setIsSaving(true);
-      const transactionPayload = await attachInvoiceCorrelative(transactionPayloadBase);
+      const transactionPayload = transactionPayloadBase;
       const saved = isEdit
         ? await updateTransactionWithDetails({
             transactionId: Number(itemId),
@@ -1175,7 +1156,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
 
     try {
       setIsSaving(true);
-      const transactionPayload = await attachInvoiceCorrelative(transactionPayloadBase);
+      const transactionPayload = transactionPayloadBase;
       let saved;
       if (isEdit) {
         saved = await updateTransactionWithDetails({

@@ -82,6 +82,14 @@ export async function listTransactionsByProject({ accountId, projectId, dateFrom
 }
 
 export async function createTransactionWithDetails({ transaction, details }) {
+  if (Number(transaction.type) === 1 && !(transaction.tags || []).some((tag) =>
+    tag === "__prior_balance__" || tag === "__manual_receivable__")) {
+    const { data, error } = await supabase.rpc("create_numbered_invoice", {
+      p_transaction: transaction, p_details: details ?? []
+    });
+    if (error) throw error;
+    return { id: data };
+  }
   const { data: createdTransaction, error: transactionError } = await supabase
     .from("transactions")
     .insert(transaction)
@@ -126,6 +134,14 @@ export async function updateTransaction(id, payload) {
 }
 
 export async function updateTransactionWithDetails({ transactionId, transaction, details }) {
+  if (Number(transaction.type) === 1 && !(transaction.tags || []).some((tag) =>
+    tag === "__prior_balance__" || tag === "__manual_receivable__")) {
+    transaction = { ...transaction };
+    delete transaction.number;
+    delete transaction.printNumber;
+    delete transaction.correlativeId;
+    delete transaction.correlativeSnapshot;
+  }
   const { data: updatedTransaction, error: transactionError } = await supabase
     .from("transactions")
     .update(transaction)

@@ -72,6 +72,9 @@ pendientes detectados para el servicio de control presupuestario de Eleven Studi
 - moneda en presupuestos
 
 ## Ruta de lectura según tarea
+### Impresion PDF de facturas e integraciones
+Leer `docs/invoice-printing-imprent.md`: activacion automatica de Imprent, plantillas DOCX, permisos, correlativos atomicos, secretos y despliegue coordinado.
+
 ### Edicion de transacciones y carga de selectores
 Leer `docs/transaction-editor-loading.md` para coordinacion de consultas, errores y recuperacion de opciones historicas.
 

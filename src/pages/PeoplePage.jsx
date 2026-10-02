@@ -82,7 +82,7 @@ function PeoplePage({ personType, titleKey, basePath }) {
       const numericId = Number(personId);
       const localItem = items.find((item) => Number(item.id) === numericId);
       const [personData, transactions] = await Promise.all([
-        localItem ? Promise.resolve(localItem) : getPersonById(numericId),
+        localItem ? Promise.resolve(localItem) : getPersonById(numericId, account.accountId),
         listPersonAccountTransactions(account.accountId, numericId, accountKind)
       ]);
       setDetailPerson(personData ?? null);
@@ -129,6 +129,7 @@ function PeoplePage({ personType, titleKey, basePath }) {
             <thead>
               <tr>
                 <th>{t("common.name")}</th>
+                <th>{t("common.rtn")}</th>
                 <th>{t("common.phone")}</th>
                 <th>{t("common.address")}</th>
                 <th>{t("common.actions")}</th>
@@ -138,6 +139,7 @@ function PeoplePage({ personType, titleKey, basePath }) {
               {paginatedItems.map((item) => (
                 <tr key={item.id}>
                   <td>{item.name}</td>
+                  <td>{item.rtn || "-"}</td>
                   <td>{item.phone ?? "-"}</td>
                   <td>{item.address ?? "-"}</td>
                   <td className="table-actions">

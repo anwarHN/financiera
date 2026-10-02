@@ -42,7 +42,7 @@ export async function getCurrentAccount(userId) {
 export async function getAccountById(accountId) {
   const { data, error } = await supabase
     .from("accounts")
-    .select('id, name, email, phone, address, "reportRetentionDays", "createdById"')
+    .select('id, name, email, phone, address, rtn, "reportRetentionDays", "createdById"')
     .eq("id", accountId)
     .single();
 
@@ -58,7 +58,7 @@ export async function updateAccount(accountId, payload) {
     .from("accounts")
     .update(payload)
     .eq("id", accountId)
-    .select('id, name, email, phone, address, "reportRetentionDays", "createdById"')
+    .select('id, name, email, phone, address, rtn, "reportRetentionDays", "createdById"')
     .single();
 
   if (error) {

@@ -1,5 +1,17 @@
 export const translations = {
   es: {
+    imprent: {
+      integrations: "Integraciones", ownerOnly: "Solo el propietario puede gestionar integraciones.",
+      help: "Genera PDF de facturas con plantillas Word por empresa. La credencial se conserva en el servidor.",
+      active: "Integracion activa", inactive: "Integracion inactiva o pendiente de activar", activate: "Activar Imprent",
+      activationWarning: "Se creara una cuenta en Imprent con tu correo. Si ya existe, Imprent puede rotar su API key y afectar otras aplicaciones conectadas. Confirma que este correo se usara para esta empresa. ¿Continuar?",
+      templates: "Plantillas de factura", template: "Plantilla", default: "Por defecto", makeDefault: "Usar por defecto",
+      templateHelp: "Descarga la plantilla para editarla en Word y sube el DOCX personalizado. Selecciona otra como predeterminada antes de desactivar la actual.",
+      downloadTemplate: "Descargar DOCX", docx: "Archivo DOCX (max. 10 MB)", upload: "Subir plantilla", invalidFile: "Archivo invalido.",
+      pdf: "Factura PDF", generate: "Generar PDF", openPrint: "Ver / imprimir PDF", downloadPdf: "Descargar PDF",
+      configureFirst: "Activa Imprent y configura una plantilla en Cuenta > Integraciones.", voidInvoice: "La factura esta anulada.",
+      printHelp: "Genera el PDF y abrelo para imprimir con el visor del navegador. No consume otro numero de factura."
+    },
     customerCredits: {
       title: "Saldos a favor de clientes",
       appliedToInvoice: "Aplicado a factura",
@@ -18,6 +30,10 @@ export const translations = {
       loading: "Cargando...",
       save: "Guardar",
       cancel: "Cancelar",
+      close: "Cerrar",
+      rtn: "RTN",
+      rtnHint: "Opcional: 14 dígitos, sin espacios ni guiones",
+      retry: "Reintentar",
       logout: "Cerrar sesión",
       language: "Idioma",
       searchPlaceholder: "Buscar",
@@ -420,7 +436,8 @@ export const translations = {
       reference2: "Referencia 2",
       invalidRange: "El rango del correlativo no es válido.",
       lastNumberTooLow: "El último número debe ser al menos numeración desde - 1.",
-      patternPlaceholderRequired: "El patrón debe incluir el comodín {0}."
+      patternPlaceholderRequired: "El patrón debe incluir {0}, {number} o un comodín con ceros.",
+      patternHelp: "Ejemplo: 001-001-01-{number:00000000}. También acepta {0} y {0:00000000}."
     },
     internalObligations: {
       title: "Obligaciones internas",
@@ -769,6 +786,18 @@ export const translations = {
     }
   },
   en: {
+    imprent: {
+      integrations: "Integrations", ownerOnly: "Only the account owner can manage integrations.",
+      help: "Generate invoice PDFs with per-company Word templates. Credentials remain on the server.",
+      active: "Integration active", inactive: "Integration inactive or awaiting activation", activate: "Activate Imprent",
+      activationWarning: "An Imprent account will be created with your email. If it exists, Imprent may rotate its API key and affect other connected applications. Confirm this email will be used for this company. Continue?",
+      templates: "Invoice templates", template: "Template", default: "Default", makeDefault: "Set as default",
+      templateHelp: "Download the template to edit in Word and upload the customized DOCX. Choose another default before deactivating the current one.",
+      downloadTemplate: "Download DOCX", docx: "DOCX file (max. 10 MB)", upload: "Upload template", invalidFile: "Invalid file.",
+      pdf: "Invoice PDF", generate: "Generate PDF", openPrint: "View / print PDF", downloadPdf: "Download PDF",
+      configureFirst: "Activate Imprent and configure a template in Account > Integrations.", voidInvoice: "This invoice is void.",
+      printHelp: "Generate the PDF and open it to print using the browser viewer. This does not consume another invoice number."
+    },
     customerCredits: {
       title: "Customer credits",
       appliedToInvoice: "Applied to invoice",
@@ -787,6 +816,10 @@ export const translations = {
       loading: "Loading...",
       save: "Save",
       cancel: "Cancel",
+      close: "Close",
+      rtn: "RTN",
+      rtnHint: "Optional: 14 digits, without spaces or hyphens",
+      retry: "Retry",
       logout: "Sign out",
       language: "Language",
       searchPlaceholder: "Search",
@@ -1188,7 +1221,8 @@ export const translations = {
       reference2: "Reference 2",
       invalidRange: "The correlative range is invalid.",
       lastNumberTooLow: "Last number must be at least numbering from - 1.",
-      patternPlaceholderRequired: "The pattern must include the {0} placeholder."
+      patternPlaceholderRequired: "The pattern must include {0}, {number} or a zero-padded placeholder.",
+      patternHelp: "Example: 001-001-01-{number:00000000}. Also accepts {0} and {0:00000000}."
     },
     internalObligations: {
       title: "Internal obligations",

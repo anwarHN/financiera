@@ -41,5 +41,6 @@ export function resolveAccountSectionByPath(pathname) {
   if (pathname.startsWith("/account/profiles")) return "profiles";
   if (pathname.startsWith("/account/invitations")) return "invitations";
   if (pathname.startsWith("/account/settings")) return "settings";
+  if (pathname.startsWith("/account/integrations")) return "integrations";
   return "root";
 }

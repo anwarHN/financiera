@@ -3,9 +3,11 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { createPerson, getPersonById, updatePerson } from "../services/personsService";
+import RtnField from "../components/form/RtnField";
 
 const initialForm = {
   name: "",
+  rtn: "",
   phone: "",
   address: "",
   type: 1
@@ -24,27 +26,30 @@ function PersonFormPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!isEdit) {
-      return;
-    }
+    let cancelled = false;
+    setForm(initialForm);
+    setError("");
+    if (isEdit && account?.accountId) loadItem(() => cancelled);
+    return () => { cancelled = true; };
+  }, [isEdit, id, account?.accountId]);
 
-    loadItem();
-  }, [isEdit, id]);
-
-  const loadItem = async () => {
+  const loadItem = async (isCancelled = () => false) => {
     try {
       setIsLoading(true);
-      const item = await getPersonById(id);
+      const item = await getPersonById(id, account.accountId);
+      if (isCancelled()) return;
       setForm({
         name: item.name,
+        rtn: item.rtn ?? "",
         phone: item.phone ?? "",
         address: item.address ?? "",
         type: item.type ?? 1
       });
     } catch {
+      if (isCancelled()) return;
       setError(t("common.genericLoadError"));
     } finally {
-      setIsLoading(false);
+      if (!isCancelled()) setIsLoading(false);
     }
   };
 
@@ -72,6 +77,7 @@ function PersonFormPage() {
     const payload = {
       accountId: account.accountId,
       name: form.name.trim(),
+      rtn: form.rtn.trim() || null,
       phone: form.phone.trim() || null,
       address: form.address.trim() || null,
       type: form.type
@@ -107,6 +113,7 @@ function PersonFormPage() {
       ) : (
         <form className="crud-form" onSubmit={handleSubmit}>
           <input name="name" placeholder={t("common.name")} value={form.name} onChange={handleChange} required />
+          <RtnField value={form.rtn} onChange={handleChange} />
           <input name="phone" placeholder={t("common.phone")} value={form.phone} onChange={handleChange} />
           <input name="address" placeholder={t("common.address")} value={form.address} onChange={handleChange} />
           <select name="type" value={form.type} onChange={handleChange}>

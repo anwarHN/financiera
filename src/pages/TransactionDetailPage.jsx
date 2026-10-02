@@ -8,6 +8,7 @@ import ReadOnlyField from "../components/form/ReadOnlyField";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { printInvoiceTxt } from "../services/invoicePrintService";
+import InvoicePdfButton from "../components/InvoicePdfButton";
 import {
   getTransactionById,
   listInventoryDeliveryHistory,
@@ -21,7 +22,7 @@ import { formatNumber } from "../utils/numberFormat";
 
 function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }) {
   const { t, language } = useI18n();
-  const { account, canVoidTransactions } = useAuth();
+  const { account, canVoidTransactions, hasModulePermission } = useAuth();
   const { id } = useParams();
   const [transaction, setTransaction] = useState(null);
   const [details, setDetails] = useState([]);
@@ -172,6 +173,9 @@ function TransactionDetailPage({ moduleType, backPath: backPathOverride = null }
             <button type="button" className="button-link-secondary" onClick={handlePrintInvoice} disabled={isPrintingInvoice}>
               {isPrintingInvoice ? t("transactions.printInvoiceTxtLoading") : t("transactions.printInvoiceTxt")}
             </button>
+          ) : null}
+          {moduleType === "sale" && transaction && hasModulePermission("sales", "read") ? (
+            <InvoicePdfButton accountId={account?.accountId} transactionId={transaction.id} isActive={transaction.isActive} />
           ) : null}
           {Boolean(transaction?.isActive) && Number(transaction?.balance || 0) > 0 && (
             <button type="button" className="button-link-primary" onClick={() => setIsPaymentModalOpen(true)}>

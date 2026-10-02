@@ -10,7 +10,8 @@ const accountTabs = [
   { path: "/account/users", key: "accountManage.users", icon: FiUserPlus },
   { path: "/account/profiles", key: "accountManage.profiles", icon: FiShield },
   { path: "/account/invitations", key: "accountManage.invitations", icon: FiMail },
-  { path: "/account/settings", key: "accountManage.settings", icon: FiSettings }
+  { path: "/account/settings", key: "accountManage.settings", icon: FiSettings },
+  { path: "/account/integrations", key: "imprent.integrations", icon: FiSettings }
 ];
 
 function AccountManagePage() {

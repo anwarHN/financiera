@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabase";
 
-const selectColumns = "id, name, phone, address, type";
+const selectColumns = "id, name, phone, address, type, rtn";
 const personTransactionsSelectColumns =
   'id, date, type, total, balance, payments, isAccountReceivable, isAccountPayable, isActive';
 
@@ -33,8 +33,10 @@ export async function listPersonsByType(accountId, type) {
   return data ?? [];
 }
 
-export async function getPersonById(id) {
-  const { data, error } = await supabase.from("persons").select(selectColumns).eq("id", id).single();
+export async function getPersonById(id, accountId = null) {
+  let query = supabase.from("persons").select(selectColumns).eq("id", id);
+  if (accountId != null) query = query.eq("accountId", accountId);
+  const { data, error } = await query.single();
 
   if (error) {
     throw error;
@@ -58,6 +60,7 @@ export async function updatePerson(id, payload) {
     .from("persons")
     .update(payload)
     .eq("id", id)
+    .eq("accountId", payload.accountId)
     .select(selectColumns)
     .single();
 

@@ -25,6 +25,7 @@ import ProfilesPage from "./pages/ProfilesPage";
 import AdminPage from "./pages/AdminPage";
 import AccountManagePage from "./pages/AccountManagePage";
 import AccountSettingsPage from "./pages/AccountSettingsPage";
+import AccountIntegrationsPage from "./pages/AccountIntegrationsPage";
 import AccountBillingPage from "./pages/AccountBillingPage";
 import AccountInvitationsPage from "./pages/AccountInvitationsPage";
 import AccountPaymentFormsPage from "./pages/AccountPaymentFormsPage";
@@ -267,6 +268,7 @@ function App() {
           <Route path="profiles" element={<ProfilesPage />} />
           <Route path="invitations" element={<AccountInvitationsPage />} />
           <Route path="settings" element={<AccountSettingsPage />} />
+          <Route path="integrations" element={<AccountIntegrationsPage />} />
         </Route>
         <Route path="profiles" element={<Navigate to="/account/profiles" replace />} />
         <Route path="admin" element={<Navigate to="/account/users" replace />} />

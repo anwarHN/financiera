@@ -10,6 +10,12 @@ verify_jwt = false
 [functions.generate-invoice-print-txt]
 verify_jwt = false
 
+[functions.imprent-integration]
+verify_jwt = false
+
+[functions.generate-invoice-pdf]
+verify_jwt = false
+
 [functions.create-billing-checkout]
 verify_jwt = false
 

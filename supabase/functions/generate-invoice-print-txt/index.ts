@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 interface Payload {
   accountId: number;
@@ -84,7 +84,7 @@ function formatDateTime(value: string | null | undefined) {
 }
 
 function buildInvoiceTxt(args: {
-  account: { name?: string | null; address?: string | null; phone?: string | null; email?: string | null };
+  account: { name?: string | null; address?: string | null; phone?: string | null; email?: string | null; rtn?: string | null };
   transaction: {
     id: number;
     date?: string | null;
@@ -99,13 +99,13 @@ function buildInvoiceTxt(args: {
     printNumber?: string | null;
     number?: number | null;
   };
-  person: { name?: string | null; address?: string | null } | null;
+  person: { name?: string | null; address?: string | null; rtn?: string | null } | null;
   currency: { name?: string | null; symbol?: string | null } | null;
   details: Array<{
     quantity?: number | null;
     total?: number | null;
     discount?: number | null;
-    concepts?: { name?: string | null } | null;
+    concepts?: { name?: string | null } | Array<{ name?: string | null }> | null;
   }>;
 }) {
   const { account, transaction, person, currency, details } = args;
@@ -116,12 +116,14 @@ function buildInvoiceTxt(args: {
 
   const lines = [
     centerLine(account.name || "Factura", width),
+    ...(account.rtn ? [centerLine(`RTN: ${account.rtn}`, width)] : []),
     ...wrapText(account.address || "", width).map((line) => centerLine(line, width)),
     account.phone ? centerLine(`Telefonos: ${account.phone}`, width) : "",
     account.email ? centerLine(`Correo: ${account.email}`, width) : "",
     "",
     `Factura: ${documentNumber}`,
     `Cliente: ${normalizeText(person?.name || "-")}`,
+    ...(person?.rtn ? [`RTN Cliente: ${person.rtn}`] : []),
     `Dir. Cliente: ${normalizeText(person?.address || "")}`,
     `Moneda: ${normalizeText(currency?.name || "-")}`,
     `Tipo de compra: ${paymentType}`,
@@ -133,7 +135,8 @@ function buildInvoiceTxt(args: {
   ];
 
   details.forEach((detail) => {
-    const conceptName = detail.concepts?.name || "-";
+    const concept = Array.isArray(detail.concepts) ? detail.concepts[0] : detail.concepts;
+    const conceptName = concept?.name || "-";
     const quantity = Number(detail.quantity || 0).toLocaleString("en-US", {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2
@@ -170,7 +173,7 @@ function buildInvoiceTxt(args: {
   return `${lines.join("\n")}\n`;
 }
 
-async function authenticateRequest(supabaseAdmin: ReturnType<typeof createClient>, req: Request, accountId: number) {
+async function authenticateRequest(supabaseAdmin: SupabaseClient, req: Request, accountId: number) {
   const authHeader = req.headers.get("Authorization") || "";
   const accessToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
   if (!accessToken) throw new Error("Missing bearer token");
@@ -243,9 +246,9 @@ Deno.serve(async (req) => {
     if (transactionError || !transaction) throw transactionError ?? new Error("Invoice not found");
 
     const [accountResult, personResult, currencyResult, detailsResult] = await Promise.all([
-      supabaseAdmin.from("accounts").select("id, name, address, phone, email").eq("id", payload.accountId).single(),
+      supabaseAdmin.from("accounts").select("id, name, address, phone, email, rtn").eq("id", payload.accountId).single(),
       transaction.personId
-        ? supabaseAdmin.from("persons").select("id, name, address").eq("id", transaction.personId).maybeSingle()
+        ? supabaseAdmin.from("persons").select("id, name, address, rtn").eq("accountId", payload.accountId).eq("id", transaction.personId).maybeSingle()
         : Promise.resolve({ data: null, error: null }),
       transaction.currencyId
         ? supabaseAdmin.from("currencies").select("id, name, symbol").eq("id", transaction.currencyId).maybeSingle()

@@ -3,10 +3,12 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import TextField from "../components/form/TextField";
+import RtnField from "../components/form/RtnField";
 import { createPerson, getPersonById, updatePerson } from "../services/personsService";
 
 const initialForm = {
   name: "",
+  rtn: "",
   phone: "",
   address: ""
 };
@@ -23,28 +25,36 @@ function PeopleFormPage({ personType, titleKey, basePath, embedded = false, onCa
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(isEdit);
   const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
-    if (!isEdit) {
-      return;
-    }
+    let cancelled = false;
+    setForm(initialForm);
+    setError("");
+    setLoadFailed(false);
+    setIsLoading(isEdit);
+    if (isEdit && account?.accountId) loadItem(() => cancelled);
+    return () => { cancelled = true; };
+  }, [isEdit, currentId, account?.accountId, personType]);
 
-    loadItem();
-  }, [isEdit, currentId]);
-
-  const loadItem = async () => {
+  const loadItem = async (isCancelled = () => false) => {
     try {
       setIsLoading(true);
-      const item = await getPersonById(currentId);
+      const item = await getPersonById(currentId, account.accountId);
+      if (Number(item.type) !== Number(personType)) throw new Error("Unexpected person type");
+      if (isCancelled()) return;
       setForm({
         name: item.name,
+        rtn: item.rtn ?? "",
         phone: item.phone ?? "",
         address: item.address ?? ""
       });
     } catch {
+      if (isCancelled()) return;
+      setLoadFailed(true);
       setError(t("common.genericLoadError"));
     } finally {
-      setIsLoading(false);
+      if (!isCancelled()) setIsLoading(false);
     }
   };
 
@@ -61,7 +71,7 @@ function PeopleFormPage({ personType, titleKey, basePath, embedded = false, onCa
       setError(t("common.requiredFields"));
       return;
     }
-    if (!account?.accountId || !user?.id) {
+    if (!account?.accountId || !user?.id || loadFailed || isLoading) {
       setError(t("common.requiredFields"));
       return;
     }
@@ -69,6 +79,7 @@ function PeopleFormPage({ personType, titleKey, basePath, embedded = false, onCa
     const payload = {
       accountId: account.accountId,
       name: form.name.trim(),
+      rtn: form.rtn.trim() || null,
       phone: form.phone.trim() || null,
       address: form.address.trim() || null,
       type: personType
@@ -122,6 +133,7 @@ function PeopleFormPage({ personType, titleKey, basePath, embedded = false, onCa
               required
             />
             <TextField label={t("common.phone")} name="phone" placeholder={t("common.phone")} value={form.phone} onChange={handleChange} />
+            <RtnField value={form.rtn} onChange={handleChange} disabled={isSaving || loadFailed} />
             <TextField
               label={t("common.address")}
               name="address"
@@ -138,7 +150,7 @@ function PeopleFormPage({ personType, titleKey, basePath, embedded = false, onCa
                 {t("common.cancel")}
               </button>
             ) : null}
-            <button type="submit" disabled={isSaving} className={isSaving ? "is-saving" : ""}>
+            <button type="submit" disabled={isSaving || loadFailed} className={isSaving ? "is-saving" : ""}>
               {isEdit ? t("common.update") : t("common.create")}
             </button>
           </div>

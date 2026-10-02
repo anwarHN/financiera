@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import FormField from "../components/form/FormField";
 import TextField from "../components/form/TextField";
+import RtnField from "../components/form/RtnField";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { getAccountById, updateAccount } from "../services/accountService";
@@ -8,6 +9,7 @@ import { getCurrentUserProfile } from "../services/profilesService";
 
 const initialForm = {
   name: "",
+  rtn: "",
   email: "",
   phone: "",
   address: "",
@@ -24,11 +26,15 @@ function AccountSettingsPage() {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
+    setForm(initialForm);
+    setIsSystemAdmin(false);
     if (!account?.accountId || !user?.id) return;
-    loadData();
+    loadData(() => cancelled);
+    return () => { cancelled = true; };
   }, [account?.accountId, user?.id]);
 
-  const loadData = async () => {
+  const loadData = async (isCancelled = () => false) => {
     try {
       setIsLoading(true);
       const [accountData, currentUserProfile] = await Promise.all([
@@ -36,8 +42,10 @@ function AccountSettingsPage() {
         getCurrentUserProfile(account.accountId, user.id)
       ]);
 
+      if (isCancelled()) return;
       setForm({
         name: accountData.name ?? "",
+        rtn: accountData.rtn ?? "",
         email: accountData.email ?? "",
         phone: accountData.phone ?? "",
         address: accountData.address ?? "",
@@ -47,9 +55,10 @@ function AccountSettingsPage() {
       setError("");
       setSuccess("");
     } catch {
+      if (isCancelled()) return;
       setError(t("common.genericLoadError"));
     } finally {
-      setIsLoading(false);
+      if (!isCancelled()) setIsLoading(false);
     }
   };
 
@@ -77,6 +86,7 @@ function AccountSettingsPage() {
     try {
       await updateAccount(account.accountId, {
         name: form.name.trim(),
+        rtn: form.rtn.trim() || null,
         email: form.email.trim() || null,
         phone: form.phone.trim() || null,
         address: form.address.trim() || null,
@@ -103,6 +113,7 @@ function AccountSettingsPage() {
       <form className="crud-form" onSubmit={handleSubmit}>
         <div className="form-grid-2">
           <TextField label={t("common.name")} name="name" value={form.name} onChange={handleChange} disabled={!isSystemAdmin} required />
+          <RtnField value={form.rtn} onChange={handleChange} disabled={!isSystemAdmin} />
           <TextField label={t("common.email")} name="email" type="email" value={form.email} onChange={handleChange} disabled={!isSystemAdmin} />
           <TextField label={t("common.phone")} name="phone" value={form.phone} onChange={handleChange} disabled={!isSystemAdmin} />
           <TextField label={t("common.address")} name="address" value={form.address} onChange={handleChange} disabled={!isSystemAdmin} />
