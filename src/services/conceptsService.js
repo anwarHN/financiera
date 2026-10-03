@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import { loadProductInventoryRows } from "../../supabase/functions/_shared/productInventoryRows.js";
 import { TRANSACTION_TYPES } from "./transactionsService";
 
 const selectColumns =
@@ -35,7 +36,7 @@ async function attachParentConcept(rows) {
   });
 }
 
-async function attachProductStock(rows) {
+async function attachProductStock(rows, accountId) {
   const source = Array.isArray(rows) ? rows : [];
   if (!source.length) return source;
 
@@ -46,49 +47,29 @@ async function attachProductStock(rows) {
   const productIds = inventoryProductIds;
   if (!productIds.length) return source.map((row) => ({ ...row, stock: 0, pendingDelivery: 0, stockFinal: 0 }));
 
-  const { data: details, error: detailsError } = await supabase
-    .from("transactionDetails")
-    .select('id, transactionId, conceptId, quantity, quantityDelivered, "historicalQuantityDelivered"')
-    .in("conceptId", productIds);
-  if (detailsError) throw detailsError;
+  const {
+    details,
+    historyRows: productHistoryRows,
+    transactions: txRows
+  } = await loadProductInventoryRows(supabase, { accountId, productIds });
 
-  const detailIds = Array.from(new Set((details ?? []).map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0)));
-  const { data: productHistoryRows, error: productHistoryError } = await supabase
-    .from("inventory_delivery_history")
-    .select('id, transactionId, "transactionDetailId", conceptId, quantity')
-    .in("conceptId", productIds);
-  if (productHistoryError) throw productHistoryError;
-
-  const txIds = Array.from(
-    new Set(
-      [...(details ?? []), ...(productHistoryRows ?? [])]
-        .map((row) => Number(row.transactionId))
-        .filter((id) => Number.isFinite(id) && id > 0)
-    )
-  );
-  if (!txIds.length) return source.map((row) => ({ ...row, stock: 0, pendingDelivery: 0, stockFinal: 0 }));
+  const detailIds = Array.from(new Set(details.map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0)));
+  if (!txRows.length) return source.map((row) => ({ ...row, stock: 0, pendingDelivery: 0, stockFinal: 0 }));
 
   const deliveredHistoryByDetailId = new Map();
   if (detailIds.length > 0) {
-    (productHistoryRows ?? []).forEach((row) => {
+    productHistoryRows.forEach((row) => {
       const detailId = Number(row.transactionDetailId || 0);
       if (!detailId) return;
       deliveredHistoryByDetailId.set(detailId, Number(deliveredHistoryByDetailId.get(detailId) || 0) + Math.max(Number(row.quantity || 0), 0));
     });
   }
 
-  const { data: txRows, error: txError } = await supabase
-    .from("transactions")
-    .select("id, type, tags, isActive")
-    .in("id", txIds)
-    .eq("isActive", true);
-  if (txError) throw txError;
-
-  const txById = new Map((txRows ?? []).map((row) => [Number(row.id), row]));
+  const txById = new Map(txRows.map((row) => [Number(row.id), row]));
   const currentInventoryByProductId = new Map();
   const pendingByProductId = new Map();
 
-  for (const detail of details ?? []) {
+  for (const detail of details) {
     const productId = Number(detail.conceptId);
     const tx = txById.get(Number(detail.transactionId));
     if (!tx) continue;
@@ -121,7 +102,7 @@ async function attachProductStock(rows) {
     }
   }
 
-  for (const row of productHistoryRows ?? []) {
+  for (const row of productHistoryRows) {
     const tx = txById.get(Number(row.transactionId));
     if (!tx || Number(tx.type) !== TRANSACTION_TYPES.sale) continue;
     const productId = Number(row.conceptId);
@@ -144,37 +125,14 @@ export async function getProductKardex(accountId, conceptId, { dateFrom, dateTo 
   const productId = Number(conceptId);
   if (!Number.isFinite(productId) || productId <= 0) return { previousBalance: 0, movements: [], totalBalance: 0 };
 
-  const { data: detailRows, error: detailsError } = await supabase
-    .from("transactionDetails")
-    .select("id, transactionId, conceptId, quantity")
-    .eq("conceptId", productId);
-  if (detailsError) throw detailsError;
+  const {
+    details: detailRows,
+    historyRows,
+    transactions: txRows
+  } = await loadProductInventoryRows(supabase, { accountId, productIds: [productId] });
+  if (!txRows.length) return { previousBalance: 0, movements: [], totalBalance: 0 };
 
-  const { data: historyRows, error: historyError } = await supabase
-    .from("inventory_delivery_history")
-    .select('id, transactionId, "transactionDetailId", "deliveryDate", quantity')
-    .eq("accountId", accountId)
-    .eq("conceptId", productId);
-  if (historyError) throw historyError;
-
-  const txIds = Array.from(
-    new Set(
-      [...(detailRows ?? []), ...(historyRows ?? [])]
-        .map((row) => Number(row.transactionId))
-        .filter((id) => Number.isFinite(id) && id > 0)
-    )
-  );
-  if (!txIds.length) return { previousBalance: 0, movements: [], totalBalance: 0 };
-
-  const { data: txRows, error: txError } = await supabase
-    .from("transactions")
-    .select('id, accountId, date, type, name, "referenceNumber", isActive, tags')
-    .in("id", txIds)
-    .eq("accountId", accountId)
-    .eq("isActive", true);
-  if (txError) throw txError;
-
-  const txById = new Map((txRows ?? []).map((row) => [Number(row.id), row]));
+  const txById = new Map(txRows.map((row) => [Number(row.id), row]));
   const movements = [];
   let previousBalance = 0;
   const pushMovement = ({ movementId, transactionId, date, type, name, referenceNumber, movementQuantity }) => {
@@ -199,7 +157,7 @@ export async function getProductKardex(accountId, conceptId, { dateFrom, dateTo 
     });
   };
 
-  for (const detail of detailRows ?? []) {
+  for (const detail of detailRows) {
     const tx = txById.get(Number(detail.transactionId));
     if (!tx) continue;
 
@@ -228,7 +186,7 @@ export async function getProductKardex(accountId, conceptId, { dateFrom, dateTo 
     });
   }
 
-  for (const row of historyRows ?? []) {
+  for (const row of historyRows) {
     const tx = txById.get(Number(row.transactionId));
     if (!tx) continue;
 
@@ -280,7 +238,7 @@ export async function listConcepts(accountId) {
   }
 
   const withParent = await attachParentConcept(data ?? []);
-  return attachProductStock(withParent);
+  return attachProductStock(withParent, accountId);
 }
 
 export async function listConceptsByModule(accountId, moduleType) {
@@ -318,7 +276,7 @@ export async function listConceptsByModule(accountId, moduleType) {
 
   const withParent = await attachParentConcept(data ?? []);
   if (moduleType === "products") {
-    return attachProductStock(withParent);
+    return attachProductStock(withParent, accountId);
   }
   return withParent;
 }
