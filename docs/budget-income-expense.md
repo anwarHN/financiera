@@ -7,6 +7,8 @@
 - El formulario filtra conceptos por tipo. El boton de creacion utiliza el tipo de la linea.
 - `concepts.incomeConceptId`: concepto de ingreso de un producto o servicio, independiente de su grupo.
 - `transactionDetails.incomeAllocation`: snapshot JSON de ID y nombre del concepto al facturar. No se consulta la configuracion actual del producto para recalcular una venta anterior.
+- `transactions.budgetId`: presupuesto seleccionado al registrar una venta, ingreso o gasto. Es nullable para conservar historicos y operaciones que no participan en presupuesto.
+- La asignacion valida cuenta, proyecto y moneda. Solo se puede elegir un presupuesto activo; una transaccion existente conserva su presupuesto si luego se desactiva.
 - El trigger captura la asignacion; el editor conserva el snapshot al reemplazar detalles. NULL historico se preserva como `{}` al editar, no se reclasifica automaticamente.
 - Snapshot JSON sin FK adicional: evita ambiguedad en los joins existentes de PostgREST a `concepts`. El trigger valida pertenencia a la cuenta. No altera RLS ni introduce funciones security definer.
 - Las facturas antiguas y productos sin asignacion aparecen como ingresos sin clasificar y suman al resultado. La regularizacion historica requiere un proceso separado y autorizado; este cambio no la ejecuta.
@@ -20,7 +22,7 @@
 - Gastos: conceptos de gasto en gastos/compras, por el total registrado, conservando la base anterior. No se calcula costo de venta ni se contabiliza como gasto cada compra de producto.
 - Se excluyen pagos, prestamos, transferencias, depositos, obligaciones internas, saldos anteriores, CxC/CxP manuales y ajustes de inventario.
 - Se mantienen filtros de cuenta, proyecto, periodo y moneda, y paginacion de todas las colecciones.
-- Ambos reportes incluyen movimientos no presupuestados, identificados como tales. Es un cambio intencional respecto al antiguo reporte de presupuesto que los omitia.
+- La ejecucion de un presupuesto incluye solo movimientos asignados expresamente a ese presupuesto. La ejecucion por proyecto y el estado de resultados siguen incluyendo sus movimientos sin presupuesto para no ocultar actividad.
 - Resultado: ingresos menos gastos. Diferencia de ejecucion: presupuestado menos ejecutado para todas las lineas, subtotales y resultado. Si lo ejecutado supera lo presupuestado, la diferencia es negativa, tanto en pantalla como en Excel.
 - No es flujo de caja ni utilidad contable completa.
 
@@ -32,9 +34,17 @@ Ambos reportes de ejecucion muestran Proyecto y Presupuesto. Se requiere al meno
 - Seleccionar un presupuesto utiliza solo sus lineas; asigna automaticamente proyecto y moneda. Sin fechas explicitas se utiliza el periodo del presupuesto.
 - El selector de presupuestos muestra solo los del proyecto seleccionado. Cambiar proyecto limpia la seleccion de presupuesto; cambiar cuenta limpia filtros y catalogos.
 - Pantalla y Excel utilizan el mismo motor, que rechaza combinaciones de presupuesto/proyecto incompatibles y presupuestos ajenos a la cuenta.
-- Los movimientos ejecutados se calculan por proyecto, moneda y fechas, una sola vez. No existe asignacion de transacciones a un presupuesto individual: presupuestos con periodos superpuestos pueden comparar los mismos movimientos. Se conservan movimientos no presupuestados.
+- Los movimientos ejecutados de un presupuesto se filtran por `transactions.budgetId`; dos presupuestos superpuestos ya no comparten movimientos por inferencia de concepto. El concepto determina la linea afectada dentro del presupuesto, no el presupuesto propietario.
 
-Este cambio no requiere migracion SQL. Requiere desplegar frontend y `export-report` para habilitar ambos filtros tambien en Excel.
+## Registro de transacciones
+
+- Venta, ingreso y gasto ordinarios requieren seleccionar un presupuesto activo en su formulario.
+- Seleccionar un presupuesto asigna su proyecto y moneda. Cambiar proyecto o moneda limpia una seleccion incompatible.
+- Compras, ajustes de inventario, saldos anteriores y CxC/CxP manuales no requieren presupuesto.
+- Una devolucion de venta hereda `budgetId`, proyecto y moneda de la factura original para reversar la ejecucion en el mismo presupuesto.
+- Las transacciones historicas sin presupuesto no se asignan automaticamente. Permanecen visibles en reportes por proyecto, pero no en la ejecucion de un presupuesto individual.
+
+La asignacion explicita requiere la migracion `supabase/migrations/20261003034436_transaction_budget_assignment.sql`. Debe aplicarse antes de desplegar el frontend y `export-report`.
 
 ## Devoluciones
 

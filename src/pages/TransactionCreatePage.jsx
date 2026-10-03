@@ -16,6 +16,7 @@ import ProjectFormPage from "./ProjectFormPage";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { listAccountPaymentForms } from "../services/accountPaymentFormsService";
+import { listBudgets } from "../services/budgetsService";
 import { listConcepts } from "../services/conceptsService";
 import { listCurrencies } from "../services/currenciesService";
 import { listEmployees } from "../services/employeesService";
@@ -95,6 +96,7 @@ const initialSimpleForm = {
   paymentMethodId: "",
   accountPaymentFormId: "",
   projectId: "",
+  budgetId: "",
   employeeId: "",
   affectsPayroll: false,
   comments: "",
@@ -112,6 +114,7 @@ const initialSaleHeader = {
   paymentMethodId: "",
   accountPaymentFormId: "",
   projectId: "",
+  budgetId: "",
   tags: []
 };
 
@@ -209,6 +212,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [accountPaymentForms, setAccountPaymentForms] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [budgets, setBudgets] = useState([]);
   const [tagOptions, setTagOptions] = useState([]);
 
   const [simpleForm, setSimpleForm] = useState(initialSimpleForm);
@@ -220,12 +224,14 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   const [selectedClient, setSelectedClient] = useState(null);
   const [clientLookup, setClientLookup] = useState("");
   const [simpleProjectLookup, setSimpleProjectLookup] = useState("");
+  const [simpleBudgetLookup, setSimpleBudgetLookup] = useState("");
   const [simpleEmployeeLookup, setSimpleEmployeeLookup] = useState("");
   const [simpleTagLookup, setSimpleTagLookup] = useState("");
   const [priorBalanceAddPendingProducts, setPriorBalanceAddPendingProducts] = useState(false);
   const [priorBalanceProductLookup, setPriorBalanceProductLookup] = useState("");
   const [priorBalanceProductLines, setPriorBalanceProductLines] = useState([]);
   const [saleProjectLookup, setSaleProjectLookup] = useState("");
+  const [saleBudgetLookup, setSaleBudgetLookup] = useState("");
   const [saleTagLookup, setSaleTagLookup] = useState("");
   const [productLookup, setProductLookup] = useState("");
   const [saleLines, setSaleLines] = useState([]);
@@ -255,6 +261,10 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   const isManualReceivableMode = entryMode === "receivable" && moduleType === "sale";
   const isManualPayableMode = entryMode === "payable" && moduleType === "purchase";
   const isManualBalanceMode = isManualReceivableMode || isManualPayableMode;
+  const requiresBudgetAssignment =
+    !isPriorBalanceMode && !isManualBalanceMode && ["sale", "income", "expense"].includes(moduleType);
+  const isBudgetSelectionRequired =
+    requiresBudgetAssignment && (!isEdit || Boolean(editingTransactionSnapshot?.budgetId));
   const isLineBasedTransaction =
     ((!isPriorBalanceMode && !isManualBalanceMode && moduleType === "sale") ||
       (!isPriorBalanceMode && !isManualBalanceMode && moduleType === "purchase") ||
@@ -307,6 +317,20 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   }, [saleHeader.paymentMode, selectedSalePaymentMethod]);
 
   const saleTotals = useMemo(() => aggregateLines(saleLines), [saleLines]);
+  const simpleBudgetOptions = useMemo(
+    () => budgets.filter((budget) =>
+      (!simpleForm.projectId || Number(budget.projectId) === Number(simpleForm.projectId))
+      && (!simpleForm.currencyId || Number(budget.currencyId) === Number(simpleForm.currencyId))
+      && (budget.isActive !== false || Number(budget.id) === Number(simpleForm.budgetId))),
+    [budgets, simpleForm.budgetId, simpleForm.currencyId, simpleForm.projectId]
+  );
+  const saleBudgetOptions = useMemo(
+    () => budgets.filter((budget) =>
+      (!saleHeader.projectId || Number(budget.projectId) === Number(saleHeader.projectId))
+      && (!saleHeader.currencyId || Number(budget.currencyId) === Number(saleHeader.currencyId))
+      && (budget.isActive !== false || Number(budget.id) === Number(saleHeader.budgetId))),
+    [budgets, saleHeader.budgetId, saleHeader.currencyId, saleHeader.projectId]
+  );
 
   useEffect(() => {
     if (!account?.accountId) return;
@@ -325,12 +349,12 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     setSimpleSubmitAttempted(false);
     setSaleSubmitAttempted(false);
     [setSimplePersonLookup, setSimpleConceptLookup, setSimplePaymentMethodLookup, setSimpleAccountFormLookup,
-      setClientLookup, setSimpleProjectLookup, setSimpleEmployeeLookup, setSimpleTagLookup,
-      setPriorBalanceProductLookup, setSaleProjectLookup, setSaleTagLookup, setProductLookup].forEach((reset) => reset(""));
+      setClientLookup, setSimpleProjectLookup, setSimpleBudgetLookup, setSimpleEmployeeLookup, setSimpleTagLookup,
+      setPriorBalanceProductLookup, setSaleProjectLookup, setSaleBudgetLookup, setSaleTagLookup, setProductLookup].forEach((reset) => reset(""));
     loadTransactionEditor({
       accountId: account.accountId,
       loadCatalogs: async () => {
-        const [persons, concepts, employees, currencies, paymentMethods, accountPaymentForms, projects, tags] = await Promise.all([
+        const [persons, concepts, employees, currencies, paymentMethods, accountPaymentForms, projects, budgets, tags] = await Promise.all([
         listPersons(account.accountId),
         listConcepts(account.accountId),
         listEmployees(account.accountId),
@@ -338,9 +362,10 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         listPaymentMethods(account.accountId),
         listAccountPaymentForms(account.accountId),
         listProjects(account.accountId),
+        listBudgets(account.accountId),
         listUsedTransactionTags(account.accountId).catch(() => [])
         ]);
-        return { persons, concepts, employees, currencies, paymentMethods, accountPaymentForms, projects, tags };
+        return { persons, concepts, employees, currencies, paymentMethods, accountPaymentForms, projects, budgets, tags };
       },
       loadRecord: async () => {
         if (!itemId) return null;
@@ -358,6 +383,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       setPaymentMethods(catalogs.paymentMethods);
       setAccountPaymentForms(catalogs.accountPaymentForms);
       setProjects(catalogs.projects);
+      setBudgets(catalogs.budgets);
       setTagOptions(catalogs.tags);
       if (record) {
         loadEditableTransaction(record.tx, record.details);
@@ -417,10 +443,10 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       const updatedProjects = await listProjects(account.accountId);
       setProjects(updatedProjects);
       if (moduleType === "sale" && !isManualBalanceMode) {
-        setSaleHeader((prev) => ({ ...prev, projectId: String(created.id) }));
+        setSaleHeader((prev) => ({ ...prev, projectId: String(created.id), budgetId: "" }));
         setSaleProjectLookup("");
       } else {
-        setSimpleForm((prev) => ({ ...prev, projectId: String(created.id) }));
+        setSimpleForm((prev) => ({ ...prev, projectId: String(created.id), budgetId: "" }));
         setSimpleProjectLookup("");
       }
     } catch {
@@ -445,6 +471,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         total: Number(tx.total || 0),
         payments: Number(tx.payments || 0),
         balance: Number(tx.balance || 0),
+        budgetId: tx.budgetId ? Number(tx.budgetId) : null,
         isAccountReceivable: Boolean(tx.isAccountReceivable),
         isAccountPayable: Boolean(tx.isAccountPayable)
       });
@@ -461,6 +488,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
           paymentMethodId: tx.paymentMethodId ? String(tx.paymentMethodId) : "",
           accountPaymentFormId: tx.accountPaymentFormId ? String(tx.accountPaymentFormId) : "",
           projectId: tx.projectId ? String(tx.projectId) : "",
+          budgetId: tx.budgetId ? String(tx.budgetId) : "",
           tags: Array.isArray(tx.tags) ? tx.tags : []
         });
         setSelectedClient(
@@ -523,6 +551,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
           paymentMethodId: tx.paymentMethodId ? String(tx.paymentMethodId) : "",
           accountPaymentFormId: tx.accountPaymentFormId ? String(tx.accountPaymentFormId) : "",
           projectId: tx.projectId ? String(tx.projectId) : "",
+          budgetId: tx.budgetId ? String(tx.budgetId) : "",
           employeeId: tx.employeeId ? String(tx.employeeId) : "",
           affectsPayroll: Boolean(tx.affectsPayroll),
           comments: tx.deliveryAddress || "",
@@ -545,6 +574,15 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
 
   const handleSimpleChange = (event) => {
     const { name, value } = event.target;
+    if (name === "currencyId") {
+      const selectedBudget = budgets.find((budget) => Number(budget.id) === Number(simpleForm.budgetId));
+      setSimpleForm((prev) => ({
+        ...prev,
+        currencyId: value,
+        budgetId: selectedBudget && Number(selectedBudget.currencyId) === Number(value) ? prev.budgetId : ""
+      }));
+      return;
+    }
     if (name === "paymentMode" && value === "credit") {
       setSimpleForm((prev) => ({
         ...prev,
@@ -585,6 +623,15 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
 
   const handleSaleHeaderChange = (event) => {
     const { name, value } = event.target;
+    if (name === "currencyId") {
+      const selectedBudget = budgets.find((budget) => Number(budget.id) === Number(saleHeader.budgetId));
+      setSaleHeader((prev) => ({
+        ...prev,
+        currencyId: value,
+        budgetId: selectedBudget && Number(selectedBudget.currencyId) === Number(value) ? prev.budgetId : ""
+      }));
+      return;
+    }
     if (name === "paymentMode" && value === "credit") {
       setSaleHeader((prev) => ({
         ...prev,
@@ -723,6 +770,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     paymentMethodId,
     accountPaymentFormId,
     projectId,
+    budgetId,
     employeeId,
     tags = [],
     incomingPayment = false,
@@ -768,6 +816,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       isActive: true,
       currencyId: currencyId ? Number(currencyId) : null,
       projectId: projectId ? Number(projectId) : null,
+      budgetId: budgetId ? Number(budgetId) : null,
       employeeId: employeeId ? Number(employeeId) : null,
       affectsPayroll: Boolean(employeeId) && Boolean(affectsPayroll),
       tags: Array.isArray(tags)
@@ -798,6 +847,10 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     }
     if ((moduleType === "purchase" || isManualReceivableMode) && !simpleForm.personId) {
       setError(t(isManualReceivableMode ? "transactions.clientRequired" : "transactions.providerRequired"));
+      return;
+    }
+    if (isBudgetSelectionRequired && !simpleForm.budgetId) {
+      setError(t("transactions.budgetRequired"));
       return;
     }
 
@@ -862,6 +915,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       paymentMethodId: shouldPersistPayment ? simpleForm.paymentMethodId : null,
       accountPaymentFormId: shouldPersistPayment ? simpleForm.accountPaymentFormId : null,
       projectId: simpleForm.projectId,
+      budgetId: requiresBudgetAssignment ? simpleForm.budgetId : null,
       employeeId: moduleType === "income" || moduleType === "expense" ? simpleForm.employeeId : null,
       affectsPayroll: moduleType === "income" || moduleType === "expense" ? simpleForm.affectsPayroll : false,
       tags: normalizedTags,
@@ -1035,6 +1089,10 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       setError(t("transactions.saleValidationError"));
       return;
     }
+    if (isBudgetSelectionRequired && !saleHeader.budgetId) {
+      setError(t("transactions.budgetRequired"));
+      return;
+    }
     const isInventoryAdjustment = moduleType === "inventoryAdjustment";
     const isCredit = !isInventoryAdjustment && saleHeader.paymentMode === "credit";
     if (!isInventoryAdjustment && !isCredit && !saleHeader.paymentMethodId) {
@@ -1080,6 +1138,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       paymentMethodId: isCredit || isInventoryAdjustment ? null : saleHeader.paymentMethodId,
       accountPaymentFormId: isCredit || isInventoryAdjustment ? null : saleHeader.accountPaymentFormId,
       projectId: saleHeader.projectId,
+      budgetId: requiresBudgetAssignment ? saleHeader.budgetId : null,
       tags: isInventoryAdjustment
         ? Array.from(new Set([...(saleHeader.tags || []), INVENTORY_ADJUSTMENT_TAG]))
         : saleHeader.tags,
@@ -1563,14 +1622,21 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                 onValueChange={(nextValue) => {
                   setSimpleProjectLookup(nextValue);
                   if (!nextValue) {
-                    setSimpleForm((prev) => ({ ...prev, projectId: "" }));
+                    setSimpleForm((prev) => ({ ...prev, projectId: "", budgetId: "" }));
                   }
                 }}
                 options={projects}
                 getOptionLabel={(project) => project.name || ""}
                 onSelect={(project) => {
                   setSimpleProjectLookup("");
-                  setSimpleForm((prev) => ({ ...prev, projectId: String(project.id) }));
+                  setSimpleForm((prev) => ({
+                    ...prev,
+                    projectId: String(project.id),
+                    budgetId: budgets.some((budget) =>
+                      Number(budget.id) === Number(prev.budgetId) && Number(budget.projectId) === Number(project.id))
+                      ? prev.budgetId
+                      : ""
+                  }));
                 }}
                 placeholder={`-- ${t("projects.optionalProject")} --`}
                 onCreateRecord={handleCreatedProject}
@@ -1588,10 +1654,41 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                   projects.find((project) => project.id === Number(simpleForm.projectId))?.name || ""
                 }
                 onClearSelection={() => {
-                  setSimpleForm((prev) => ({ ...prev, projectId: "" }));
+                  setSimpleForm((prev) => ({ ...prev, projectId: "", budgetId: "" }));
                   setSimpleProjectLookup("");
                 }}
               />
+              {requiresBudgetAssignment ? (
+                <LookupCombobox
+                  label={t("transactions.budget")}
+                  value={simpleBudgetLookup}
+                  onValueChange={(nextValue) => {
+                    setSimpleBudgetLookup(nextValue);
+                    if (!nextValue) setSimpleForm((prev) => ({ ...prev, budgetId: "" }));
+                  }}
+                  options={simpleBudgetOptions}
+                  getOptionLabel={(budget) => budget.name || ""}
+                  onSelect={(budget) => {
+                    setSimpleBudgetLookup("");
+                    setSimpleProjectLookup("");
+                    setSimpleForm((prev) => ({
+                      ...prev,
+                      budgetId: String(budget.id),
+                      projectId: budget.projectId ? String(budget.projectId) : "",
+                      currencyId: budget.currencyId ? String(budget.currencyId) : prev.currencyId
+                    }));
+                  }}
+                  placeholder={`-- ${t("transactions.selectBudget")} --`}
+                  noResultsText={t("common.empty")}
+                  selectedPillText={budgets.find((budget) => budget.id === Number(simpleForm.budgetId))?.name || ""}
+                  onClearSelection={() => {
+                    setSimpleForm((prev) => ({ ...prev, budgetId: "" }));
+                    setSimpleBudgetLookup("");
+                  }}
+                  required={isBudgetSelectionRequired}
+                  hasError={simpleSubmitAttempted && isBudgetSelectionRequired && !simpleForm.budgetId}
+                />
+              ) : null}
               {(moduleType === "income" || moduleType === "expense") && (
                 <LookupCombobox
                   label={t("transactions.employee")}
@@ -1923,14 +2020,21 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                 onValueChange={(nextValue) => {
                   setSaleProjectLookup(nextValue);
                   if (!nextValue) {
-                    setSaleHeader((prev) => ({ ...prev, projectId: "" }));
+                    setSaleHeader((prev) => ({ ...prev, projectId: "", budgetId: "" }));
                   }
                 }}
                 options={projects}
                 getOptionLabel={(project) => project.name || ""}
                 onSelect={(project) => {
                   setSaleProjectLookup("");
-                  setSaleHeader((prev) => ({ ...prev, projectId: String(project.id) }));
+                  setSaleHeader((prev) => ({
+                    ...prev,
+                    projectId: String(project.id),
+                    budgetId: budgets.some((budget) =>
+                      Number(budget.id) === Number(prev.budgetId) && Number(budget.projectId) === Number(project.id))
+                      ? prev.budgetId
+                      : ""
+                  }));
                 }}
                 placeholder={`-- ${t("projects.optionalProject")} --`}
                 onCreateRecord={handleCreatedProject}
@@ -1948,10 +2052,41 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                   projects.find((project) => project.id === Number(saleHeader.projectId))?.name || ""
                 }
                 onClearSelection={() => {
-                  setSaleHeader((prev) => ({ ...prev, projectId: "" }));
+                  setSaleHeader((prev) => ({ ...prev, projectId: "", budgetId: "" }));
                   setSaleProjectLookup("");
                 }}
               />
+              {requiresBudgetAssignment ? (
+                <LookupCombobox
+                  label={t("transactions.budget")}
+                  value={saleBudgetLookup}
+                  onValueChange={(nextValue) => {
+                    setSaleBudgetLookup(nextValue);
+                    if (!nextValue) setSaleHeader((prev) => ({ ...prev, budgetId: "" }));
+                  }}
+                  options={saleBudgetOptions}
+                  getOptionLabel={(budget) => budget.name || ""}
+                  onSelect={(budget) => {
+                    setSaleBudgetLookup("");
+                    setSaleProjectLookup("");
+                    setSaleHeader((prev) => ({
+                      ...prev,
+                      budgetId: String(budget.id),
+                      projectId: budget.projectId ? String(budget.projectId) : "",
+                      currencyId: budget.currencyId ? String(budget.currencyId) : prev.currencyId
+                    }));
+                  }}
+                  placeholder={`-- ${t("transactions.selectBudget")} --`}
+                  noResultsText={t("common.empty")}
+                  selectedPillText={budgets.find((budget) => budget.id === Number(saleHeader.budgetId))?.name || ""}
+                  onClearSelection={() => {
+                    setSaleHeader((prev) => ({ ...prev, budgetId: "" }));
+                    setSaleBudgetLookup("");
+                  }}
+                  required={isBudgetSelectionRequired}
+                  hasError={saleSubmitAttempted && isBudgetSelectionRequired && !saleHeader.budgetId}
+                />
+              ) : null}
             </div>
           </section>
 

@@ -13,7 +13,8 @@ export async function restoreSelectedOptions(client, accountId, catalogs, { tx, 
     ["currencies", "currencies", [tx.currencyId]],
     ["paymentMethods", "payment_methods", [tx.paymentMethodId]],
     ["accountPaymentForms", "account_payment_forms", [tx.accountPaymentFormId]],
-    ["projects", "projects", [tx.projectId]]
+    ["projects", "projects", [tx.projectId]],
+    ["budgets", "budgets", [tx.budgetId]]
   ];
   const result = { ...catalogs };
   for (const [key, table, ids] of specs) {

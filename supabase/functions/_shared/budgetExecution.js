@@ -70,9 +70,10 @@ export async function loadBudgetExecution(client, { accountId, budgetId = null, 
   // Read unbudgeted movements too: excluding them would overstate the result.
   {
     let query = client.from("transactionDetails")
-      .select('id, conceptId, total, net, tax, discount, additionalCharges, incomeAllocation, budgetIncomeReversal,' + (statementOnly ? ' returnTaxReversal,' : '') + ' concepts(name, isExpense, isIncome, isProduct, isSystem), transactions!transaction_details_transactionId_fkey!inner(accountId, date, type, tags, isActive, projectId, currencyId, isInternalTransfer, isDeposit, isEmployeeLoan, isInternalObligation)')
+      .select('id, conceptId, total, net, tax, discount, additionalCharges, incomeAllocation, budgetIncomeReversal,' + (statementOnly ? ' returnTaxReversal,' : '') + ' concepts(name, isExpense, isIncome, isProduct, isSystem), transactions!transaction_details_transactionId_fkey!inner(accountId, date, type, tags, isActive, projectId, budgetId, currencyId, isInternalTransfer, isDeposit, isEmployeeLoan, isInternalObligation)')
       .eq("transactions.accountId", accountId).eq("transactions.isActive", true)
       .eq("transactions.currencyId", currencyId).order("id");
+    if (budgetId) query = query.eq("transactions.budgetId", budgetId);
     if (projectId) query = query.eq("transactions.projectId", projectId);
     if (dateFrom) query = query.gte("transactions.date", dateFrom);
     if (dateTo) query = query.lte("transactions.date", dateTo);

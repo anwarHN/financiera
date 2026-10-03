@@ -20,7 +20,7 @@ export async function listTransactions({
   let query = supabase
     .from("transactions")
     .select(
-      'id, personId, "employeeId", date, type, status, total, balance, payments, name, tags, currencyId, "projectId", "referenceNumber", "number", "printNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "isEmployeeLoan", "sourceTransactionId", "isInternalTransfer", "isDeposit", "isAccountReceivable", "isAccountPayable", "affectsPayroll", isActive, persons(name), employes(name), projects(name), account_payment_forms(name)'
+      'id, personId, "employeeId", date, type, status, total, balance, payments, name, tags, currencyId, "projectId", "budgetId", "referenceNumber", "number", "printNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "isEmployeeLoan", "sourceTransactionId", "isInternalTransfer", "isDeposit", "isAccountReceivable", "isAccountPayable", "affectsPayroll", isActive, persons(name), employes(name), projects(name), account_payment_forms(name)'
     )
     .eq("accountId", accountId)
     .eq("type", type);
@@ -177,7 +177,7 @@ export async function getTransactionById(id, accountId = null) {
   let query = supabase
     .from("transactions")
     .select(
-      'id, accountId, personId, "employeeId", date, type, name, tags, total, balance, payments, isAccountReceivable, isAccountPayable, additionalCharges, "projectId", "referenceNumber", "number", "printNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "isEmployeeLoan", "sourceTransactionId", "isInternalTransfer", "isDeposit", "affectsPayroll", "deliveryAddress", isActive, currencyId, persons(name), employes(name), projects(name), account_payment_forms(name)'
+      'id, accountId, personId, "employeeId", date, type, name, tags, total, balance, payments, isAccountReceivable, isAccountPayable, additionalCharges, "projectId", "budgetId", "referenceNumber", "number", "printNumber", "paymentMethodId", "accountPaymentFormId", "isReconciled", "reconciledAt", "isInternalObligation", "isEmployeeLoan", "sourceTransactionId", "isInternalTransfer", "isDeposit", "affectsPayroll", "deliveryAddress", isActive, currencyId, persons(name), employes(name), projects(name), account_payment_forms(name)'
     )
     .eq("id", id);
   if (accountId != null) query = query.eq("accountId", accountId);
@@ -390,6 +390,7 @@ export async function createSaleReturnTransaction({
     isReconciled: false,
     reconciledAt: null,
     projectId: saleTx.projectId || null,
+    budgetId: saleTx.budgetId || null,
     tags: ["__inventory_adjustment__", "__sale_return__"],
     sourceTransactionId: txId,
     isInternalTransfer: false,

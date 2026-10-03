@@ -53,7 +53,7 @@ test("variance is budgeted minus executed for income, expense and summary", asyn
 
 function fixture() {
   const expense = { name: "Venue", isExpense: true };
-  const tx = { accountId: 8, projectId: 7, currencyId: 1, type: 2, isActive: true, date: "2026-09-18" };
+  const tx = { accountId: 8, projectId: 7, budgetId: 1, currencyId: 1, type: 2, isActive: true, date: "2026-09-18" };
   const details = Array.from({ length: 1205 }, (_, id) => ({ id, conceptId: 10, total: -2, concepts: expense, transactions: tx }));
   details.push(
     { id: 2000, conceptId: 20, total: -50, concepts: { name: "Unbudgeted", isExpense: true }, transactions: tx },
@@ -83,7 +83,7 @@ test("execution selects one budget or consolidates active project budgets withou
   assert.equal(project.find((row) => row.conceptId === 10).budgeted, 3500);
   assert.equal(budget.find((row) => row.conceptId === 10).budgeted, 500);
   assert.equal(project.find((row) => row.conceptId === 10).executed, 2410);
-  assert.equal(budget.find((row) => row.conceptId === 10).executed, 2410);
+  assert.equal(budget.find((row) => row.conceptId === 10).executed, 0);
   await assert.rejects(loadBudgetExecution(clientFor(tables), { ...filters, budgetId: 1, projectId: 9 }), /selected project/);
   await assert.rejects(loadBudgetExecution(clientFor(tables), { ...filters, budgetId: 1, accountId: 9 }), /not found for this account/);
 });
@@ -133,6 +133,32 @@ test("budget reads all details even with a smaller server cap and excludes other
   assert.equal(rows.length, 2);
   assert.equal(rows.find((row) => row.conceptId === 10).executed, 2410);
   assert.equal(rows.find((row) => row.conceptId === 20).unbudgeted, true);
+});
+
+test("a budget only executes transactions explicitly assigned to it", async () => {
+  const tables = fixture();
+  tables.budgets.push({ ...tables.budgets[0], id: 3 });
+  tables.budget_lines.push({ ...tables.budget_lines[0], id: 3, budgetId: 3, amount: 500 });
+  tables.transactionDetails.push({
+    id: 9001,
+    conceptId: 10,
+    total: -75,
+    concepts: { name: "Venue", isExpense: true },
+    transactions: { ...tables.transactionDetails[0].transactions, budgetId: 3 }
+  }, {
+    id: 9002,
+    conceptId: 10,
+    total: -125,
+    concepts: { name: "Venue", isExpense: true },
+    transactions: { ...tables.transactionDetails[0].transactions, budgetId: null }
+  });
+
+  const budget = await loadBudgetExecution(clientFor(tables), { accountId: 8, budgetId: 3 });
+  const project = await loadBudgetExecution(clientFor(tables), {
+    accountId: 8, projectId: 7, currencyId: 1, dateFrom: "2026-09-01", dateTo: "2026-11-16"
+  });
+  assert.equal(budget.find((row) => row.conceptId === 10).executed, 75);
+  assert.equal(project.find((row) => row.conceptId === 10).executed, 2610);
 });
 
 test("project preserves unbudgeted expenses and selects only budgets in the selected currency", async () => {

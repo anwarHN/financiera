@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { loadTransactionEditor, restoreSelectedOptions } from "../src/utils/transactionEditorLoad.js";
 
-const emptyCatalogs = () => ({ persons: [], concepts: [], employees: [], currencies: [], paymentMethods: [], accountPaymentForms: [], projects: [], tags: [] });
+const emptyCatalogs = () => ({ persons: [], concepts: [], employees: [], currencies: [], paymentMethods: [], accountPaymentForms: [], projects: [], budgets: [], tags: [] });
 
 test("editor waits for both catalogs and record in either completion order", async () => {
   for (const first of ["catalogs", "record"]) {
@@ -46,7 +46,7 @@ test("restore only selected inactive records, scoped to account, and normalize I
   const catalogs = emptyCatalogs();
   catalogs.concepts = [{ id: "3", name: "Concept" }];
   const data = await restoreSelectedOptions(client, 8, catalogs, {
-    tx: { employeeId: 4, accountPaymentFormId: 5, paymentMethodId: 6, currencyId: 7 },
+    tx: { employeeId: 4, accountPaymentFormId: 5, paymentMethodId: 6, currencyId: 7, budgetId: 8 },
     details: [{ conceptId: 3, sellerId: 4 }, { conceptId: 3, sellerId: 4 }]
   });
   assert.equal(data.concepts[0].id, 3);
@@ -54,7 +54,8 @@ test("restore only selected inactive records, scoped to account, and normalize I
   assert.equal(data.employees[0].id, 4);
   assert.equal(data.accountPaymentForms[0].kind, "bank_account");
   assert.equal(data.paymentMethods[0].code, "bank_transfer");
-  assert.equal(calls.length, 4);
+  assert.equal(data.budgets[0].id, 8);
+  assert.equal(calls.length, 5);
   for (const { table, filters } of calls) {
     if (table === "currencies") assert.equal(filters.or, "accountId.eq.8,accountId.is.null");
     else assert.equal(filters.accountId, 8);
