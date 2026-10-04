@@ -21,7 +21,12 @@ export default function ProjectIncomeStatement({ rows, numberOptions }) {
           </tr>)}
           <tr><th>{t("transactions.total")} {t(`budgets.${type}`)}</th>{["base", "tax", "total"].map((field) => <td className="num-col" key={field}>{formatNumber(totals[type][field], numberOptions)}</td>)}</tr>
         </Fragment>)}
-        <tr><th>{t("incomeStatement.result")}</th><td className="num-col">{formatNumber(totals.result, numberOptions)}</td><td colSpan={2} /></tr>
+        <tr className="report-section-row"><th colSpan={4}>{t("incomeStatement.results")}</th></tr>
+        <tr><th>{t("incomeStatement.resultWithTaxes")}</th><td colSpan={2} /><td className="num-col">{formatNumber(totals.resultWithTaxes, numberOptions)}</td></tr>
+        <tr><th>{t("incomeStatement.salesTax")}</th><td /><td className="num-col">{formatNumber(totals.income.tax, numberOptions)}</td><td /></tr>
+        <tr><th>{t("incomeStatement.inputTaxCredit")}</th><td /><td className="num-col">{formatNumber(totals.expense.tax, numberOptions)}</td><td /></tr>
+        <tr><th>{t("incomeStatement.taxBalance")}</th><td /><td className="num-col">{formatNumber(totals.taxBalance, numberOptions)}</td><td /></tr>
+        <tr><th>{t("incomeStatement.resultWithTaxCredit")}</th><td colSpan={2} /><td className="num-col">{formatNumber(totals.result, numberOptions)}</td></tr>
       </tbody>
     </table>
   </section>;

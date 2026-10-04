@@ -37,7 +37,7 @@ const fullReportCatalog = [
   { id: "internal_obligations", titleKey: "reports.internalObligations", filters: ["dateRange", "currency"] },
   { id: "budget_execution", titleKey: "reports.budgetExecution", filters: ["project", "budget", "currency", "dateRange"] },
   { id: "project_execution", titleKey: "reports.projectExecution", filters: ["project", "budget", "dateRange", "currency"] },
-  { id: "project_income_statement", titleKey: "incomeStatement.title", filters: ["project", "dateRange", "currency"] },
+  { id: "project_income_statement", titleKey: "incomeStatement.title", filters: ["project", "budget", "dateRange", "currency"] },
   { id: "expenses", titleKey: "reports.expenses", filters: ["dateRange", "currency"] },
   { id: "cashflow", titleKey: "reports.cashflow", filters: ["dateRange", "currency"] },
   { id: "employee_absences", titleKey: "reports.employeeAbsences", filters: ["dateRange"] },
@@ -286,8 +286,9 @@ function ReportsPage() {
 
   const validateBudgetFilters = () => {
     if (selectedReport === "receivable" && !filters.currencyId) return t("reports.currencyRequired");
+    if (selectedReport === "project_income_statement" && !filters.budgetId && !filters.projectId) return t("reports.budgetOrProjectRequired");
     if (selectedReport === "project_income_statement" && !filters.currencyId) return t("reports.currencyRequired");
-    if (!["budget_execution", "project_execution"].includes(selectedReport)) return "";
+    if (!["budget_execution", "project_execution", "project_income_statement"].includes(selectedReport)) return "";
     if (!filters.budgetId && !filters.projectId) return t("reports.budgetOrProjectRequired");
     if (!filters.budgetId && !filters.currencyId) return t("reports.currencyRequired");
     if (filters.budgetId) {
@@ -317,13 +318,14 @@ function ReportsPage() {
         });
         setResults(rows);
       } else if (selectedReport === "project_income_statement") {
-        if (!filters.projectId) {
-          setError(t("reports.projectRequired"));
+        if (!filters.projectId && !filters.budgetId) {
+          setError(t("reports.budgetOrProjectRequired"));
           return;
         }
         const rows = await getProjectIncomeStatement({
           accountId: account.accountId,
-          projectId: Number(filters.projectId),
+          budgetId: filters.budgetId ? Number(filters.budgetId) : undefined,
+          projectId: filters.projectId ? Number(filters.projectId) : undefined,
           currencyId: filters.currencyId || undefined,
           dateFrom: filters.dateFrom || undefined,
           dateTo: filters.dateTo || undefined
@@ -577,7 +579,7 @@ function ReportsPage() {
     return summarizeBudgetExecution(results);
   }, [results, selectedReport]);
   const canExportCurrentReport = Boolean(reportConfig);
-  const budgetCurrencyId = ["budget_execution", "project_execution"].includes(selectedReport) && filters.budgetId
+  const budgetCurrencyId = ["budget_execution", "project_execution", "project_income_statement"].includes(selectedReport) && filters.budgetId
     ? budgets.find((budget) => String(budget.id) === String(filters.budgetId))?.currencyId
     : filters.currencyId;
   const budgetNumberOptions = { currencySymbol: currencies.find((currency) => String(currency.id) === String(budgetCurrencyId))?.symbol || "" };
@@ -672,8 +674,8 @@ function ReportsPage() {
     if (!account?.accountId || !selectedReport || isExporting) return;
     const validationError = validateBudgetFilters();
     if (validationError) { setError(validationError); return; }
-    if (selectedReport === "project_income_statement" && !filters.projectId) {
-      setError(t("reports.projectRequired"));
+    if (selectedReport === "project_income_statement" && !filters.projectId && !filters.budgetId) {
+      setError(t("reports.budgetOrProjectRequired"));
       return;
     }
 
@@ -752,7 +754,7 @@ function ReportsPage() {
                 <label className="field-block form-span-2">
                   <span>{t("reports.currencyFilter")}</span>
                   <select name="currencyId" value={filters.currencyId} onChange={handleFilterChange}>
-                    <option value="">{`-- ${t(["budget_execution", "project_execution"].includes(selectedReport) ? "reports.currencyRequired" : "reports.currencyFilterHint")} --`}</option>
+                    <option value="">{`-- ${t(["budget_execution", "project_execution", "project_income_statement"].includes(selectedReport) ? "reports.currencyRequired" : "reports.currencyFilterHint")} --`}</option>
                     {currencies.map((currency) => (
                       <option key={currency.id} value={currency.id}>
                         {currency.name} ({currency.symbol})

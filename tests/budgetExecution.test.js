@@ -107,13 +107,14 @@ test("project statement needs no budget and separates expense tax without changi
   const filters = { accountId: 8, projectId: 7, currencyId: 1 };
   const rows = await loadProjectIncomeStatement(clientFor(tables, 1), filters);
   assert.deepEqual(summarizeIncomeStatement(rows), {
-    income: { base: 819, tax: 135, total: 954 }, expense: { base: 620, tax: 90, total: 710 }, result: 199
+    income: { base: 819, tax: 135, total: 954 }, expense: { base: 620, tax: 90, total: 710 },
+    resultWithTaxes: 244, taxBalance: 45, result: 199
   });
   tables.budgets[0].currencyId = 1;
   const budget = await loadBudgetExecution(clientFor(tables), { accountId: 8, budgetId: 1 });
   assert.equal(budget.find((row) => row.lineType === "expense").executed, 710);
   await assert.rejects(loadProjectIncomeStatement(clientFor(tables), { accountId: 9, projectId: 7, currencyId: 1 }), /Not found/);
-  assert.throws(() => loadProjectIncomeStatement(clientFor(tables), { accountId: 8, currencyId: 1 }), /Project/);
+  assert.throws(() => loadProjectIncomeStatement(clientFor(tables), { accountId: 8, currencyId: 1 }), /Budget or project/);
 });
 
 test("statement paginates over 1000 rows and flags unvalued returns", async () => {
@@ -154,10 +155,12 @@ test("a budget only executes transactions explicitly assigned to it", async () =
   });
 
   const budget = await loadBudgetExecution(clientFor(tables), { accountId: 8, budgetId: 3 });
+  const statement = await loadProjectIncomeStatement(clientFor(tables), { accountId: 8, budgetId: 3 });
   const project = await loadBudgetExecution(clientFor(tables), {
     accountId: 8, projectId: 7, currencyId: 1, dateFrom: "2026-09-01", dateTo: "2026-11-16"
   });
   assert.equal(budget.find((row) => row.conceptId === 10).executed, 75);
+  assert.equal(statement.find((row) => row.conceptId === 10).total, 75);
   assert.equal(project.find((row) => row.conceptId === 10).executed, 2610);
 });
 

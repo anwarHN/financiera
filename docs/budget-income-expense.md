@@ -22,7 +22,7 @@
 - Gastos: conceptos de gasto en gastos/compras, por el total registrado, conservando la base anterior. No se calcula costo de venta ni se contabiliza como gasto cada compra de producto.
 - Se excluyen pagos, prestamos, transferencias, depositos, obligaciones internas, saldos anteriores, CxC/CxP manuales y ajustes de inventario.
 - Se mantienen filtros de cuenta, proyecto, periodo y moneda, y paginacion de todas las colecciones.
-- La ejecucion de un presupuesto incluye solo movimientos asignados expresamente a ese presupuesto. La ejecucion por proyecto y el estado de resultados siguen incluyendo sus movimientos sin presupuesto para no ocultar actividad.
+- La ejecucion y el estado de resultados de un presupuesto incluyen solo movimientos asignados expresamente a ese presupuesto. Al consultar por proyecto, ambos siguen incluyendo sus movimientos sin presupuesto para no ocultar actividad.
 - Resultado: ingresos menos gastos. Diferencia de ejecucion: presupuestado menos ejecutado para todas las lineas, subtotales y resultado. Si lo ejecutado supera lo presupuestado, la diferencia es negativa, tanto en pantalla como en Excel.
 - No es flujo de caja ni utilidad contable completa.
 

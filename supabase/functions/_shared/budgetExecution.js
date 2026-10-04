@@ -26,7 +26,7 @@ export function summarizeBudgetExecution(rows) {
 export async function loadBudgetExecution(client, { accountId, budgetId = null, projectId = null, currencyId = null, dateFrom = null, dateTo = null, statementOnly = false }) {
   if (!accountId || (!budgetId && !projectId)) throw new Error("Budget or project is required");
   let budgets = [];
-  if (!statementOnly) {
+  if (!statementOnly || budgetId) {
     let budgetsQuery = client.from("budgets")
       .select('id, "currencyId", "projectId", "periodStart", "periodEnd"')
       .eq("accountId", accountId).order("id");
@@ -53,11 +53,13 @@ export async function loadBudgetExecution(client, { accountId, budgetId = null, 
   }
   const lines = [];
   // Bound IN lists as well as paginating their results.
-  for (let index = 0; index < budgets.length; index += 100) {
-    const ids = budgets.slice(index, index + 100).map((budget) => budget.id);
-    lines.push(...await fetchAllPages((from, to) => client.from("budget_lines")
-      .select('id, "conceptId", "lineType", amount, concepts(name, isExpense)')
-      .in("budgetId", ids).order("id").range(from, to)));
+  if (!statementOnly) {
+    for (let index = 0; index < budgets.length; index += 100) {
+      const ids = budgets.slice(index, index + 100).map((budget) => budget.id);
+      lines.push(...await fetchAllPages((from, to) => client.from("budget_lines")
+        .select('id, "conceptId", "lineType", amount, concepts(name, isExpense)')
+        .in("budgetId", ids).order("id").range(from, to)));
+    }
   }
   const amounts = new Map();
   for (const line of lines) {
@@ -126,8 +128,8 @@ export async function loadBudgetExecution(client, { accountId, budgetId = null, 
 }
 
 export function loadProjectIncomeStatement(client, filters) {
-  if (!filters.projectId) throw new Error("Project is required");
-  return loadBudgetExecution(client, { ...filters, budgetId: null, statementOnly: true });
+  if (!filters.projectId && !filters.budgetId) throw new Error("Budget or project is required");
+  return loadBudgetExecution(client, { ...filters, statementOnly: true });
 }
 
 export function summarizeIncomeStatement(rows) {
@@ -137,5 +139,13 @@ export function summarizeIncomeStatement(rows) {
     const target = row.lineType === "income" ? income : expense;
     for (const field of ["base", "tax", "total"]) target[field] = money(target[field] + Number(row[field] || 0));
   }
-  return { income, expense, result: money(income.base - expense.base) };
+  const resultWithTaxes = money(income.total - expense.total);
+  const taxBalance = money(income.tax - expense.tax);
+  return {
+    income,
+    expense,
+    resultWithTaxes,
+    taxBalance,
+    result: money(resultWithTaxes - income.tax + expense.tax)
+  };
 }

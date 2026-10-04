@@ -8,12 +8,16 @@ Se reutilizan `transactionDetails.tax` y `transactions.taxes`; se conserva el si
 
 ## Reporte
 
-`project_income_statement`: Estado de resultado por proyecto. Requiere proyecto y moneda, acepta periodo opcional, no requiere presupuesto ni consulta sus lineas.
+`project_income_statement`: Estado de resultado por proyecto/presupuesto. Requiere presupuesto o proyecto y moneda, y acepta periodo opcional. Con presupuesto filtra por `transactions.budgetId`; sin presupuesto incluye todos los movimientos del proyecto, incluso los no asignados.
 
 - Filas ejecutadas agrupadas por concepto de ingreso/gasto, con base, impuesto y total.
 - Ingresos: facturacion sin impuesto, despues de descuentos, incluyendo cargos adicionales. No suma de nuevo cobros.
 - Gastos: total registrado menos impuesto. Incluye cargos adicionales.
-- Resultado: base de ingresos menos base de gastos. Impuestos de ingresos y gastos separados e informativos, no liquidacion fiscal.
+- Resultado con impuestos incluidos: total facturado menos total gastado.
+- Impuesto cobrado en ventas: debito fiscal informativo.
+- Impuesto pagado en gastos: credito fiscal informativo.
+- Impuesto neto: debito fiscal menos credito fiscal; un valor negativo representa credito a favor.
+- Resultado aplicando credito fiscal: resultado con impuestos incluidos menos impuesto vendido mas impuesto pagado, equivalente a ingresos sin impuesto menos gastos sin impuesto.
 - Hereda exclusiones de anulaciones, prestamos, transferencias, saldos anteriores y operaciones no operativas del motor de ejecucion.
 - No calcula costo de mercaderia vendida; no es una utilidad contable completa.
 - Los gastos historicos sin impuesto desglosado mantienen el importe original como base.

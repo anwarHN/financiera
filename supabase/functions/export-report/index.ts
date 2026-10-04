@@ -204,7 +204,7 @@ type PendingDeliveryDetailRow = {
 const reportTitles: Record<ExportPayload["reportId"], string> = {
   budget_execution: "Ejecución presupuestaria",
   project_execution: "Ejecución por proyecto",
-  project_income_statement: "Estado de resultado por proyecto",
+  project_income_statement: "Estado de resultado por proyecto/presupuesto",
   sales: "Ventas",
   receivable: "Cuentas por cobrar",
   payable: "Cuentas por pagar",
@@ -1582,8 +1582,18 @@ async function buildReportData(supabaseAdmin: any, payload: ExportPayload): Prom
     for (const [label, value] of [["INGRESOS", totals.income], ["GASTOS", totals.expense]] as const) {
       rows.push({ Tipo: label, Concepto: label, "Base sin impuesto": value.base, Impuesto: value.tax, Total: value.total, Nota: "" });
     }
-    rows.push({ Tipo: "RESULTADO", Concepto: "Resultado antes del efecto de impuestos", "Base sin impuesto": totals.result,
-      Impuesto: null, Total: null, Nota: "Impuestos informativos; no es liquidacion fiscal ni utilidad contable completa. Historicos sin desglose conservan importe como base." });
+    rows.push(
+      { Tipo: "RESULTADO", Concepto: "Resultado con impuestos incluidos", "Base sin impuesto": null,
+        Impuesto: null, Total: totals.resultWithTaxes, Nota: "Total facturado menos total gastado." },
+      { Tipo: "IMPUESTO", Concepto: "Impuesto cobrado en ventas (debito fiscal)", "Base sin impuesto": null,
+        Impuesto: totals.income.tax, Total: null, Nota: "" },
+      { Tipo: "IMPUESTO", Concepto: "Impuesto pagado en gastos (credito fiscal)", "Base sin impuesto": null,
+        Impuesto: totals.expense.tax, Total: null, Nota: "" },
+      { Tipo: "IMPUESTO", Concepto: "Impuesto neto (debito menos credito)", "Base sin impuesto": null,
+        Impuesto: totals.taxBalance, Total: null, Nota: "Un valor negativo representa credito fiscal a favor." },
+      { Tipo: "RESULTADO", Concepto: "Resultado aplicando credito fiscal", "Base sin impuesto": totals.result,
+        Impuesto: null, Total: totals.result, Nota: "Ingresos sin impuesto menos gastos sin impuesto; no es una liquidacion fiscal." }
+    );
     return { rows, total: totals.result, balance: 0 };
   }
   if (payload.reportId === "budget_execution" || payload.reportId === "project_execution") {
