@@ -261,10 +261,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   const isManualReceivableMode = entryMode === "receivable" && moduleType === "sale";
   const isManualPayableMode = entryMode === "payable" && moduleType === "purchase";
   const isManualBalanceMode = isManualReceivableMode || isManualPayableMode;
-  const requiresBudgetAssignment =
+  const showsBudgetAssignment =
     !isPriorBalanceMode && !isManualBalanceMode && ["sale", "income", "expense"].includes(moduleType);
-  const isBudgetSelectionRequired =
-    requiresBudgetAssignment && (!isEdit || Boolean(editingTransactionSnapshot?.budgetId));
   const isLineBasedTransaction =
     ((!isPriorBalanceMode && !isManualBalanceMode && moduleType === "sale") ||
       (!isPriorBalanceMode && !isManualBalanceMode && moduleType === "purchase") ||
@@ -471,7 +469,6 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         total: Number(tx.total || 0),
         payments: Number(tx.payments || 0),
         balance: Number(tx.balance || 0),
-        budgetId: tx.budgetId ? Number(tx.budgetId) : null,
         isAccountReceivable: Boolean(tx.isAccountReceivable),
         isAccountPayable: Boolean(tx.isAccountPayable)
       });
@@ -849,11 +846,6 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       setError(t(isManualReceivableMode ? "transactions.clientRequired" : "transactions.providerRequired"));
       return;
     }
-    if (isBudgetSelectionRequired && !simpleForm.budgetId) {
-      setError(t("transactions.budgetRequired"));
-      return;
-    }
-
     const purchaseCash = moduleType === "purchase" && simpleForm.paymentMode === "cash";
     const needsPaymentMethod =
       (!isManualBalanceMode && (moduleType === "income" || moduleType === "expense" || purchaseCash)) || manualPayableCashIn;
@@ -915,7 +907,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       paymentMethodId: shouldPersistPayment ? simpleForm.paymentMethodId : null,
       accountPaymentFormId: shouldPersistPayment ? simpleForm.accountPaymentFormId : null,
       projectId: simpleForm.projectId,
-      budgetId: requiresBudgetAssignment ? simpleForm.budgetId : null,
+      budgetId: showsBudgetAssignment ? simpleForm.budgetId : null,
       employeeId: moduleType === "income" || moduleType === "expense" ? simpleForm.employeeId : null,
       affectsPayroll: moduleType === "income" || moduleType === "expense" ? simpleForm.affectsPayroll : false,
       tags: normalizedTags,
@@ -1089,10 +1081,6 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       setError(t("transactions.saleValidationError"));
       return;
     }
-    if (isBudgetSelectionRequired && !saleHeader.budgetId) {
-      setError(t("transactions.budgetRequired"));
-      return;
-    }
     const isInventoryAdjustment = moduleType === "inventoryAdjustment";
     const isCredit = !isInventoryAdjustment && saleHeader.paymentMode === "credit";
     if (!isInventoryAdjustment && !isCredit && !saleHeader.paymentMethodId) {
@@ -1138,7 +1126,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       paymentMethodId: isCredit || isInventoryAdjustment ? null : saleHeader.paymentMethodId,
       accountPaymentFormId: isCredit || isInventoryAdjustment ? null : saleHeader.accountPaymentFormId,
       projectId: saleHeader.projectId,
-      budgetId: requiresBudgetAssignment ? saleHeader.budgetId : null,
+      budgetId: showsBudgetAssignment ? saleHeader.budgetId : null,
       tags: isInventoryAdjustment
         ? Array.from(new Set([...(saleHeader.tags || []), INVENTORY_ADJUSTMENT_TAG]))
         : saleHeader.tags,
@@ -1658,7 +1646,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                   setSimpleProjectLookup("");
                 }}
               />
-              {requiresBudgetAssignment ? (
+              {showsBudgetAssignment ? (
                 <LookupCombobox
                   label={t("transactions.budget")}
                   value={simpleBudgetLookup}
@@ -1685,8 +1673,6 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                     setSimpleForm((prev) => ({ ...prev, budgetId: "" }));
                     setSimpleBudgetLookup("");
                   }}
-                  required={isBudgetSelectionRequired}
-                  hasError={simpleSubmitAttempted && isBudgetSelectionRequired && !simpleForm.budgetId}
                 />
               ) : null}
               {(moduleType === "income" || moduleType === "expense") && (
@@ -2056,7 +2042,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                   setSaleProjectLookup("");
                 }}
               />
-              {requiresBudgetAssignment ? (
+              {showsBudgetAssignment ? (
                 <LookupCombobox
                   label={t("transactions.budget")}
                   value={saleBudgetLookup}
@@ -2083,8 +2069,6 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                     setSaleHeader((prev) => ({ ...prev, budgetId: "" }));
                     setSaleBudgetLookup("");
                   }}
-                  required={isBudgetSelectionRequired}
-                  hasError={saleSubmitAttempted && isBudgetSelectionRequired && !saleHeader.budgetId}
                 />
               ) : null}
             </div>

@@ -38,7 +38,7 @@ Ambos reportes de ejecucion muestran Proyecto y Presupuesto. Se requiere al meno
 
 ## Registro de transacciones
 
-- Venta, ingreso y gasto ordinarios requieren seleccionar un presupuesto activo en su formulario.
+- Venta, ingreso y gasto ordinarios permiten seleccionar opcionalmente un presupuesto activo en su formulario.
 - Seleccionar un presupuesto asigna su proyecto y moneda. Cambiar proyecto o moneda limpia una seleccion incompatible.
 - Compras, ajustes de inventario, saldos anteriores y CxC/CxP manuales no requieren presupuesto.
 - Una devolucion de venta hereda `budgetId`, proyecto y moneda de la factura original para reversar la ejecucion en el mismo presupuesto.
