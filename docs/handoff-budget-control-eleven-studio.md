@@ -1,6 +1,7 @@
 # Handoff: control presupuestario para Eleven Studio
 
 ## Contexto y origen
+
 Se contrató un servicio externo de control de gastos para el proyecto **Expo Feria de Marketing**
 (Eleven Studio), con vigencia del **16 de septiembre al 16 de noviembre de 2026**. El servicio se
 presta sobre Daime y su entregable semanal es un **reporte de ejecución presupuestaria en formato
@@ -10,23 +11,29 @@ La revisión de capacidades previa a la firma detectó tres cambios necesarios e
 documento los describe para que puedan ejecutarse sin volver a recorrer el análisis.
 
 Perfil de uso del usuario externo:
+
 - Sólo registra y consulta. No aplica pagos, no anula, no ve planilla.
 - Depende de los reportes `budget_execution` y `project_execution`.
 - El acceso se otorga como cortesía y está limitado a ese proyecto.
 
 ## Resumen de cambios
 
-| # | Cambio | Severidad | Bloquea el servicio |
-|---|---|---|---|
-| 1 | Paginación en `budgetsService.js` | **Crítica** | Sí — antes del 16 de septiembre |
-| 2 | Exportación XLSX de ejecución presupuestaria y por proyecto | Alta | No, pero es el entregable ofertado |
-| 3 | Moneda en presupuestos | Media | Sólo si hay proveedores en otra moneda |
+| #   | Cambio                                                      | Severidad   | Bloquea el servicio                    |
+| --- | ----------------------------------------------------------- | ----------- | -------------------------------------- |
+| 1   | Paginación en `budgetsService.js`                           | **Crítica** | Sí — antes del 16 de septiembre        |
+| 2   | Exportación XLSX de ejecución presupuestaria y por proyecto | Alta        | No, pero es el entregable ofertado     |
+| 3   | Moneda en presupuestos                                      | Media       | Sólo si hay proveedores en otra moneda |
 
 ---
 
 ## Cambio 1. Paginación en reportes de presupuesto (crítico)
 
+> **Resuelto.** La lógica se movió a `supabase/functions/_shared/budgetExecution.js`
+> (`loadBudgetExecution`), compartida por pantalla y exportación; pagina con `fetchAllPages`,
+> ordena por `id` y filtra `transactions.accountId`. Lo siguiente queda como contexto histórico.
+
 ### Problema
+
 `src/services/budgetsService.js` lee `transactionDetails` **sin paginar**. PostgREST corta en
 `1000` filas por defecto, así que por encima de ese volumen el **gasto ejecutado sale subestimado
 y la variación sale falsamente favorable**.
@@ -37,6 +44,7 @@ en `src/services/reportsService.js:48` y se replicó en
 `supabase/functions/export-report/index.ts`, pero **`budgetsService.js` nunca se corrigió**.
 
 ### Puntos afectados
+
 - `src/services/budgetsService.js:87` — `getBudgetExecutionReport(...)`
   - Línea `109`-`111`: `.from("transactionDetails").select(...).in("conceptId", conceptIds)` sin
     `.range(...)`.
@@ -45,6 +53,7 @@ en `src/services/reportsService.js:48` y se replicó en
     Lee la tabla completa de todas las cuentas y se queda con las primeras `1000` filas.
 
 ### Qué hacer
+
 1. Reutilizar el patrón `fetchAllPages(...)` de `src/services/reportsService.js:48`. Extraerlo a
    una utilidad compartida o replicarlo en `budgetsService.js`; no duplicar lógica divergente.
 2. En `getProjectExecutionReport`, además de paginar, **filtrar en el servidor**. Hoy trae toda la
@@ -53,6 +62,7 @@ en `src/services/reportsService.js:48` y se replicó en
 3. Mantener intacta la normalización de signo existente (`isExpense` → `Math.abs`).
 
 ### Criterio de aceptación
+
 - Con una cuenta que supere `1000` filas en `transactionDetails`, el total ejecutado del reporte
   coincide con la suma obtenida por SQL directo sobre las mismas condiciones.
 - `getProjectExecutionReport` ya no descarga filas de otras cuentas.
@@ -63,6 +73,7 @@ en `src/services/reportsService.js:48` y se replicó en
 ## Cambio 2. Exportación XLSX de ejecución presupuestaria y por proyecto
 
 ### Problema
+
 Los dos reportes que sostienen el servicio contratado **no se pueden exportar**:
 
 - `src/pages/ReportsPage.jsx:547`
@@ -75,6 +86,7 @@ Los dos reportes que sostienen el servicio contratado **no se pueden exportar**:
   `buildStandardReport`, que no sabe construirlos.
 
 ### Lo que ya está resuelto
+
 El frontend **ya envía** `budgetId` y `projectId` a la Edge Function. No hay que tocar el plumbing:
 
 - `src/pages/ReportsPage.jsx:630` — `handleExport()` ya arma `budgetId` y `projectId`.
@@ -82,6 +94,7 @@ El frontend **ya envía** `budgetId` y `projectId` a la Edge Function. No hay qu
 - `src/services/reportsService.js:875` — ya van dentro del `body` del POST.
 
 ### Qué hacer
+
 1. `supabase/functions/export-report/index.ts`:
    - Agregar `"budget_execution"` y `"project_execution"` a la unión `ExportPayload["reportId"]`.
    - Declarar `budgetId?: number | null` y `projectId?: number | null` en `ExportPayload`.
@@ -96,6 +109,7 @@ El frontend **ya envía** `budgetId` y `projectId` a la Edge Function. No hay qu
    como ya lo hace la pantalla (`ReportsPage.jsx:268` y `:280`-`282`).
 
 ### Criterio de aceptación
+
 - La regla de `AGENTS.md` se cumple: **pantalla y exportación devuelven las mismas cifras** para el
   mismo presupuesto, proyecto y rango de fechas.
 - El archivo se guarda en el bucket `report-exports` y respeta
@@ -106,6 +120,7 @@ El frontend **ya envía** `budgetId` y `projectId` a la Edge Function. No hay qu
 ## Cambio 3. Moneda en presupuestos
 
 ### Problema
+
 `supabase/projects_and_budgets.sql:17`-`37` define `budgets` y `budget_lines` **sin `currencyId`**,
 y `getBudgetExecutionReport` no filtra por moneda. Si la cuenta registra gastos en más de una
 moneda, el ejecutado **suma importes de monedas distintas en un mismo número**, sin conversión.
@@ -114,6 +129,7 @@ Para el proyecto de Eleven Studio se mitigó por contrato (la propuesta fija Lem
 control y obliga a registrar convertido), pero la limitación sigue presente en el producto.
 
 ### Qué hacer
+
 1. Migración SQL siguiendo `docs/sql-runbook.md`:
    - `alter table public.budgets add column "currencyId" bigint references public.currencies(id);`
    - Backfill con la moneda local de cada cuenta.
@@ -125,12 +141,14 @@ control y obliga a registrar convertido), pero la limitación sigue presente en 
 4. Agregar el filtro de moneda a la configuración de ambos reportes en `ReportsPage.jsx:35`-`36`.
 
 ### Criterio de aceptación
+
 - Un presupuesto en HNL no incorpora gastos registrados en USD.
 - Presupuestos existentes siguen funcionando tras el backfill.
 
 ---
 
 ## Orden de ejecución recomendado
+
 1. **Cambio 1** — antes del 16 de septiembre de 2026. Es el único que puede hacer que el servicio
    entregue cifras incorrectas al cliente.
 2. **Cambio 2** — durante las primeras semanas del servicio. Mientras no esté, el reporte semanal
@@ -139,6 +157,7 @@ control y obliga a registrar convertido), pero la limitación sigue presente en 
 3. **Cambio 3** — sólo si aparecen gastos en moneda distinta a la de control.
 
 ## Checklist de validación
+
 - `npm run build`.
 - Comparar pantalla vs. exportación para `budget_execution` y `project_execution` con el mismo
   presupuesto, proyecto, moneda y rango de fechas.
@@ -149,6 +168,7 @@ control y obliga a registrar convertido), pero la limitación sigue presente en 
 - Revisar `docs/release-checklist.md` antes de desplegar.
 
 ## Fuera de alcance de este handoff
+
 Se evaluaron y se **descartaron** para el servicio contratado. No implementar como parte de estos
 cambios:
 
@@ -164,6 +184,7 @@ proyecto se resolvió resguardando una copia de la línea base fuera del sistema
 quiere control de versiones de presupuesto, esa función es el punto de partida.
 
 ## Comportamientos conocidos que conviene no "corregir" por error
+
 - `getBudgetExecutionReport` sólo considera conceptos **que ya tienen línea presupuestaria**
   (`budgetsService.js:103`). Un gasto en un concepto no presupuestado no aparece ahí.
   `getProjectExecutionReport` sí une ambos conjuntos (`allConceptIds`, `budgetsService.js:180`).

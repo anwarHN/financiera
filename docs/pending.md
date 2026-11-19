@@ -1,12 +1,7 @@
 # Pendientes
 
 ## Alta prioridad
-- `src/services/budgetsService.js` no pagina lecturas de `transactionDetails`:
-  - `getBudgetExecutionReport` (línea `109`) y `getProjectExecutionReport` (línea `158`).
-  - Por encima de `1000` filas el ejecutado sale subestimado y la variación sale
-    falsamente favorable. Mismo patrón del incidente de flujo de caja descrito en `handoff.md`.
-  - `getProjectExecutionReport` además lee `transactionDetails` sin filtro de cuenta.
-  - Detalle y criterios de aceptación en `docs/handoff-budget-control-eleven-studio.md`.
+
 - Validar manualmente todos los formularios con picklists después de cambio de cuenta:
   - nueva factura
   - compra
@@ -19,6 +14,7 @@
   - retiros de efectivo
 
 ## Inventario
+
 - Kardex todavía no consume `inventory_delivery_history` como fuente principal de salidas.
 - Falta ejecutar y validar la migración de `historicalQuantityDelivered` hacia `inventory_delivery_history`.
 - Después del backfill, alinear:
@@ -27,6 +23,7 @@
   - inventario actual/disponible
 
 ## Reportes
+
 - Validar con datos reales:
   - flujo de caja vs saldos bancarios/cajas
   - pendientes de entrega al corte
@@ -34,10 +31,12 @@
 - Revisar si el resumen superior de todos los reportes necesita más campos o distinto orden.
 
 ## UX / rendimiento
+
 - El bundle principal sigue grande; Vite advierte chunks > 500 kB.
 - Falta evaluar división por rutas o `manualChunks`.
 
 ## QA
+
 - No hay suite formal de pruebas automatizadas para reglas críticas de negocio.
 - Se recomienda agregar pruebas para:
   - cambio de cuenta
