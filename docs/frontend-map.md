@@ -198,6 +198,7 @@ Soporta tipos:
 - `TransactionCreatePage.jsx`: formulario principal de transacciones.
 - `TransactionDetailPage.jsx`: detalle de factura/compra y pagos/entregas.
 - `TransactionPaymentPage.jsx`: formulario de pago entrante/saliente.
+- `CustomerCreditsPage.jsx`: saldos a favor y anticipos recibidos; permite aplicar, devolver y anular movimientos.
 
 ### Inventario
 - `InventoryDeliveriesPage.jsx`: registra entregas posteriores y consulta historial.

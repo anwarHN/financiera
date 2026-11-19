@@ -73,7 +73,9 @@
       "appMenuTitle": "Accesos del app-menu",
       "appMenuText": "Opciones disponibles para cuentas por cobrar.",
       "appMenuOptions": [
-        { "name": "Cuentas por cobrar", "description": "Consulta facturas al crédito, cuentas manuales y registra cobros." }
+        { "name": "Cuentas por cobrar", "description": "Consulta facturas al crédito, cuentas manuales y registra cobros." },
+        { "name": "Anticipos recibidos", "description": "Registra anticipos de clientes y aplícalos a facturas futuras." },
+        { "name": "Saldos a favor", "description": "Controla sobrepagos y otros créditos disponibles de clientes." }
       ]
     },
     "payable": {
@@ -238,7 +240,9 @@
       "appMenuTitle": "App-menu entries",
       "appMenuText": "Available accounts receivable options.",
       "appMenuOptions": [
-        { "name": "Accounts receivable", "description": "Review credit invoices, manual receivables and register collections." }
+        { "name": "Accounts receivable", "description": "Review credit invoices, manual receivables and register collections." },
+        { "name": "Advances received", "description": "Record customer advances and apply them to future invoices." },
+        { "name": "Customer credits", "description": "Track overpayments and other available customer credits." }
       ]
     },
     "payable": {

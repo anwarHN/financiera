@@ -19,6 +19,7 @@ export function resolveReadModuleByPath(pathname) {
   if (pathname.startsWith("/bank-reconciliation")) return "transactions";
   if (pathname.startsWith("/accounts-receivable")) return "transactions";
   if (pathname.startsWith("/customer-credits")) return "transactions";
+  if (pathname.startsWith("/customer-advances")) return "transactions";
   if (pathname.startsWith("/accounts-payable")) return "transactions";
   if (pathname.startsWith("/sales")) return "transactions";
   if (pathname.startsWith("/purchases")) return "transactions";

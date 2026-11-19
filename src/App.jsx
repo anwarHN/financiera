@@ -74,6 +74,7 @@ function App() {
       >
         <Route index element={<DashboardPage />} />
         <Route path="customer-credits" element={<CustomerCreditsPage />} />
+        <Route path="customer-advances" element={<CustomerCreditsPage advancesOnly />} />
         <Route path="clients" element={<PeoplePage personType={1} titleKey="clients.title" basePath="/clients" />} />
         <Route
           path="clients/new"

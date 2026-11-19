@@ -19,7 +19,7 @@ const initialForm = () => ({
   requestId: crypto.randomUUID()
 });
 
-export default function CustomerCreditsPage() {
+export default function CustomerCreditsPage({ advancesOnly = false }) {
   const { account } = useAuth();
   const { t } = useI18n();
   const { canRead, canCreate, canVoidTransactions } = useModulePermissions("transactions");
@@ -62,10 +62,18 @@ export default function CustomerCreditsPage() {
 
   if (!canRead) return <p>{t("common.accessDeniedDescription")}</p>;
   const visible = (entry) => (!personFilter || String(entry.personId) === personFilter) && (!currencyFilter || String(entry.currencyId) === currencyFilter);
-  const credits = summarizeCredits(entries, asOf).filter(visible);
-  const history = entries.filter(visible);
+  const scopedOriginIds = new Set(entries
+    .filter((entry) => !entry.creditId && (advancesOnly ? entry.kind === "advance" : entry.kind !== "advance"))
+    .map((entry) => Number(entry.id)));
+  const credits = summarizeCredits(entries, asOf)
+    .filter((entry) => scopedOriginIds.has(Number(entry.id)))
+    .filter(visible);
+  const history = entries.filter((entry) => {
+    const originId = entry.creditId ? Number(entry.creditId) : Number(entry.id);
+    return scopedOriginIds.has(originId) && visible(entry);
+  });
   const selectedCredit = credits.find((entry) => String(entry.id) === form?.creditId);
-  const cashOperation = form && ["receive", "refund"].includes(form.action);
+  const cashOperation = form && ["receive", "advance", "refund"].includes(form.action);
   const receiptApplied = form?.action === "receive"
     ? Math.min(Number(form.amount) || 0, Number(invoices.find((tx) => String(tx.id) === form.invoiceId)?.balance) || 0)
     : 0;
@@ -89,8 +97,8 @@ export default function CustomerCreditsPage() {
   };
 
   return <div className="module-page">
-    <h1>{t("customerCredits.title")}</h1>
-    <p>{t("customerCredits.help")}</p>
+    <h1>{t(advancesOnly ? "customerAdvances.title" : "customerCredits.title")}</h1>
+    <p>{t(advancesOnly ? "customerAdvances.help" : "customerCredits.help")}</p>
     {error && <p className="error-text">{error}</p>}
     <div className="form-grid-2">
       <label className="field-block"><span>{t("reports.dateTo")}</span><input type="date" required value={asOf} onChange={(e) => setAsOf(e.target.value || today())} /></label>
@@ -102,8 +110,12 @@ export default function CustomerCreditsPage() {
       </select></label>
     </div>
     {canCreate && <div className="crud-form-actions">
-      <button disabled={busy} onClick={() => start("opening")}>{t("customerCredits.opening")}</button>
-      <button disabled={busy} onClick={() => start("receive")}>{t("customerCredits.receive")}</button>
+      {advancesOnly ? (
+        <button disabled={busy} onClick={() => start("advance")}>{t("customerAdvances.receive")}</button>
+      ) : <>
+        <button disabled={busy} onClick={() => start("opening")}>{t("customerCredits.opening")}</button>
+        <button disabled={busy} onClick={() => start("receive")}>{t("customerCredits.receive")}</button>
+      </>}
     </div>}
     {currencies.filter((c) => credits.some((entry) => Number(entry.currencyId) === Number(c.id))).map((c) =>
       <ReadOnlyField key={c.id} label={`${t("customerCredits.available")} (${c.name})`}
@@ -134,7 +146,7 @@ export default function CustomerCreditsPage() {
     </tr>)}</tbody></table>
 
     {form && <div className="modal-backdrop"><div className="modal-card">
-      <h3>{t(`customerCredits.${form.action}`)}</h3>
+      <h3>{form.action === "advance" ? t("customerAdvances.receive") : t(`customerCredits.${form.action}`)}</h3>
       {form.action === "opening" && <p>{t("customerCredits.openingHelp")}</p>}
       {error && <p className="error-text">{error}</p>}
       <form className="crud-form" onSubmit={submit}><div className="form-grid-2">

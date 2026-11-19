@@ -81,6 +81,7 @@ const navGroups = [
     icon: FiTrendingUp,
     items: [
       { path: "/accounts-receivable", key: "nav.accountsReceivable", icon: FiTrendingUp },
+      { path: "/customer-advances", key: "customerAdvances.title", icon: FiDollarSign },
       { path: "/customer-credits", key: "customerCredits.title", icon: FiTrendingUp }
     ]
   },
@@ -210,6 +211,7 @@ function resolveCreateModuleByPath(pathname) {
   if (pathname.startsWith("/employee-loans")) return "transactions";
   if (pathname.startsWith("/accounts-receivable")) return "transactions";
   if (pathname.startsWith("/customer-credits")) return "transactions";
+  if (pathname.startsWith("/customer-advances")) return "transactions";
   if (pathname.startsWith("/accounts-payable")) return "transactions";
   if (pathname.startsWith("/sales")) return "transactions";
   if (pathname.startsWith("/purchases")) return "transactions";

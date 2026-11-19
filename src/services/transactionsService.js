@@ -81,11 +81,15 @@ export async function listTransactionsByProject({ accountId, projectId, dateFrom
   return data ?? [];
 }
 
-export async function createTransactionWithDetails({ transaction, details }) {
+export async function createTransactionWithDetails({ transaction, details, customerCreditApplication = null }) {
   if (Number(transaction.type) === 1 && !(transaction.tags || []).some((tag) =>
     tag === "__prior_balance__" || tag === "__manual_receivable__")) {
     const { data, error } = await supabase.rpc("create_numbered_invoice", {
-      p_transaction: transaction, p_details: details ?? []
+      p_transaction: transaction,
+      p_details: details ?? [],
+      p_credit: customerCreditApplication?.creditId ?? null,
+      p_credit_amount: customerCreditApplication?.amount ?? null,
+      p_credit_request: customerCreditApplication?.requestId ?? null
     });
     if (error) throw error;
     return { id: data };

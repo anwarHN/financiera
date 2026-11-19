@@ -16,6 +16,17 @@
 - Deben aceptar pagos parciales y anulación de pagos aplicados.
 - También existen CxC/CxP manuales sin productos.
 
+## Anticipos de clientes
+- Recibir un anticipo crea una entrada real de efectivo y saldo disponible por cliente y moneda.
+- Aplicar un anticipo a una factura reduce su saldo, pero no vuelve a afectar el flujo de caja.
+- Una factura sólo puede usar anticipos activos del mismo cliente y moneda.
+- Los sobrepagos y los anticipos se conservan como orígenes distintos aunque ambos generen saldo a favor.
+
+## Relación de ingresos y gastos con personas
+- Un ingreso o gasto puede asociarse opcionalmente con un cliente o proveedor.
+- La persona relacionada debe pertenecer a la misma cuenta activa.
+- Esta relación no convierte por sí sola el movimiento en cuenta por cobrar o pagar.
+
 ## Flujo de caja
 - Sólo debe reflejar entradas y salidas reales de efectivo/banco/caja.
 - No debe considerar el registro inicial de CxC/CxP como flujo.

@@ -19,7 +19,7 @@ Deno.test("customer credit migration and complete monetary lifecycle in PostgreS
       create table currencies(id bigint primary key,"accountId" bigint);
       insert into currencies values(1,8),(2,8);
       create table account_profiles(id bigint primary key,"accountId" bigint,"isSystemAdmin" boolean,"canVoidTransactions" boolean,permissions jsonb);
-      insert into account_profiles values(1,8,false,true,'{"transactions":{"read":true,"create":true}}');
+      insert into account_profiles values(1,8,false,true,'{"transactions":{"read":true,"create":true},"sales":{"create":true}}');
       create table users_to_profiles("accountId" bigint,"userId" uuid,"profileId" bigint);
       insert into users_to_profiles values(8,auth.uid(),1);
       create table payment_methods(id bigint primary key,"accountId" bigint,is_active boolean);
@@ -56,9 +56,25 @@ Deno.test("customer credit migration and complete monetary lifecycle in PostgreS
     await assert.rejects(run("receive",1300,null,1,key), /function round\(double precision, integer\) does not exist/);
     assert.equal((await db.query("select * from transactions where type=6")).rows.length,0);
     await db.exec(await Deno.readTextFile("supabase/migrations/20260922150419_fix_customer_payment_numeric_round.sql"));
+    await db.exec(await Deno.readTextFile("supabase/migrations/20261119205119_customer_advances.sql"));
+    const advance = await run("advance",250);
+    const advanceEntry = Number((await db.query<{id:number}>("select id from customer_credit_entries where kind='advance'")).rows[0].id);
+    assert.equal((await db.query("select * from transactions where id=$1 and type=6",[advance.id])).rows.length,1);
+    const invoiceRequest = crypto.randomUUID();
+    const invoice = await db.query<{id:number}>(`select public.create_numbered_invoice(
+      '{"accountId":8,"personId":1,"currencyId":1,"date":"2026-01-10","type":1,"total":200,"balance":200,"payments":0,"isAccountReceivable":true,"isActive":true}',
+      '[{"quantity":1,"price":200,"net":200,"total":200}]',$1,200,$2) as id`, [advanceEntry, invoiceRequest]);
+    assert.equal(await balance(Number(invoice.rows[0].id)),0);
+    assert.equal((await db.query("select * from customer_credit_entries where kind='application' and \"creditId\"=$1",[advanceEntry])).rows.length,1);
+    assert.equal((await db.query("select * from transactions where type=6")).rows.length,1);
+    const invoiceCount = (await db.query("select * from transactions where type=1")).rows.length;
+    await assert.rejects(db.query(`select public.create_numbered_invoice(
+      '{"accountId":8,"personId":1,"currencyId":1,"date":"2026-01-10","type":1,"total":100,"balance":100,"payments":0,"isAccountReceivable":true,"isActive":true}',
+      '[{"quantity":1,"price":100,"net":100,"total":100}]',999,100,$1)`, [crypto.randomUUID()]), /Credit not available/);
+    assert.equal((await db.query("select * from transactions where type=1")).rows.length,invoiceCount);
     const receipt = await run("receive",1300,null,1,key);
     await run("receive",1300,null,1,key);
-    assert.equal((await db.query('select * from transactions where type=6')).rows.length,1);
+    assert.equal((await db.query('select * from transactions where type=6')).rows.length,2);
     assert.equal(await balance(1),0);
     const credit = Number((await db.query<{id:number}>("select id from customer_credit_entries where kind='excess'")).rows[0].id);
     const application = await run("application",120,credit,2);

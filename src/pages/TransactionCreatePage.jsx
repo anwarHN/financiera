@@ -19,6 +19,7 @@ import { listAccountPaymentForms } from "../services/accountPaymentFormsService"
 import { listBudgets } from "../services/budgetsService";
 import { listConcepts } from "../services/conceptsService";
 import { listCurrencies } from "../services/currenciesService";
+import { listCustomerCredits } from "../services/customerCreditsService";
 import { listEmployees } from "../services/employeesService";
 import { createPaymentMethod, listPaymentMethods } from "../services/paymentMethodsService";
 import { listPersons } from "../services/personsService";
@@ -34,6 +35,7 @@ import {
 } from "../services/transactionsService";
 import { formatNumber } from "../utils/numberFormat";
 import { formatPaymentFormLabel } from "../utils/paymentFormLabel";
+import { summarizeCredits } from "../../supabase/functions/_shared/customerCredits.js";
 
 const INVENTORY_ADJUSTMENT_TAG = "__inventory_adjustment__";
 const PRIOR_BALANCE_TAG = "__prior_balance__";
@@ -66,7 +68,7 @@ const moduleConfig = {
   expense: {
     type: TRANSACTION_TYPES.expense,
     titleKey: "transactions.expensesCreateTitle",
-    personFilter: 2,
+    personFilter: null,
     conceptFilter: (item) => Boolean(item.isExpense) && !Boolean(item.isOutgoingPaymentConcept),
     backPath: "/expenses"
   },
@@ -115,6 +117,8 @@ const initialSaleHeader = {
   accountPaymentFormId: "",
   projectId: "",
   budgetId: "",
+  advanceCreditId: "",
+  advanceAmount: "",
   tags: []
 };
 
@@ -213,6 +217,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   const [accountPaymentForms, setAccountPaymentForms] = useState([]);
   const [projects, setProjects] = useState([]);
   const [budgets, setBudgets] = useState([]);
+  const [customerCreditEntries, setCustomerCreditEntries] = useState([]);
   const [tagOptions, setTagOptions] = useState([]);
 
   const [simpleForm, setSimpleForm] = useState(initialSimpleForm);
@@ -315,6 +320,17 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
   }, [saleHeader.paymentMode, selectedSalePaymentMethod]);
 
   const saleTotals = useMemo(() => aggregateLines(saleLines), [saleLines]);
+  const availableAdvances = useMemo(() => {
+    if (moduleType !== "sale" || !selectedClient || !saleHeader.currencyId) return [];
+    return summarizeCredits(customerCreditEntries, saleHeader.date)
+      .filter((entry) => entry.kind === "advance" && entry.available > 0)
+      .filter((entry) => Number(entry.personId) === Number(selectedClient.id))
+      .filter((entry) => Number(entry.currencyId) === Number(saleHeader.currencyId));
+  }, [customerCreditEntries, moduleType, saleHeader.currencyId, saleHeader.date, selectedClient]);
+  const selectedAdvance = useMemo(
+    () => availableAdvances.find((entry) => Number(entry.id) === Number(saleHeader.advanceCreditId)) ?? null,
+    [availableAdvances, saleHeader.advanceCreditId]
+  );
   const simpleBudgetOptions = useMemo(
     () => budgets.filter((budget) =>
       (!simpleForm.projectId || Number(budget.projectId) === Number(simpleForm.projectId))
@@ -338,6 +354,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     setError("");
     setSimpleForm(initialSimpleForm);
     setSaleHeader(initialSaleHeader);
+    setCustomerCreditEntries([]);
     setEditingTransactionSnapshot(null);
     setSelectedClient(null);
     setSaleLines([]);
@@ -352,7 +369,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
     loadTransactionEditor({
       accountId: account.accountId,
       loadCatalogs: async () => {
-        const [persons, concepts, employees, currencies, paymentMethods, accountPaymentForms, projects, budgets, tags] = await Promise.all([
+        const [persons, concepts, employees, currencies, paymentMethods, accountPaymentForms, projects, budgets, tags, customerCredits] = await Promise.all([
         listPersons(account.accountId),
         listConcepts(account.accountId),
         listEmployees(account.accountId),
@@ -361,9 +378,10 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         listAccountPaymentForms(account.accountId),
         listProjects(account.accountId),
         listBudgets(account.accountId),
-        listUsedTransactionTags(account.accountId).catch(() => [])
+        listUsedTransactionTags(account.accountId).catch(() => []),
+        listCustomerCredits(account.accountId, new Date().toLocaleDateString("en-CA")).catch(() => [])
         ]);
-        return { persons, concepts, employees, currencies, paymentMethods, accountPaymentForms, projects, budgets, tags };
+        return { persons, concepts, employees, currencies, paymentMethods, accountPaymentForms, projects, budgets, tags, customerCredits };
       },
       loadRecord: async () => {
         if (!itemId) return null;
@@ -383,6 +401,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       setProjects(catalogs.projects);
       setBudgets(catalogs.budgets);
       setTagOptions(catalogs.tags);
+      setCustomerCreditEntries(catalogs.customerCredits);
       if (record) {
         loadEditableTransaction(record.tx, record.details);
       } else {
@@ -486,6 +505,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
           accountPaymentFormId: tx.accountPaymentFormId ? String(tx.accountPaymentFormId) : "",
           projectId: tx.projectId ? String(tx.projectId) : "",
           budgetId: tx.budgetId ? String(tx.budgetId) : "",
+          advanceCreditId: "",
+          advanceAmount: "",
           tags: Array.isArray(tx.tags) ? tx.tags : []
         });
         setSelectedClient(
@@ -625,7 +646,9 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       setSaleHeader((prev) => ({
         ...prev,
         currencyId: value,
-        budgetId: selectedBudget && Number(selectedBudget.currencyId) === Number(value) ? prev.budgetId : ""
+        budgetId: selectedBudget && Number(selectedBudget.currencyId) === Number(value) ? prev.budgetId : "",
+        advanceCreditId: "",
+        advanceAmount: ""
       }));
       return;
     }
@@ -635,6 +658,15 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
         paymentMode: value,
         paymentMethodId: "",
         accountPaymentFormId: ""
+      }));
+      return;
+    }
+    if (name === "paymentMode" && value === "cash") {
+      setSaleHeader((prev) => ({
+        ...prev,
+        paymentMode: value,
+        advanceCreditId: "",
+        advanceAmount: ""
       }));
       return;
     }
@@ -1091,6 +1123,17 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
       setError(t("transactions.accountPaymentFormRequired"));
       return;
     }
+    const advanceAmount = Number(saleHeader.advanceAmount || 0);
+    if (saleHeader.advanceCreditId && (
+      !selectedAdvance ||
+      !Number.isFinite(advanceAmount) ||
+      advanceAmount <= 0 ||
+      advanceAmount > Number(selectedAdvance.available || 0) ||
+      advanceAmount > Number(saleTotals.total || 0)
+    )) {
+      setError(t("customerAdvances.invalidApplication"));
+      return;
+    }
 
     const inventoryAdjustmentLines =
       moduleType === "inventoryAdjustment"
@@ -1212,7 +1255,17 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
           details: detailPayloads
         });
       } else {
-        saved = await createTransactionWithDetails({ transaction: transactionPayload, details: detailPayloads });
+        saved = await createTransactionWithDetails({
+          transaction: transactionPayload,
+          details: detailPayloads,
+          customerCreditApplication: saleHeader.advanceCreditId
+            ? {
+                creditId: Number(saleHeader.advanceCreditId),
+                amount: advanceAmount,
+                requestId: crypto.randomUUID()
+              }
+            : null
+        });
       }
       if (moduleType === "sale" && saved?.id) {
         await syncInitialInvoiceDeliveryHistory(saved.id);
@@ -1441,7 +1494,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                     options={personOptions}
                     getOptionLabel={(person) => person.name || ""}
                     onSelect={(person) => setSimpleForm((prev) => ({ ...prev, personId: String(person.id) }))}
-                    placeholder={`-- ${isManualReceivableMode ? t("transactions.selectClient") : moduleType === "expense" ? t("transactions.selectProvider") : t("transactions.optionalPerson")} --`}
+                    placeholder={`-- ${isManualReceivableMode ? t("transactions.selectClient") : t("transactions.optionalPerson")} --`}
                     required={isManualReceivableMode}
                     hasError={isManualReceivableMode && simpleSubmitAttempted && !simpleForm.personId}
                     noResultsText={t("common.empty")}
@@ -1951,6 +2004,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                 onSelect={(client) => {
                   setSelectedClient(client);
                   setClientLookup("");
+                  setSaleHeader((prev) => ({ ...prev, advanceCreditId: "", advanceAmount: "" }));
                 }}
                 placeholder={moduleType === "purchase" ? t("transactions.selectProvider") : t("transactions.lookupPlaceholder")}
                 onCreateRecord={handleCreatedPerson}
@@ -1977,6 +2031,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                 onClearSelection={() => {
                   setSelectedClient(null);
                   setClientLookup("");
+                  setSaleHeader((prev) => ({ ...prev, advanceCreditId: "", advanceAmount: "" }));
                 }}
               />
             ) : null}
@@ -2073,6 +2128,60 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
               ) : null}
             </div>
           </section>
+
+          {moduleType === "sale" && saleHeader.paymentMode === "credit" && !isEdit ? (
+            <section className="crud-form-section">
+              <h2 className="crud-form-section-title">{t("customerAdvances.applyOnInvoice")}</h2>
+              <p>{t("customerAdvances.applyHelp")}</p>
+              <div className="form-grid-2">
+                <label className="field-block">
+                  <span>{t("customerAdvances.availableAdvance")}</span>
+                  <select
+                    value={saleHeader.advanceCreditId}
+                    onChange={(event) => {
+                      const creditId = event.target.value;
+                      const advance = availableAdvances.find((entry) => String(entry.id) === creditId);
+                      setSaleHeader((prev) => ({
+                        ...prev,
+                        advanceCreditId: creditId,
+                        advanceAmount: advance
+                          ? String(Math.min(Number(advance.available || 0), Math.max(Number(saleTotals.total || 0), 0)))
+                          : ""
+                      }));
+                    }}
+                  >
+                    <option value="">{t("customerAdvances.doNotApply")}</option>
+                    {availableAdvances.map((entry) => (
+                      <option key={entry.id} value={entry.id}>
+                        {entry.reference} - {entry.date} ({formatNumber(entry.available)})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {selectedAdvance ? (
+                  <label className="field-block">
+                    <span>{t("customerAdvances.amountToApply")}</span>
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      max={Math.min(Number(selectedAdvance.available || 0), Math.max(Number(saleTotals.total || 0), 0))}
+                      value={saleHeader.advanceAmount}
+                      onChange={(event) => setSaleHeader((prev) => ({ ...prev, advanceAmount: event.target.value }))}
+                      required
+                    />
+                  </label>
+                ) : null}
+                {selectedAdvance ? (
+                  <ReadOnlyField
+                    label={t("customerAdvances.remainingAvailable")}
+                    value={Math.max(Number(selectedAdvance.available || 0) - Number(saleHeader.advanceAmount || 0), 0)}
+                    type="currency"
+                  />
+                ) : null}
+              </div>
+            </section>
+          ) : null}
 
           {moduleType !== "inventoryAdjustment" && saleHeader.paymentMode === "cash" && (
             <section className="crud-form-section">

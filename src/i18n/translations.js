@@ -22,7 +22,19 @@ export const translations = {
       excess: "Saldo a favor generado", available: "Disponible", used: "Aplicado / devuelto",
       history: "Historial de saldos a favor", originInvoice: "Crédito / documento",
       invoice: "Factura / cuenta por cobrar", openingHelp: "Registra un crédito existente. No aumenta caja ni banco.",
-      debt: "Pendiente por cobrar", net: "Saldo neto", credit: "Saldo a favor"
+      debt: "Pendiente por cobrar", net: "Saldo neto", credit: "Saldo a favor", advance: "Anticipo recibido"
+    },
+    customerAdvances: {
+      title: "Anticipos recibidos",
+      help: "Registra anticipos de clientes y controla su saldo disponible. El ingreso de efectivo ocurre al recibir el anticipo; aplicarlo a una factura no genera otro ingreso.",
+      receive: "Registrar anticipo",
+      applyOnInvoice: "Aplicar anticipo",
+      applyHelp: "Opcionalmente aplica un anticipo disponible del cliente para reducir el saldo de esta factura de credito.",
+      availableAdvance: "Anticipo disponible",
+      amountToApply: "Monto a aplicar",
+      remainingAvailable: "Saldo restante del anticipo",
+      doNotApply: "No aplicar anticipo",
+      invalidApplication: "Selecciona un anticipo valido y un monto que no exceda su saldo disponible ni el total de la factura."
     },
     common: {
       retryLoad: "Reintentar carga",
@@ -824,7 +836,19 @@ export const translations = {
       excess: "Credit generated", available: "Available", used: "Applied / refunded",
       history: "Customer credit history", originInvoice: "Credit / document",
       invoice: "Invoice / receivable", openingHelp: "Record existing credit without increasing cash or bank balances.",
-      debt: "Outstanding receivables", net: "Net balance", credit: "Customer credit"
+      debt: "Outstanding receivables", net: "Net balance", credit: "Customer credit", advance: "Advance received"
+    },
+    customerAdvances: {
+      title: "Advances received",
+      help: "Record customer advances and track their available balance. Cash is recognized when the advance is received; applying it to an invoice does not create another receipt.",
+      receive: "Record advance",
+      applyOnInvoice: "Apply advance",
+      applyHelp: "Optionally apply an available customer advance to reduce the balance of this credit invoice.",
+      availableAdvance: "Available advance",
+      amountToApply: "Amount to apply",
+      remainingAvailable: "Remaining advance balance",
+      doNotApply: "Do not apply an advance",
+      invalidApplication: "Select a valid advance and an amount that does not exceed its available balance or the invoice total."
     },
     common: {
       appName: "Daime",
