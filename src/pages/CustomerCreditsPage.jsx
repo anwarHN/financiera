@@ -161,10 +161,6 @@ export default function CustomerCreditsPage({ advancesOnly = false }) {
   );
   const cashOperation =
     form && ["receive", "advance", "refund"].includes(form.action);
-  const selectedBank = forms.find(
-    (f) =>
-      String(f.id) === form?.accountPaymentFormId && f.kind === "bank_account",
-  );
   const receiptApplied =
     form?.action === "receive"
       ? Math.min(
@@ -555,23 +551,13 @@ export default function CustomerCreditsPage({ advancesOnly = false }) {
                           )
                           .map((f) => (
                             <option key={f.id} value={f.id}>
-                              {formatPaymentFormLabel(f)}
+                              {[formatPaymentFormLabel(f), f.reference?.trim()]
+                                .filter(Boolean)
+                                .join(" - ")}
                             </option>
                           ))}
                       </select>
                     </label>
-                    {selectedBank && (
-                      <>
-                        <ReadOnlyField
-                          label={t("paymentForms.provider")}
-                          value={selectedBank.provider || "-"}
-                        />
-                        <ReadOnlyField
-                          label={t("paymentForms.accountNumber")}
-                          value={selectedBank.reference || "-"}
-                        />
-                      </>
-                    )}
                   </>
                 )}
                 <label className="field-block form-span-2">
