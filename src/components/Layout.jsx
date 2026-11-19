@@ -462,6 +462,13 @@ function Layout() {
         extraCreateItems: [{ path: "/sales?createPrior=1", label: t("transactions.newPriorBalanceSale") }]
       };
     }
+    if (pathname.startsWith("/customer-advances")) {
+      return {
+        createPath: "/customer-advances?create=1",
+        createLabel: t("customerAdvances.receive"),
+        extraCreateItems: []
+      };
+    }
     if (pathname.startsWith("/accounts-receivable")) {
       return {
         createPath: "/accounts-receivable?create=1",

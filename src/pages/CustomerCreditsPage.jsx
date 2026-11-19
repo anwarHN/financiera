@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
 import { useModulePermissions } from "../hooks/useModulePermissions";
@@ -36,6 +37,7 @@ export default function CustomerCreditsPage({ advancesOnly = false }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [reload, setReload] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     setForm(null); setEntries([]); setPeople([]); setCurrencies([]); setInvoices([]);
@@ -59,6 +61,19 @@ export default function CustomerCreditsPage({ advancesOnly = false }) {
       .finally(() => { if (!cancelled) setBusy(false); });
     return () => { cancelled = true; };
   }, [account?.accountId, asOf, canRead, reload]);
+
+  useEffect(() => {
+    if (!advancesOnly || !canCreate || searchParams.get("create") !== "1") return;
+    setForm({
+      ...initialForm(),
+      action: "advance",
+      personId: String(personFilter || ""),
+      currencyId: String(currencyFilter || "")
+    });
+    const next = new URLSearchParams(searchParams);
+    next.delete("create");
+    setSearchParams(next, { replace: true });
+  }, [advancesOnly, canCreate, currencyFilter, personFilter, searchParams, setSearchParams]);
 
   if (!canRead) return <p>{t("common.accessDeniedDescription")}</p>;
   const visible = (entry) => (!personFilter || String(entry.personId) === personFilter) && (!currencyFilter || String(entry.currencyId) === currencyFilter);
