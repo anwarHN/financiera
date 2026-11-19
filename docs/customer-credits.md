@@ -4,7 +4,7 @@
 - Cuentas por cobrar > Saldos a favor de clientes (/customer-credits).
 - Cuentas por cobrar > Anticipos recibidos (/customer-advances).
 - Registrar anticipo: crea un ingreso de efectivo asociado al cliente y deja el importe disponible para facturas futuras.
-- Al crear una factura de credito se puede seleccionar un anticipo del mismo cliente y moneda. La factura y la aplicacion se guardan de forma atomica; la aplicacion reduce el saldo sin crear otro ingreso.
+- Al crear una factura se puede seleccionar un anticipo del mismo cliente y moneda. La seccion aparece en facturas de credito o cuando el cliente tiene anticipos disponibles; al elegir uno, la factura pasa a credito. La factura y la aplicacion se guardan de forma atomica; la aplicacion reduce el saldo sin crear otro ingreso.
 - Registrar cobro: identifica cliente, moneda, fecha, referencia, forma de pago y cuenta bancaria/caja. Una factura destino es opcional. El importe aplicado cancela su pendiente y el resto genera credito.
 - Los formularios existentes de cobro tambien aceptan excedentes para clientes; los pagos salientes y prestamos de empleados conservan su limite.
 - Saldo anterior: registrar exclusivamente credito previamente existente, sin repetir un ingreso de caja/banco ya contabilizado. No se migran saldos automaticamente.

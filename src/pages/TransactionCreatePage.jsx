@@ -2129,7 +2129,7 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
             </div>
           </section>
 
-          {moduleType === "sale" && saleHeader.paymentMode === "credit" && !isEdit ? (
+          {moduleType === "sale" && !isEdit && (saleHeader.paymentMode === "credit" || availableAdvances.length > 0) ? (
             <section className="crud-form-section">
               <h2 className="crud-form-section-title">{t("customerAdvances.applyOnInvoice")}</h2>
               <p>{t("customerAdvances.applyHelp")}</p>
@@ -2143,6 +2143,8 @@ function TransactionCreatePage({ moduleType, entryMode = "default", embedded = f
                       const advance = availableAdvances.find((entry) => String(entry.id) === creditId);
                       setSaleHeader((prev) => ({
                         ...prev,
+                        // The advance is applied against the receivable, so the invoice must be on credit.
+                        ...(advance ? { paymentMode: "credit", paymentMethodId: "", accountPaymentFormId: "" } : {}),
                         advanceCreditId: creditId,
                         advanceAmount: advance
                           ? String(Math.min(Number(advance.available || 0), Math.max(Number(saleTotals.total || 0), 0)))
